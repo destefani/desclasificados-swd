@@ -3,8 +3,8 @@ import base64
 import argparse
 import json
 from dotenv import load_dotenv
+from tqdm import tqdm
 from openai import OpenAI
-from tqdm import tqdm   # for the progress bar
 from app.config import ROOT_DIR, DATA_DIR, logging
 
 # Load environment variables
@@ -64,29 +64,40 @@ Guidelines:
 5. Return only the JSON object and nothing else. No code fences, no extra commentary. 
 """
 
-def process_images_in_directory(max_files=0):
+def process_images_in_directory(max_files=0, resume=False):
     """
     Processes images from DATA_DIR / 'images'.
+
     :param max_files: Number of files to process; 0 means process all.
+    :param resume: If True, skip any files that already have a .json transcript.
     """
     image_dir = DATA_DIR / "images"
-    # Gather all JPEG files in a list so we can display a progress bar
-    all_images = [f for f in os.listdir(image_dir) if f.lower().endswith((".jpg", ".jpeg"))]
-    
+    # Gather all JPEG files in a list (sorted for consistency) so we can display a progress bar
+    all_images = sorted(f for f in os.listdir(image_dir) if f.lower().endswith((".jpg", ".jpeg")))
+
     # Ensure the output directory exists
     output_dir = DATA_DIR / "generated_transcripts"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     processed_count = 0
-    
+
     # Set up the progress bar
     with tqdm(total=len(all_images), desc="Processing images", unit="image") as pbar:
         for filename in all_images:
-            # Stop early if max_files is set and we've hit that count
+            # Stop early if max_files is set and we've already processed that many
             if max_files != 0 and processed_count >= max_files:
-                break
+                pbar.update(1)
+                continue
 
             file_path = image_dir / filename
+            output_filename = output_dir / (os.path.splitext(filename)[0] + ".json")
+
+            # If resume mode is ON, skip files that already have a JSON transcript
+            if resume and output_filename.exists():
+                logging.info(f"Resume mode: {output_filename} already exists; skipping.")
+                pbar.update(1)
+                continue
+
             logging.info(f"Processing {file_path}...")
 
             # Read and base64-encode the image
@@ -97,7 +108,7 @@ def process_images_in_directory(max_files=0):
 
             # Send the request to the model
             response = client.responses.create(
-                model="gpt-4o-mini",  # Change to "gpt-4o" if your environment supports it
+                model="gpt-4o-mini",  # Update to "gpt-4o" if your environment supports it
                 input=[{
                     "role": "user",
                     "content": [
@@ -111,7 +122,7 @@ def process_images_in_directory(max_files=0):
                 }],
             )
 
-            # Clean the response to remove ```json ... ``` blocks
+            # Clean the response to remove ```json ...``` blocks or extraneous markdown
             response_text = response.output_text
             cleaned_text = (
                 response_text
@@ -124,28 +135,33 @@ def process_images_in_directory(max_files=0):
             try:
                 response_data = json.loads(cleaned_text)
             except json.JSONDecodeError as e:
-                logging.error(f"Failed to parse JSON from the output for file '{filename}': {e}")
+                logging.error(f"Failed to parse JSON for '{filename}': {e}")
                 pbar.update(1)
                 continue
 
             # If parsing is successful, write the JSON to file
-            output_filename = output_dir / (os.path.splitext(filename)[0] + ".json")
             with open(output_filename, "w", encoding="utf-8") as out_file:
                 json.dump(response_data, out_file, ensure_ascii=False, indent=4)
 
             logging.info(f"Saved output JSON to {output_filename}")
-
             processed_count += 1
-            pbar.update(1)
+
+            pbar.update(1)  # Mark 1 item processed in the progress bar
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process images and generate transcripts.")
     parser.add_argument(
         "--max-files",
         type=int,
-        default=1,
+        default=0,
         help="Number of files to process; 0 means process all files."
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="If specified, skip any images that already have a .json transcript."
     )
     args = parser.parse_args()
 
-    process_images_in_directory(max_files=args.max_files)
+    process_images_in_directory(max_files=args.max_files, resume=args.resume)
