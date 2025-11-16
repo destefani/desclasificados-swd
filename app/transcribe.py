@@ -15,7 +15,7 @@ from app.config import ROOT_DIR, DATA_DIR  # Adjust if needed
 load_dotenv(ROOT_DIR / '.env')
 
 # Initialize the OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_TEST_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 prompt = """
 You are given an image of a declassified CIA document related to the Chilean dictatorship (1973-1990). Your task is to transcribe, summarize, correct scanning errors, and organize the information in a highly standardized way for historical research.
@@ -117,7 +117,7 @@ def transcribe_single_image(
 
     # Send the request to the model
     response = client.responses.create(
-        model="gpt-4o-mini",  # or "gpt-4o" if your environment supports it
+        model=os.getenv("OPENAI_MODEL"),  # or "gpt-4o" if your environment supports it
         input=[
             {
                 "role": "user",
