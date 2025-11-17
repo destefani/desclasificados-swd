@@ -136,7 +136,7 @@ def process_documents_in_directory(max_files=0, resume=False, max_workers=2):
         }
 
         # Create a TQDM progress bar for total files
-        with tqdm(total=len(futures), desc="Processing declassified documents", unit="document") as pbar:
+        with tqdm(total=len(futures), desc="Processing unclassified documents", unit="document") as pbar:
             # As each future completes, we update the progress bar
             for future in as_completed(futures):
                 filename = futures[future]
@@ -153,7 +153,7 @@ def process_documents_in_directory(max_files=0, resume=False, max_workers=2):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process declassified documents and generate transcripts.")
+    parser = argparse.ArgumentParser(description="Process unclassified documents and generate transcripts.")
     parser.add_argument(
         "--max-files",
         type=int,
