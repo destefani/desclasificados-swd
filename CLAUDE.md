@@ -323,3 +323,4 @@ Refer to these documents when working on features related to research applicatio
 - The Streamlit app in `tests/test_app.py` uses a hardcoded path - update `TRANSCRIPTS_DIR` constant if needed
 - always us uv to manage environments
 - after every new feature implementation, make it easy for the reviewer to test it.
+- always work on a new branch and create a PR when finished. PRs have to be manually accepted by a human in github
