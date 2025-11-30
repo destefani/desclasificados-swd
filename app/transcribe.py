@@ -431,7 +431,7 @@ def transcribe_single_document(
 
     start_time = time.time()
 
-    # Read the PDF file and encode it in base64
+    # Read the image file and encode it in base64
     try:
         with open(file_path, "rb") as f:
             data = f.read()
@@ -454,7 +454,7 @@ def transcribe_single_document(
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:application/pdf;base64,{base64_string}"
+                                "url": f"data:image/jpeg;base64,{base64_string}"
                             }
                         },
                     ],
@@ -512,9 +512,61 @@ def transcribe_single_document(
         return "failed"
 
 
+def estimate_cost_and_confirm(files_to_process: int, model: str = "gpt-4o-mini") -> bool:
+    """
+    Estimate the cost of processing and ask user for confirmation.
+
+    Args:
+        files_to_process: Number of files that will be processed
+        model: The OpenAI model to use
+
+    Returns:
+        True if user confirms, False otherwise
+    """
+    # Estimate tokens (input + output)
+    estimated_input_tokens = files_to_process * EST_TOKENS_PER_DOC
+    estimated_output_tokens = files_to_process * 1300  # Based on observed output size
+
+    # Calculate cost
+    pricing = {
+        "gpt-4o-mini": {"input": 0.150 / 1_000_000, "output": 0.600 / 1_000_000},
+        "gpt-4o": {"input": 2.50 / 1_000_000, "output": 10.00 / 1_000_000},
+    }
+
+    rates = pricing.get(model, pricing["gpt-4o-mini"])
+    estimated_cost = (
+        estimated_input_tokens * rates["input"] +
+        estimated_output_tokens * rates["output"]
+    )
+
+    # Display estimate
+    print("\n" + "=" * 70)
+    print("COST ESTIMATE")
+    print("=" * 70)
+    print(f"Files to process:      {files_to_process}")
+    print(f"Model:                 {model}")
+    print(f"Est. input tokens:     {estimated_input_tokens:,}")
+    print(f"Est. output tokens:    {estimated_output_tokens:,}")
+    print(f"Est. total tokens:     {estimated_input_tokens + estimated_output_tokens:,}")
+    print(f"Estimated cost:        ${estimated_cost:.4f}")
+    print("=" * 70)
+
+    # Ask for confirmation
+    while True:
+        response = input("\nProceed with transcription? [y/n]: ").strip().lower()
+        if response in ['y', 'yes']:
+            print()
+            return True
+        elif response in ['n', 'no']:
+            print("Transcription cancelled.")
+            return False
+        else:
+            print("Please enter 'y' or 'n'")
+
+
 def process_documents_in_directory(max_files=0, resume=False, max_workers=2, dry_run=False):
     """
-    Processes PDF documents from DATA_DIR / 'original_pdfs' in parallel threads.
+    Processes image documents from DATA_DIR / 'images' in parallel threads.
 
     Args:
         max_files: Number of files to process; 0 means process all.
@@ -522,13 +574,13 @@ def process_documents_in_directory(max_files=0, resume=False, max_workers=2, dry
         max_workers: How many parallel threads to run.
         dry_run: If True, simulate processing without calling API.
     """
-    document_dir = DATA_DIR / "original_pdfs"
+    document_dir = DATA_DIR / "images"
     output_dir = DATA_DIR / "generated_transcripts"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Gather all PDF files, sorted for consistent ordering
+    # Gather all image files, sorted for consistent ordering
     all_documents = sorted(
-        f for f in os.listdir(document_dir) if f.lower().endswith(".pdf")
+        f for f in os.listdir(document_dir) if f.lower().endswith((".jpg", ".jpeg"))
     )
 
     # If max_files != 0, truncate the list
@@ -536,8 +588,24 @@ def process_documents_in_directory(max_files=0, resume=False, max_workers=2, dry
         all_documents = all_documents[:max_files]
 
     if not all_documents:
-        logging.warning("No PDF files found to process")
+        logging.warning("No image files found to process")
         return
+
+    # Count how many files will actually be processed (exclude already-existing if resume mode)
+    files_to_process = all_documents
+    if resume:
+        files_to_process = [
+            f for f in all_documents
+            if not (output_dir / (os.path.splitext(f)[0] + ".json")).exists()
+        ]
+
+    files_to_process_count = len(files_to_process)
+
+    # Show estimate and ask for confirmation (skip in dry-run mode)
+    if not dry_run and files_to_process_count > 0:
+        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        if not estimate_cost_and_confirm(files_to_process_count, model):
+            return
 
     logging.info(f"Starting batch transcription: {len(all_documents)} files, {max_workers} workers")
 
@@ -603,7 +671,7 @@ def process_documents_in_directory(max_files=0, resume=False, max_workers=2, dry
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Process PDF documents and generate structured JSON transcripts."
+        description="Process document images and generate structured JSON transcripts."
     )
     parser.add_argument(
         "--max-files",
