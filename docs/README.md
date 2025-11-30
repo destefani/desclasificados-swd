@@ -44,6 +44,22 @@ Comprehensive research on RAG system evaluation covering:
 - Tools, platforms, and implementation recommendations
 - Based on 50+ authoritative sources from 2024-2025
 
+### [RESEARCH_QUESTIONS.md](./RESEARCH_QUESTIONS.md)
+Structured list of 166 research questions answerable using CIA documents:
+- The 1973 Coup (15 questions)
+- Operation Condor (15 questions)
+- DINA and Intelligence Operations (15 questions)
+- Human Rights and Repression (15 questions)
+- Assassinations and Targeted Killings (15 questions)
+- Economic Policy and the Chicago Boys (12 questions)
+- US Foreign Policy and CIA Involvement (19 questions)
+- Key Figures (18 questions)
+- Political Opposition and Resistance (12 questions)
+- Regional Context and International Relations (12 questions)
+- Transition to Democracy (18 questions)
+- Includes methodology notes for RAG evaluation
+- Based on historical research from authoritative sources
+
 ## Contributing to Documentation
 
 When adding new documentation, please:
