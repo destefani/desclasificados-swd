@@ -2,6 +2,38 @@
 
 **Start every development session by reading this file.**
 
+## Last Session Summary (2025-11-30)
+
+**✅ COMPLETED:**
+- **PR #10 Created**: Phase 1 Full Pass Processing implementation
+  - URL: https://github.com/destefani/desclasificados-swd/pull/10
+  - Status: OPEN - Ready for your review
+  - Branch: `feature/add-cost-estimation`
+
+**📦 What's in PR #10:**
+- Full pass batch processing system with state management
+- Cost control and budget limits
+- Graceful shutdown and resume capability
+- Auto-confirmation mode (`--yes` flag)
+- 100-doc validation: 100% success, $0.15, 0.93 avg confidence
+- Complete documentation in `research/` folder
+
+**⚠️ ISSUE FOUND:**
+- `make transcribe-some` command needs `--yes` flag for non-interactive mode
+- Makefile command should be updated to include auto-confirm
+
+**📊 CURRENT STATS:**
+- Documents transcribed: 20 JSON files in `data/generated_transcripts/`
+- Remaining: 21,492 documents to process
+- No active batch running
+
+**🎯 NEXT SESSION TODO:**
+1. **Review and merge PR #10** (if approved)
+2. **Fix Makefile**: Add `--yes` flag to `transcribe-some` and `transcribe-all` commands
+3. **Run full pass**: Use `uv run python -m app.transcribe --max-files 0 --yes` in tmux/screen
+4. **Monitor progress**: Check every 1,000 docs for quality
+5. **Rebuild RAG**: After full pass completes, run `make rag-rebuild`
+
 ## What This Is
 
 A system for processing, searching, and analyzing ~20,000 declassified CIA documents about the Chilean dictatorship (1973-1990). The project:
