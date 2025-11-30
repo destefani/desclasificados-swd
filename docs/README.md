@@ -60,6 +60,17 @@ Structured list of 166 research questions answerable using CIA documents:
 - Includes methodology notes for RAG evaluation
 - Based on historical research from authoritative sources
 
+### [CLAUDE_MIGRATION_ANALYSIS.md](./CLAUDE_MIGRATION_ANALYSIS.md)
+Analysis of migrating LLM operations from OpenAI to Claude (Anthropic):
+- Current OpenAI usage breakdown (embeddings, answer generation, transcription)
+- Hybrid migration strategy (Claude for QA, OpenAI for embeddings)
+- Detailed cost comparisons and ROI analysis
+- Implementation plan with code examples
+- Advantages of Claude for RAG (longer context, better citations, lower hallucination)
+- Testing protocol and evaluation metrics
+- Recommendations: Immediate migration for answer generation, hold on transcription
+- Complete implementation checklist
+
 ## Contributing to Documentation
 
 When adding new documentation, please:

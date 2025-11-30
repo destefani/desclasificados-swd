@@ -19,6 +19,11 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_TEST_KEY")
 EMBEDDING_MODEL = "text-embedding-3-small"
 LLM_MODEL = "gpt-4o-mini"
 
+# Anthropic Configuration
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+CLAUDE_MODEL = "claude-3-5-haiku-20241022"  # Default Claude model
+CLAUDE_MODEL_SONNET = "claude-3-5-sonnet-20241022"  # For complex queries
+
 # Chunking Configuration
 CHUNK_SIZE = 512  # tokens
 CHUNK_OVERLAP = 128  # tokens

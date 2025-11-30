@@ -11,7 +11,8 @@ from app.rag.embeddings import (
 )
 from app.rag.vector_store import init_vector_store, build_index
 from app.rag.qa_pipeline import ask_question
-from app.rag.config import VECTOR_DB_DIR
+from app.rag.qa_pipeline_claude import ask_question_claude
+from app.rag.config import VECTOR_DB_DIR, CLAUDE_MODEL, LLM_MODEL
 
 
 def build_command(args):
@@ -61,6 +62,9 @@ def query_command(args):
         sys.exit(1)
 
     print(f"Database loaded: {vector_store.count()} chunks")
+    print(f"LLM: {args.llm}")
+    if args.model:
+        print(f"Model: {args.model}")
     print("=" * 80)
 
     # Parse optional filters
@@ -72,14 +76,27 @@ def query_command(args):
     if args.keywords:
         keywords = [k.strip() for k in args.keywords.split(",")]
 
-    # Ask question
-    result = ask_question(
-        vector_store=vector_store,
-        question=args.query,
-        top_k=args.top_k,
-        date_range=date_range,
-        keywords=keywords,
-    )
+    # Determine which model to use
+    if args.llm == "claude":
+        model = args.model or CLAUDE_MODEL
+        result = ask_question_claude(
+            vector_store=vector_store,
+            question=args.query,
+            top_k=args.top_k,
+            date_range=date_range,
+            keywords=keywords,
+            model=model,
+        )
+    else:  # openai
+        model = args.model or LLM_MODEL
+        result = ask_question(
+            vector_store=vector_store,
+            question=args.query,
+            top_k=args.top_k,
+            date_range=date_range,
+            keywords=keywords,
+            model=model,
+        )
 
     # Display results
     print("\n" + "=" * 80)
@@ -116,6 +133,9 @@ def interactive_command(args):
     print("RAG Interactive Mode")
     print("=" * 80)
     print(f"Database loaded: {vector_store.count()} chunks")
+    print(f"LLM: {args.llm}")
+    if args.model:
+        print(f"Model: {args.model}")
     print("\nType 'exit' or 'quit' to exit")
     print("Type 'help' for available commands")
     print("=" * 80)
@@ -141,11 +161,22 @@ def interactive_command(args):
                 continue
 
             # Query the system
-            result = ask_question(
-                vector_store=vector_store,
-                question=question,
-                top_k=5,
-            )
+            if args.llm == "claude":
+                model = args.model or CLAUDE_MODEL
+                result = ask_question_claude(
+                    vector_store=vector_store,
+                    question=question,
+                    top_k=5,
+                    model=model,
+                )
+            else:  # openai
+                model = args.model or LLM_MODEL
+                result = ask_question(
+                    vector_store=vector_store,
+                    question=question,
+                    top_k=5,
+                    model=model,
+                )
 
             # Display answer
             print("\n" + "-" * 80)
@@ -199,6 +230,18 @@ def main():
     query_parser = subparsers.add_parser("query", help="Query the RAG system")
     query_parser.add_argument("query", type=str, help="Question to ask")
     query_parser.add_argument(
+        "--llm",
+        type=str,
+        choices=["openai", "claude"],
+        default="claude",
+        help="LLM to use for answer generation (default: claude)",
+    )
+    query_parser.add_argument(
+        "--model",
+        type=str,
+        help="Specific model to use (overrides default for selected LLM)",
+    )
+    query_parser.add_argument(
         "--top-k",
         type=int,
         default=5,
@@ -224,6 +267,18 @@ def main():
     interactive_parser = subparsers.add_parser(
         "interactive",
         help="Interactive query mode",
+    )
+    interactive_parser.add_argument(
+        "--llm",
+        type=str,
+        choices=["openai", "claude"],
+        default="claude",
+        help="LLM to use for answer generation (default: claude)",
+    )
+    interactive_parser.add_argument(
+        "--model",
+        type=str,
+        help="Specific model to use (overrides default for selected LLM)",
     )
 
     # Stats command

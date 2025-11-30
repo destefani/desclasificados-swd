@@ -9,9 +9,19 @@ The RAG system consists of several components:
 1. **embeddings.py** - Data loading, text chunking, and embedding generation
 2. **vector_store.py** - ChromaDB vector database operations
 3. **retrieval.py** - Semantic search and document retrieval
-4. **qa_pipeline.py** - Question-answering pipeline with LLM
-5. **cli.py** - Command-line interface
-6. **config.py** - Configuration settings
+4. **qa_pipeline.py** - Question-answering pipeline with OpenAI
+5. **qa_pipeline_claude.py** - Question-answering pipeline with Claude (Anthropic)
+6. **cli.py** - Command-line interface
+7. **config.py** - Configuration settings
+
+## LLM Selection
+
+The system supports two LLM providers for answer generation:
+
+- **Claude (Anthropic)** - Default, recommended for better citation accuracy and lower hallucination
+- **OpenAI** - Alternative option, uses GPT-4o-mini
+
+**Note**: Embeddings always use OpenAI's `text-embedding-3-small` regardless of LLM choice (Claude does not offer embeddings).
 
 ## Quick Start
 
@@ -40,8 +50,14 @@ This will:
 Ask questions using the CLI:
 
 ```bash
-# Simple query
+# Simple query (uses Claude by default)
 uv run python -m app.rag.cli query "What did the CIA know about Operation Condor?"
+
+# Use OpenAI instead
+uv run python -m app.rag.cli query "What did the CIA know about Operation Condor?" --llm openai
+
+# Use specific Claude model
+uv run python -m app.rag.cli query "Complex question..." --llm claude --model claude-3-5-sonnet-20241022
 
 # Query with filters
 uv run python -m app.rag.cli query "Human rights violations" --start-date 1976-01-01 --end-date 1976-12-31
@@ -58,7 +74,14 @@ uv run python -m app.rag.cli query "CIA assessment of Pinochet" --top-k 10
 For exploratory research, use interactive mode:
 
 ```bash
+# Use Claude (default)
 uv run python -m app.rag.cli interactive
+
+# Use OpenAI
+uv run python -m app.rag.cli interactive --llm openai
+
+# Use specific model
+uv run python -m app.rag.cli interactive --llm claude --model claude-3-5-sonnet-20241022
 ```
 
 Commands in interactive mode:
@@ -113,6 +136,24 @@ uv run python -m app.rag.cli query "Did the CIA have advance knowledge of the Le
 
 ## Configuration
 
+### Environment Variables
+
+Create a `.env` file (see `.env.example`):
+
+```bash
+# Required for embeddings and OpenAI mode
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Required for Claude mode (default)
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
+
+Get your API keys:
+- OpenAI: https://platform.openai.com/api-keys
+- Anthropic: https://console.anthropic.com/settings/keys
+
+### Code Configuration
+
 Edit `app/rag/config.py` to customize:
 
 ```python
@@ -124,9 +165,13 @@ CHUNK_OVERLAP = 128       # overlapping tokens
 DEFAULT_TOP_K = 5         # default number of documents to retrieve
 MAX_CONTEXT_TOKENS = 6000 # max context for LLM
 
-# Models
-EMBEDDING_MODEL = "text-embedding-3-small"
-LLM_MODEL = "gpt-4o-mini"
+# OpenAI Models
+EMBEDDING_MODEL = "text-embedding-3-small"  # Used for all embeddings
+LLM_MODEL = "gpt-4o-mini"                    # Used when --llm openai
+
+# Claude Models
+CLAUDE_MODEL = "claude-3-5-haiku-20241022"   # Used when --llm claude (default)
+CLAUDE_MODEL_SONNET = "claude-3-5-sonnet-20241022"  # For complex queries
 ```
 
 ## Data Sources
@@ -144,16 +189,30 @@ The system loads data from multiple sources in priority order:
 - Total setup: **~$0.60**
 
 ### Per-Query Costs
-- Query embedding: ~$0.0001
-- Answer generation (GPT-4o-mini): ~$0.02-0.03
-- **Total per query: ~$0.03**
 
-### Monthly Costs (Estimated)
-- 100 queries/month: ~$3
-- 1,000 queries/month: ~$30
-- 10,000 queries/month: ~$300
+**With Claude 3.5 Haiku (default)**:
+- Query embedding (OpenAI): ~$0.0001
+- Answer generation (Claude): ~$0.02-0.03
+- **Total per query: ~$0.02-0.03**
+
+**With Claude 3.5 Sonnet (complex queries)**:
+- Query embedding (OpenAI): ~$0.0001
+- Answer generation (Claude): ~$0.06-0.10
+- **Total per query: ~$0.06-0.10**
+
+**With OpenAI GPT-4o-mini**:
+- Query embedding: ~$0.0001
+- Answer generation: ~$0.02-0.03
+- **Total per query: ~$0.02-0.03**
+
+### Monthly Costs (Estimated with Claude Haiku)
+- 100 queries/month: ~$2-3
+- 1,000 queries/month: ~$20-30
+- 10,000 queries/month: ~$200-300
 
 ChromaDB storage is free (local/self-hosted).
+
+**Note**: Claude offers better citation accuracy and lower hallucination rates, making it the recommended choice despite similar pricing to OpenAI.
 
 ## Architecture Details
 
@@ -208,18 +267,28 @@ Each chunk stores:
 
 ```python
 from app.rag.vector_store import init_vector_store
-from app.rag.qa_pipeline import ask_question
+from app.rag.qa_pipeline_claude import ask_question_claude  # or qa_pipeline for OpenAI
 
 # Initialize
 vector_store = init_vector_store()
 
-# Query
-result = ask_question(
+# Query with Claude (recommended)
+result = ask_question_claude(
     vector_store=vector_store,
     question="What did CIA know about Operation Condor?",
     top_k=5,
     date_range=("1976-01-01", "1976-12-31"),
     keywords=["OPERATION CONDOR"],
+    model="claude-3-5-haiku-20241022",  # Optional, uses default if not specified
+)
+
+# Or use OpenAI
+from app.rag.qa_pipeline import ask_question
+result = ask_question(
+    vector_store=vector_store,
+    question="What did CIA know about Operation Condor?",
+    top_k=5,
+    model="gpt-4o-mini",
 )
 
 print(result["answer"])
@@ -261,6 +330,19 @@ Adjust `EMBEDDING_RPS` in `config.py` based on your OpenAI tier.
 ### Out of memory
 Reduce `EMBEDDING_BATCH_SIZE` in `config.py`.
 
+## LLM Provider Comparison
+
+| Feature | Claude 3.5 Haiku | Claude 3.5 Sonnet | OpenAI GPT-4o-mini |
+|---------|------------------|-------------------|-------------------|
+| **Context Window** | 200k tokens | 200k tokens | 128k tokens |
+| **Cost/Query** | ~$0.02-0.03 | ~$0.06-0.10 | ~$0.02-0.03 |
+| **Citation Accuracy** | Excellent | Excellent | Good |
+| **Hallucination Rate** | Very Low | Very Low | Low |
+| **Speed** | Fast | Moderate | Fast |
+| **Best For** | Most queries | Complex analysis | Alternative option |
+
+**Recommendation**: Use **Claude 3.5 Haiku** (default) for most queries, upgrade to **Sonnet** for complex temporal analysis or multi-document synthesis.
+
 ## Future Enhancements
 
 See `docs/RAG_IMPLEMENTATION_PLAN.md` for planned features:
@@ -271,6 +353,8 @@ See `docs/RAG_IMPLEMENTATION_PLAN.md` for planned features:
 
 ## References
 
+- [Claude Migration Analysis](../../docs/CLAUDE_MIGRATION_ANALYSIS.md)
 - [RAG Implementation Plan](../../docs/RAG_IMPLEMENTATION_PLAN.md)
 - [Project Context](../../docs/PROJECT_CONTEXT.md)
 - [Data Inventory](../../docs/DATA_INVENTORY.md)
+- [RAG Testing Methodologies](../../docs/RAG_TESTING_METHODOLOGIES.md)

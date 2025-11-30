@@ -139,15 +139,22 @@ make help
 
 ## Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (see `.env.example`):
 
-```
+```bash
+# OpenAI API Keys (required for embeddings and transcription)
 OPENAI_API_KEY=your_api_key_here
 OPENAI_MODEL=gpt-4o-mini  # or gpt-4o
 OPENAI_TEST_KEY=your_test_key_here  # Used by transcribe_v2.py
+
+# Anthropic API Key (required for Claude-powered RAG queries)
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ```
 
-**Note**: `transcribe.py` uses `OPENAI_API_KEY` and `OPENAI_MODEL`, while `transcribe_v2.py` uses `OPENAI_TEST_KEY`.
+**Notes**:
+- `transcribe.py` uses `OPENAI_API_KEY` and `OPENAI_MODEL`, while `transcribe_v2.py` uses `OPENAI_TEST_KEY`
+- RAG system uses `OPENAI_API_KEY` for embeddings and `ANTHROPIC_API_KEY` for Claude answer generation (default)
+- Get Anthropic API key from: https://console.anthropic.com/settings/keys
 
 ## Rate Limiting & Concurrency
 
@@ -209,6 +216,95 @@ uv add --dev package-name
 # Update lock file
 uv lock
 ```
+
+## RAG System (Question Answering)
+
+The project includes a Retrieval-Augmented Generation (RAG) system for querying the declassified documents using natural language. The system is located in `app/rag/`.
+
+### RAG Architecture
+
+**Components**:
+- **Vector Database**: ChromaDB (local, persistent)
+- **Embeddings**: OpenAI `text-embedding-3-small`
+- **LLM**: Claude 3.5 Haiku (default) or OpenAI GPT-4o-mini
+- **Chunking**: 512 tokens with 128-token overlap
+
+### RAG CLI Commands
+
+```bash
+# Build the vector database index (one-time setup)
+uv run python -m app.rag.cli build
+
+# Reset and rebuild
+uv run python -m app.rag.cli build --reset
+
+# Query with Claude (default)
+uv run python -m app.rag.cli query "What did the CIA know about Operation Condor?"
+
+# Query with OpenAI
+uv run python -m app.rag.cli query "What did the CIA know about Operation Condor?" --llm openai
+
+# Query with specific Claude model
+uv run python -m app.rag.cli query "Complex question..." --llm claude --model claude-3-5-sonnet-20241022
+
+# Query with filters
+uv run python -m app.rag.cli query "Human rights violations" \
+  --start-date 1976-01-01 \
+  --end-date 1976-12-31 \
+  --keywords "OPERATION CONDOR,HUMAN RIGHTS" \
+  --top-k 10
+
+# Interactive mode
+uv run python -m app.rag.cli interactive
+uv run python -m app.rag.cli interactive --llm openai
+
+# Database statistics
+uv run python -m app.rag.cli stats
+```
+
+### Claude vs OpenAI for RAG
+
+**Default: Claude 3.5 Haiku**
+- ✅ Better citation accuracy
+- ✅ Lower hallucination rates
+- ✅ 200k token context window
+- ✅ Superior at acknowledging gaps in knowledge
+- ~$0.02-0.03 per query
+
+**Alternative: OpenAI GPT-4o-mini**
+- ✅ Similar cost (~$0.02-0.03 per query)
+- ✅ Good performance
+- ⚠️ 128k token context (less than Claude)
+- Use with `--llm openai` flag
+
+**For Complex Queries: Claude 3.5 Sonnet**
+- ✅ Best for temporal analysis and multi-document synthesis
+- ✅ Extended thinking capability
+- 💰 Higher cost (~$0.06-0.10 per query)
+- Use with `--model claude-3-5-sonnet-20241022`
+
+See `docs/CLAUDE_MIGRATION_ANALYSIS.md` for detailed comparison and cost analysis.
+
+### RAG Testing Results
+
+The system has been tested with 6 research questions:
+- **Success Rate**: 83% (5/6 excellent or passing)
+- **Best Performance**: Letelier assassination (42.93% relevance)
+- **Documents Indexed**: 5,611 (6,929 chunks)
+
+See `tests/TEST_QUERIES_RESULTS.md` for full test results and analysis.
+
+### RAG Module Structure
+
+- `app/rag/embeddings.py` - Data loading, chunking, embedding generation
+- `app/rag/vector_store.py` - ChromaDB operations
+- `app/rag/retrieval.py` - Semantic search and filtering
+- `app/rag/qa_pipeline.py` - Question answering with OpenAI
+- `app/rag/qa_pipeline_claude.py` - Question answering with Claude (recommended)
+- `app/rag/cli.py` - Command-line interface
+- `app/rag/config.py` - Configuration settings
+
+See `app/rag/README.md` for comprehensive RAG documentation.
 
 ## Documentation
 
