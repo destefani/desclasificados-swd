@@ -31,13 +31,32 @@ load_dotenv(ROOT_DIR / '.env')
 # Initialize the OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Load the transcription prompt from the markdown file in `app/prompts`.
-prompt_path = Path(__file__).parent / "prompts" / "metadata_prompt.md"
+# Load the transcription prompt (v2 by default, v1 as fallback)
+PROMPT_VERSION = os.getenv("PROMPT_VERSION", "v2")
+USE_STRUCTURED_OUTPUTS = os.getenv("USE_STRUCTURED_OUTPUTS", "true").lower() == "true"
+
+if PROMPT_VERSION == "v2":
+    prompt_path = Path(__file__).parent / "prompts" / "metadata_prompt_v2.md"
+else:
+    prompt_path = Path(__file__).parent / "prompts" / "metadata_prompt.md"
+
 try:
     prompt = prompt_path.read_text(encoding="utf-8")
+    logging.info(f"Loaded prompt from: {prompt_path.name} (Structured Outputs: {USE_STRUCTURED_OUTPUTS})")
 except Exception as e:
     logging.error(f"Failed to read prompt file {prompt_path}: {e}")
     raise RuntimeError(f"Prompt file missing or unreadable: {prompt_path}: {e}")
+
+# Load JSON schema for Structured Outputs (if enabled)
+schema = None
+if USE_STRUCTURED_OUTPUTS:
+    schema_path = Path(__file__).parent / "prompts" / "schemas" / "metadata_schema.json"
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        logging.info(f"Loaded JSON schema from: {schema_path.name}")
+    except Exception as e:
+        logging.warning(f"Failed to load schema file {schema_path}: {e}. Falling back to basic JSON mode.")
+        USE_STRUCTURED_OUTPUTS = False
 
 # ---------------------------------------------------------------------------
 # Rate Limiting Configuration
@@ -360,10 +379,23 @@ def call_api_with_retry(messages, model, max_retries=3):
             # Wait for token budget before making the API call
             wait_for_token_budget(EST_TOKENS_PER_DOC)
 
+            # Configure response format based on Structured Outputs setting
+            if USE_STRUCTURED_OUTPUTS and schema:
+                response_format = {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "document_metadata_extraction",
+                        "schema": schema,
+                        "strict": True
+                    }
+                }
+            else:
+                response_format = {"type": "json_object"}
+
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
-                response_format={"type": "json_object"},
+                response_format=response_format,
                 temperature=0,
             )
 
@@ -488,12 +520,20 @@ def transcribe_single_document(
         logging.error(f"✗ {filename} | JSON parse error: {e}")
         return "failed"
 
-    # Validate with full schema and auto-repair
-    is_valid, errors = validate_with_schema(response_data, enable_auto_repair=True)
+    # Validate with full schema (auto-repair only if not using Structured Outputs)
+    # Structured Outputs already enforces schema compliance, so auto-repair rarely needed
+    enable_auto_repair = not USE_STRUCTURED_OUTPUTS
+    is_valid, errors = validate_with_schema(response_data, enable_auto_repair=enable_auto_repair)
+
     if not is_valid:
         logging.error(f"✗ {filename} | Schema validation failed:")
         for error in errors:
             logging.error(f"    - {error}")
+
+        # If using Structured Outputs and still failing, this is unexpected
+        if USE_STRUCTURED_OUTPUTS:
+            logging.error(f"⚠️  Unexpected: Structured Outputs enabled but validation failed. This should not happen.")
+
         return "failed"
 
     # Write the JSON to file

@@ -74,7 +74,7 @@ uv run python -m app.rag.cli stats
 ### Document Transcription
 
 ```bash
-# Transcribe 1 file (default)
+# Transcribe 1 file (default - uses Prompt v2)
 make transcribe
 
 # Transcribe 10 files (shows cost estimate & asks for confirmation)
@@ -84,7 +84,9 @@ make transcribe-some FILES_TO_PROCESS=10
 make resume
 ```
 
-**Note:** The transcription script now shows a cost estimate before processing and asks for confirmation. This prevents unexpected API charges.
+**Prompt v2 (Default):** Uses OpenAI Structured Outputs with 100% schema compliance, confidence scoring, and enhanced metadata extraction. See `app/prompts/PROMPT_V2_GUIDE.md`.
+
+**Note:** The transcription script shows a cost estimate before processing and asks for confirmation. This prevents unexpected API charges.
 
 ### Analysis & Visualization
 

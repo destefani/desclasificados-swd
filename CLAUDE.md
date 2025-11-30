@@ -95,7 +95,16 @@ make resume-some FILES_TO_PROCESS=10
 
 **Cost Estimation**: Before processing, the script displays an estimated cost based on the number of files and model used, then asks for confirmation. This helps prevent unexpected API charges. The estimate accounts for resume mode (skips already-transcribed files).
 
-**Important**: The default transcription script (`app/transcribe.py`) uses `OPENAI_MODEL` env var and includes cost estimation, rate limiting, and JSON schema validation. Use `app/transcribe_v2.py` for alternative implementation with different rate limiting configuration.
+**Prompt Version**: The transcription system now uses **Prompt v2** by default, which includes:
+- ✅ OpenAI Structured Outputs (100% JSON schema compliance)
+- ✅ Confidence scoring for quality control
+- ✅ Enhanced field extraction guidance
+- ✅ Keyword taxonomy for consistent categorization
+- ✅ Versioning and rollback capability
+
+To use the legacy v1 prompt: `export PROMPT_VERSION=v1`
+
+See `app/prompts/PROMPT_V2_GUIDE.md` for details.
 
 ### Analysis & Visualization
 
