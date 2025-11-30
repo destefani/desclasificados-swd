@@ -17,89 +17,28 @@ load_dotenv(ROOT_DIR / '.env')
 # Initialize the OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-prompt = """
-You are given an image of a declassified CIA document related to the Chilean dictatorship (1973-1990). Your task is to transcribe, summarize, correct scanning errors, and organize the information in a highly standardized way for historical research.
-
-Return your response strictly as a JSON object without any Markdown formatting or code fences:
-
-{
-    "metadata": {
-        "document_id": "",
-        "case_number": "",
-        "document_date": "YYYY-MM-DD",
-        "classification_level": "",
-        "declassification_date": "YYYY-MM-DD",
-        "document_type": "",
-        "author": "",
-        "recipients": [],
-        "people_mentioned": [],
-        "country": [],
-        "city: [],
-        "other_place: [],
-        "document_title": "",
-        "document_description": "",
-        "archive_location": "",
-        "observations": "",
-        "language": "",
-        "keywords": [],
-        "page_count": 0,
-        "document_summary": ""
-    },
-    "original_text": "",
-    "reviewed_text": ""
-}
-
-Mandatory Formatting Guidelines:
-
-1. **Dates**:
-   - Always use the ISO 8601 format: "YYYY-MM-DD".
-   - If the exact day or month is unknown, use "00". Example: "1974-05-00" (if month is known but day unknown) or "1974-00-00" (if only the year is known).
-   - If no date is available at all, leave blank.
-
-2. **Names**:
-   - Standardize names strictly as "LAST NAME, FIRST NAME" (uppercase).
-   - Example: "PINCHET, AUGUSTO"
-
-3. **Places**:
-   - All place names must be standardized in uppercase (e.g., "SANTIAGO", "VALPARAÍSO").
-
-4. **Classification Level**:
-   - Use exactly one of: "TOP SECRET", "SECRET", "CONFIDENTIAL", "UNCLASSIFIED". If unclear or missing, leave blank.
-
-5. **Document Type**:
-   - Standardize strictly to one of: "MEMORANDUM", "LETTER", "TELEGRAM", "INTELLIGENCE BRIEF", "REPORT", "MEETING MINUTES", "CABLE". Leave blank if uncertain.
-
-6. **Keywords**:
-   - Always uppercase, short, consistent thematic tags.
-   - Common examples: "HUMAN RIGHTS", "OPERATION CONDOR", "US-CHILE RELATIONS", "MILITARY COUP", "ECONOMIC POLICY", "REPRESSION".
-
-7. **Original vs Reviewed Text**:
-   - **original_text**: Faithful transcription with original artifacts and scanning issues.
-   - **reviewed_text**: Correct scanning errors, improve readability without altering factual content.
-
-8. **Observations**:
-   - Explicitly note "[ILLEGIBLE]" for unreadable content or "[UNCERTAIN]" when the content meaning is ambiguous.
-
-9. **Language**:
-   - Exactly one of: "ENGLISH", "SPANISH". Leave blank if uncertain.
-
-10. **Document Summary**:
-    - Concise (1-3 sentences), clear, and historically informative.
-
-Return only the JSON object as instructed.
-"""
+# Load the transcription prompt from the markdown file in `app/prompts`.
+# This allows editing the prompt outside of the code. If the file cannot
+# be read, fall back to the original inline prompt to preserve behaviour.
+prompt_path = Path(__file__).parent / "prompts" / "metadata_prompt.md"
+try:
+    prompt = prompt_path.read_text(encoding="utf-8")
+except Exception as e:
+    logging.error(f"Failed to read prompt file {prompt_path}: {e}")
+    # Fail fast: do not continue without the canonical prompt file.
+    raise RuntimeError(f"Prompt file missing or unreadable: {prompt_path}: {e}")
 
 
-def transcribe_single_image(
+def transcribe_single_document(
     filename: str,
-    image_dir: Path,
+    document_dir: Path,
     output_dir: Path,
     resume: bool
 ) -> bool:
     """
-    Transcribe a single image. Returns True if successful, False otherwise.
+    Transcribe a single document. Returns True if successful, False otherwise.
     """
-    file_path = image_dir / filename
+    file_path = document_dir / filename
     output_filename = output_dir / (os.path.splitext(filename)[0] + ".json")
 
     # If resume mode is ON, skip if the JSON file already exists
@@ -108,30 +47,41 @@ def transcribe_single_image(
         return True
 
     logging.debug(f"Processing {file_path}...")
+    
+    # Read the PDF file and encode it in base64
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+            
+        base64_string = base64.b64encode(data).decode("utf-8")
+        logging.info(f"Encoded {filename} to base64")
+    except Exception as e:
+        logging.error(f"Failed to read or encode file {filename}: {e}")
+        return False
 
-    # Read and base64-encode the image
-    with open(file_path, "rb") as f:
-        image_bytes = f.read()
-    encoded_image = base64.b64encode(image_bytes).decode("utf-8")
-    data_url = f"data:image/jpeg;base64,{encoded_image}"
 
-    # Send the request to the model
-    response = client.responses.create(
-        model=os.getenv("OPENAI_MODEL"),  # or "gpt-4o" if your environment supports it
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "input_text", "text": prompt},
-                    {
-                        "type": "input_image",
-                        "image_url": data_url,
-                        "detail": "high",
-                    },
-                ],
-            }
-        ],
-    )
+    # Send the request to the model. Provide the prompt text and attach the
+    # encoded PDF file.
+    try:
+        response = client.responses.create(
+            model=os.getenv("OPENAI_MODEL"),
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": prompt},
+                        {
+                            "type": "input_file",
+                            "filename": filename,
+                            "file_data": f"data:application/pdf;base64,{base64_string}",
+                        },
+                    ],
+                }
+            ],
+        )
+    except Exception as e:
+        logging.error(f"API request failed for {filename}: {e}")
+        return False
 
     # Clean the response to remove ```json ...``` blocks
     response_text = response.output_text
@@ -157,36 +107,36 @@ def transcribe_single_image(
     return True
 
 
-def process_images_in_directory(max_files=0, resume=False, max_workers=2):
+def process_documents_in_directory(max_files=0, resume=False, max_workers=2):
     """
-    Processes images from DATA_DIR / 'images' in parallel threads.
+    Processes PDF documents from DATA_DIR / 'original_pdfs' in parallel threads.
     :param max_files: Number of files to process; 0 means process all.
     :param resume: If True, skip already transcribed (existing .json).
     :param max_workers: How many parallel threads to run.
     """
-    image_dir = DATA_DIR / "images"
+    document_dir = DATA_DIR / "original_pdfs"
     output_dir = DATA_DIR / "generated_transcripts"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Gather all JPEG files, sorted for consistent ordering
-    all_images = sorted(
-        f for f in os.listdir(image_dir) if f.lower().endswith((".jpg", ".jpeg"))
+    # Gather all PDF files, sorted for consistent ordering
+    all_documents = sorted(
+        f for f in os.listdir(document_dir) if f.lower().endswith(".pdf")
     )
 
     # If max_files != 0, truncate the list
     if max_files > 0:
-        all_images = all_images[:max_files]
+        all_documents = all_documents[:max_files]
 
     # Create a ThreadPoolExecutor for parallel processing
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # We use futures for each job, so we can update TQDM when they finish
         futures = {
-            executor.submit(transcribe_single_image, filename, image_dir, output_dir, resume): filename
-            for filename in all_images
+            executor.submit(transcribe_single_document, filename, document_dir, output_dir, resume): filename
+            for filename in all_documents
         }
 
         # Create a TQDM progress bar for total files
-        with tqdm(total=len(futures), desc="Processing images", unit="image") as pbar:
+        with tqdm(total=len(futures), desc="Processing unclassified documents", unit="document") as pbar:
             # As each future completes, we update the progress bar
             for future in as_completed(futures):
                 filename = futures[future]
@@ -200,8 +150,10 @@ def process_images_in_directory(max_files=0, resume=False, max_workers=2):
                     pbar.update(1)  # Move the bar forward by 1 job
 
 
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process images and generate transcripts.")
+    parser = argparse.ArgumentParser(description="Process unclassified documents and generate transcripts.")
     parser.add_argument(
         "--max-files",
         type=int,
@@ -211,7 +163,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--resume",
         action="store_true",
-        help="Skip any images that already have a .json transcript if set."
+        help="Skip any documents that already have a .json transcript if set."
     )
     parser.add_argument(
         "--max-workers",
@@ -222,8 +174,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    process_images_in_directory(
+    process_documents_in_directory(
         max_files=args.max_files,
         resume=args.resume,
         max_workers=args.max_workers
     )
+
