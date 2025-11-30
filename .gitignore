@@ -12,6 +12,10 @@ __pycache__/
 *.DS_Store
 .claude/
 .pytest_cache/
+.vscode/
+
+# App cache
+app/__pycache__/
 
 # Generated outputs
 *.html

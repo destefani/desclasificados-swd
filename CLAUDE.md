@@ -322,3 +322,4 @@ Refer to these documents when working on features related to research applicatio
 - Image files are assumed to be JPEG format in `data/images/`
 - The Streamlit app in `tests/test_app.py` uses a hardcoded path - update `TRANSCRIPTS_DIR` constant if needed
 - always us uv to manage environments
+- after every new feature implementation, make it easy for the reviewer to test it.
