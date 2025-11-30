@@ -233,8 +233,8 @@ def main():
         "--llm",
         type=str,
         choices=["openai", "claude"],
-        default="claude",
-        help="LLM to use for answer generation (default: claude)",
+        default="openai",
+        help="LLM to use for answer generation (default: openai)",
     )
     query_parser.add_argument(
         "--model",
@@ -272,8 +272,8 @@ def main():
         "--llm",
         type=str,
         choices=["openai", "claude"],
-        default="claude",
-        help="LLM to use for answer generation (default: claude)",
+        default="openai",
+        help="LLM to use for answer generation (default: openai)",
     )
     interactive_parser.add_argument(
         "--model",
