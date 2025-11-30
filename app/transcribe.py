@@ -60,31 +60,36 @@ def transcribe_single_document(
         return False
 
 
-    # Send the request to the model. Provide the prompt text and attach the
-    # encoded PDF file.
+    # Send the request to the model using standard Chat Completions API.
+    # Provide the prompt text and attach the encoded PDF file.
     try:
-        response = client.responses.create(
-            model=os.getenv("OPENAI_MODEL"),
-            input=[
+        response = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            messages=[
                 {
                     "role": "user",
                     "content": [
-                        {"type": "input_text", "text": prompt},
+                        {"type": "text", "text": prompt},
                         {
-                            "type": "input_file",
-                            "filename": filename,
-                            "file_data": f"data:application/pdf;base64,{base64_string}",
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:application/pdf;base64,{base64_string}"
+                            }
                         },
                     ],
                 }
             ],
+            response_format={"type": "json_object"},
+            temperature=0,
         )
     except Exception as e:
         logging.error(f"API request failed for {filename}: {e}")
         return False
 
-    # Clean the response to remove ```json ...``` blocks
-    response_text = response.output_text
+    # Extract the response content
+    response_text = response.choices[0].message.content
+
+    # Clean the response to remove ```json ...``` blocks (if any)
     cleaned_text = (
         response_text
         .replace("```json", "")

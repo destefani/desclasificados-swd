@@ -69,6 +69,31 @@ analyze:
 visualize:
 	uv run python -m app.visualize_transcripts
 
+# Target: rag-build
+# Build the RAG vector database index
+rag-build:
+	uv run python -m app.rag.cli build
+
+# Target: rag-rebuild
+# Rebuild the RAG index (reset and build)
+rag-rebuild:
+	uv run python -m app.rag.cli build --reset
+
+# Target: rag-stats
+# Show RAG database statistics
+rag-stats:
+	uv run python -m app.rag.cli stats
+
+# Target: rag-interactive
+# Start RAG interactive query mode
+rag-interactive:
+	uv run python -m app.rag.cli interactive
+
+# Target: rag-query
+# Query the RAG system (usage: make rag-query QUERY="your question")
+rag-query:
+	uv run python -m app.rag.cli query "$(QUERY)"
+
 # Target: clean
 # Remove UV's cache and Python artifacts
 clean:
@@ -118,6 +143,11 @@ help:
 	@echo "  resume-some      - Resume with limited files"
 	@echo "  analyze          - Run document analysis"
 	@echo "  visualize        - Run transcript visualization"
+	@echo "  rag-build        - Build RAG vector database index"
+	@echo "  rag-rebuild      - Rebuild RAG index (reset)"
+	@echo "  rag-stats        - Show RAG database statistics"
+	@echo "  rag-interactive  - Start RAG interactive mode"
+	@echo "  rag-query        - Query RAG (usage: make rag-query QUERY='question')"
 	@echo "  test             - Run tests"
 	@echo "  lint             - Run linting"
 	@echo "  format           - Format code"
@@ -133,4 +163,5 @@ help:
 
 # Phony targets (not files)
 .PHONY: install install-dev transcribe transcribe-all transcribe-some resume resume-some \
-        test lint format analyze visualize clean clean-outputs update lock run shell help
+        test lint format analyze visualize rag-build rag-rebuild rag-stats rag-interactive \
+        rag-query clean clean-outputs update lock run shell help
