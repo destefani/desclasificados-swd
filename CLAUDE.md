@@ -225,3 +225,4 @@ Refer to these documents when working on features related to research applicatio
 - The project contains both `generated_transcripts/` and `generated_transcripts_v1/` directories - v1 contains legacy outputs
 - Image files are assumed to be JPEG format in `data/images/`
 - The Streamlit app in `tests/test_app.py` uses a hardcoded path - update `TRANSCRIPTS_DIR` constant if needed
+- always us uv to manage environments
