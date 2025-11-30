@@ -230,25 +230,36 @@ def load_all_data() -> List[Dict[str, Any]]:
     3. transcript_text/ (plain text fallback)
 
     Returns:
-        List of all loaded transcripts
+        List of all loaded transcripts (deduplicated by document_id)
     """
     all_transcripts = []
+    seen_ids = set()
 
-    # Load current transcripts
+    # Load current transcripts (highest priority)
     if TRANSCRIPTS_DIR.exists():
         print(f"Loading transcripts from {TRANSCRIPTS_DIR}...")
         current = load_json_transcripts(TRANSCRIPTS_DIR)
-        all_transcripts.extend(current)
+        for transcript in current:
+            doc_id = transcript.get("document_id")
+            if doc_id and doc_id not in seen_ids:
+                all_transcripts.append(transcript)
+                seen_ids.add(doc_id)
         print(f"Loaded {len(current)} current transcripts")
 
-    # Load v1 transcripts
+    # Load v1 transcripts (skip duplicates)
     if TRANSCRIPTS_V1_DIR.exists():
         print(f"Loading transcripts from {TRANSCRIPTS_V1_DIR}...")
         v1 = load_json_transcripts(TRANSCRIPTS_V1_DIR)
-        all_transcripts.extend(v1)
-        print(f"Loaded {len(v1)} v1 transcripts")
+        v1_added = 0
+        for transcript in v1:
+            doc_id = transcript.get("document_id")
+            if doc_id and doc_id not in seen_ids:
+                all_transcripts.append(transcript)
+                seen_ids.add(doc_id)
+                v1_added += 1
+        print(f"Loaded {v1_added} v1 transcripts ({len(v1) - v1_added} duplicates skipped)")
 
     # TODO: Add support for plain text files from transcript_text/
 
-    print(f"Total transcripts loaded: {len(all_transcripts)}")
+    print(f"Total unique transcripts loaded: {len(all_transcripts)}")
     return all_transcripts
