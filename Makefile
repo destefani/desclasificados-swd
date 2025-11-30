@@ -94,6 +94,38 @@ rag-interactive:
 rag-query:
 	uv run python -m app.rag.cli query "$(QUERY)"
 
+# Target: full-pass
+# Run full pass processing with interactive confirmation (default: medium batch size)
+full-pass:
+	uv run python -m app.full_pass --batch-size medium --mode interactive
+
+# Target: full-pass-auto
+# Run full pass in auto mode (all batches without confirmation)
+# Usage: make full-pass-auto BATCH_SIZE=large MAX_COST=50
+BATCH_SIZE ?= medium
+MAX_COST ?=
+full-pass-auto:
+	@if [ -n "$(MAX_COST)" ]; then \
+		uv run python -m app.full_pass --batch-size $(BATCH_SIZE) --mode auto --max-cost $(MAX_COST); \
+	else \
+		uv run python -m app.full_pass --batch-size $(BATCH_SIZE) --mode auto; \
+	fi
+
+# Target: full-pass-resume
+# Resume from previous full pass session
+full-pass-resume:
+	uv run python -m app.full_pass --resume
+
+# Target: full-pass-status
+# Show current full pass status
+full-pass-status:
+	uv run python -m app.full_pass --status
+
+# Target: full-pass-reset
+# Reset full pass state
+full-pass-reset:
+	uv run python -m app.full_pass --reset
+
 # Target: clean
 # Remove UV's cache and Python artifacts
 clean:
@@ -148,6 +180,11 @@ help:
 	@echo "  rag-stats        - Show RAG database statistics"
 	@echo "  rag-interactive  - Start RAG interactive mode"
 	@echo "  rag-query        - Query RAG (usage: make rag-query QUERY='question')"
+	@echo "  full-pass        - Run full pass processing (interactive)"
+	@echo "  full-pass-auto   - Run full pass (auto mode, use BATCH_SIZE= MAX_COST=)"
+	@echo "  full-pass-resume - Resume from previous full pass session"
+	@echo "  full-pass-status - Show current full pass status"
+	@echo "  full-pass-reset  - Reset full pass state"
 	@echo "  test             - Run tests"
 	@echo "  lint             - Run linting"
 	@echo "  format           - Format code"
@@ -164,4 +201,5 @@ help:
 # Phony targets (not files)
 .PHONY: install install-dev transcribe transcribe-all transcribe-some resume resume-some \
         test lint format analyze visualize rag-build rag-rebuild rag-stats rag-interactive \
-        rag-query clean clean-outputs update lock run shell help
+        rag-query full-pass full-pass-auto full-pass-resume full-pass-status full-pass-reset \
+        clean clean-outputs update lock run shell help

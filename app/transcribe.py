@@ -552,16 +552,201 @@ def transcribe_single_document(
         return "failed"
 
 
-def estimate_cost_and_confirm(files_to_process: int, model: str = "gpt-4o-mini") -> bool:
+def transcribe_single_image(
+    image_path: Path,
+    output_dir: Path,
+    skip_existing: bool = True
+) -> dict:
+    """
+    Transcribe a single image and return detailed metrics.
+
+    This function is designed for use with BatchProcessor in full pass mode.
+
+    Args:
+        image_path: Path to the image file
+        output_dir: Directory for output JSON files
+        skip_existing: If True, skip if output JSON already exists
+
+    Returns:
+        Dict with keys:
+            - success: bool
+            - cost: float (cost in dollars for this document)
+            - confidence: float or None (overall confidence score)
+            - error: str or None (error message if failed)
+    """
+    filename = image_path.name
+    output_filename = output_dir / (image_path.stem + ".json")
+
+    # If resume mode is ON, skip if the JSON file already exists
+    if skip_existing and output_filename.exists():
+        logging.debug(f"⊘ {filename} | Skipped (already exists)")
+        return {
+            "success": True,
+            "cost": 0.0,
+            "confidence": None,
+            "error": None,
+            "skipped": True
+        }
+
+    start_time = time.time()
+
+    # Read the image file and encode it in base64
+    try:
+        with open(image_path, "rb") as f:
+            data = f.read()
+
+        base64_string = base64.b64encode(data).decode("utf-8")
+        file_size_kb = len(data) / 1024
+        logging.debug(f"Encoded {filename} ({file_size_kb:.1f} KB) to base64")
+    except Exception as e:
+        logging.error(f"✗ {filename} | Failed to read file: {e}")
+        return {
+            "success": False,
+            "cost": 0.0,
+            "confidence": None,
+            "error": f"Failed to read file: {e}"
+        }
+
+    # Track tokens before API call
+    tokens_before_input = cost_tracker.total_input_tokens
+    tokens_before_output = cost_tracker.total_output_tokens
+
+    # Send the request to the model using retry logic
+    try:
+        response = call_api_with_retry(
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_string}"
+                            }
+                        },
+                    ],
+                }
+            ],
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        )
+
+        api_time = time.time() - start_time
+        logging.debug(f"{filename} | API call completed in {api_time:.2f}s")
+
+    except Exception as e:
+        logging.error(f"✗ {filename} | API request failed: {e}")
+        return {
+            "success": False,
+            "cost": 0.0,
+            "confidence": None,
+            "error": f"API request failed: {e}"
+        }
+
+    # Calculate cost for this single document
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    pricing = {
+        "gpt-4o-mini": {"input": 0.150 / 1_000_000, "output": 0.600 / 1_000_000},
+        "gpt-4o": {"input": 2.50 / 1_000_000, "output": 10.00 / 1_000_000},
+        "gpt-4o-2024-08-06": {"input": 2.50 / 1_000_000, "output": 10.00 / 1_000_000},
+    }
+
+    rates = pricing.get(model, pricing["gpt-4o-mini"])
+
+    # Calculate tokens used for this document
+    tokens_input = cost_tracker.total_input_tokens - tokens_before_input
+    tokens_output = cost_tracker.total_output_tokens - tokens_before_output
+    doc_cost = (tokens_input * rates["input"] + tokens_output * rates["output"])
+
+    # Extract the response content
+    response_text = response.choices[0].message.content
+
+    # Clean the response to remove ```json ...``` blocks (if any)
+    cleaned_text = (
+        response_text
+        .replace("```json", "")
+        .replace("```", "")
+        .strip()
+    )
+
+    # Attempt to parse the cleaned text as JSON
+    try:
+        response_data = json.loads(cleaned_text)
+    except json.JSONDecodeError as e:
+        logging.error(f"✗ {filename} | JSON parse error: {e}")
+        return {
+            "success": False,
+            "cost": doc_cost,
+            "confidence": None,
+            "error": f"JSON parse error: {e}"
+        }
+
+    # Validate with full schema (auto-repair only if not using Structured Outputs)
+    enable_auto_repair = not USE_STRUCTURED_OUTPUTS
+    is_valid, errors = validate_with_schema(response_data, enable_auto_repair=enable_auto_repair)
+
+    if not is_valid:
+        logging.error(f"✗ {filename} | Schema validation failed:")
+        for error in errors:
+            logging.error(f"    - {error}")
+
+        if USE_STRUCTURED_OUTPUTS:
+            logging.error(f"⚠️  Unexpected: Structured Outputs enabled but validation failed. This should not happen.")
+
+        return {
+            "success": False,
+            "cost": doc_cost,
+            "confidence": None,
+            "error": f"Schema validation failed: {'; '.join(errors)}"
+        }
+
+    # Extract confidence score
+    confidence_score = None
+    if "confidence" in response_data:
+        confidence_data = response_data["confidence"]
+        if isinstance(confidence_data, dict) and "overall" in confidence_data:
+            confidence_score = confidence_data["overall"]
+
+    # Write the JSON to file
+    try:
+        with open(output_filename, "w", encoding="utf-8") as out_file:
+            json.dump(response_data, out_file, ensure_ascii=False, indent=4)
+
+        output_size_kb = output_filename.stat().st_size / 1024
+        total_time = time.time() - start_time
+
+        # Format confidence score for logging
+        conf_str = f"{confidence_score:.2f}" if confidence_score is not None else "N/A"
+        logging.info(f"✓ {filename} | {output_size_kb:.1f} KB | {total_time:.2f}s | conf: {conf_str}")
+
+        return {
+            "success": True,
+            "cost": doc_cost,
+            "confidence": confidence_score,
+            "error": None
+        }
+
+    except Exception as e:
+        logging.error(f"✗ {filename} | Failed to write output: {e}")
+        return {
+            "success": False,
+            "cost": doc_cost,
+            "confidence": confidence_score,
+            "error": f"Failed to write output: {e}"
+        }
+
+
+def estimate_cost_and_confirm(files_to_process: int, model: str = "gpt-4o-mini", skip_confirm: bool = False) -> bool:
     """
     Estimate the cost of processing and ask user for confirmation.
 
     Args:
         files_to_process: Number of files that will be processed
         model: The OpenAI model to use
+        skip_confirm: If True, skip confirmation and return True
 
     Returns:
-        True if user confirms, False otherwise
+        True if user confirms (or skip_confirm=True), False otherwise
     """
     # Estimate tokens (input + output)
     estimated_input_tokens = files_to_process * EST_TOKENS_PER_DOC
@@ -591,6 +776,12 @@ def estimate_cost_and_confirm(files_to_process: int, model: str = "gpt-4o-mini")
     print(f"Estimated cost:        ${estimated_cost:.4f}")
     print("=" * 70)
 
+    # Skip confirmation if requested
+    if skip_confirm:
+        print("\nAuto-confirming (--yes flag set)...")
+        print()
+        return True
+
     # Ask for confirmation
     while True:
         response = input("\nProceed with transcription? [y/n]: ").strip().lower()
@@ -604,7 +795,7 @@ def estimate_cost_and_confirm(files_to_process: int, model: str = "gpt-4o-mini")
             print("Please enter 'y' or 'n'")
 
 
-def process_documents_in_directory(max_files=0, resume=False, max_workers=2, dry_run=False):
+def process_documents_in_directory(max_files=0, resume=False, max_workers=2, dry_run=False, skip_confirm=False):
     """
     Processes image documents from DATA_DIR / 'images' in parallel threads.
 
@@ -644,7 +835,7 @@ def process_documents_in_directory(max_files=0, resume=False, max_workers=2, dry
     # Show estimate and ask for confirmation (skip in dry-run mode)
     if not dry_run and files_to_process_count > 0:
         model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        if not estimate_cost_and_confirm(files_to_process_count, model):
+        if not estimate_cost_and_confirm(files_to_process_count, model, skip_confirm):
             return
 
     logging.info(f"Starting batch transcription: {len(all_documents)} files, {max_workers} workers")
@@ -735,6 +926,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Simulate processing without calling the API (for testing)."
     )
+    parser.add_argument(
+        "--yes", "-y",
+        action="store_true",
+        help="Skip confirmation prompt and proceed automatically."
+    )
 
     args = parser.parse_args()
 
@@ -742,5 +938,6 @@ if __name__ == "__main__":
         max_files=args.max_files,
         resume=args.resume,
         max_workers=args.max_workers,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        skip_confirm=args.yes
     )
