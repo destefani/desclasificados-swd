@@ -19,10 +19,14 @@ A system for processing, searching, and analyzing ~20,000 declassified CIA docum
 - 83% test success rate on research queries
 - Interactive and CLI query modes
 - Automated testing infrastructure
+- **NEW:** Prompt decoupling - prompts now in external files for easy maintenance
+- **NEW:** PDF and image processing support
+- **NEW:** Integrated with official repository (desclasificados-swd)
 
 ⚠️ **Known Limitations:**
 - Coverage gaps in late-period documents (1988-1990)
 - Some thematic areas underrepresented (economics, culture)
+- Claude API requires valid credit balance (can use OpenAI as fallback)
 
 ## Quick Setup (First Time)
 
@@ -111,7 +115,11 @@ make test
 │   │   ├── qa_pipeline.py      # OpenAI integration
 │   │   ├── vector_store.py     # ChromaDB operations
 │   │   └── README.md           # RAG documentation
-│   ├── transcribe_v2.py        # Production transcription
+│   ├── prompts/                # External prompt files (NEW)
+│   │   ├── metadata_prompt.md  # Document transcription prompt
+│   │   └── README.md           # Prompt documentation
+│   ├── transcribe.py           # PDF transcription (updated)
+│   ├── transcribe_v2.py        # Production image transcription
 │   ├── analyze_documents.py    # Metadata aggregation
 │   └── visualize_transcripts.py  # Matplotlib charts
 ├── data/
@@ -215,13 +223,37 @@ uv run python -m app.rag.cli --help
 uv run python test_claude_integration.py
 ```
 
+## Integration with Official Repository
+
+This project has been integrated with the official repository at `github.com/destefani/desclasificados-swd`:
+
+**Adopted from official repo:**
+- ✅ Prompt decoupling: Prompts moved to `app/prompts/metadata_prompt.md`
+- ✅ Prompt documentation: `app/prompts/README.md`
+- ✅ PDF direct processing in `transcribe.py`
+
+**Our contributions ready for upstream:**
+- Complete RAG system with 5,611 indexed documents
+- Claude integration for better answer quality
+- Comprehensive documentation suite
+- Testing infrastructure
+- Analysis and visualization tools
+
+**Key differences:**
+- Official repo: PDF processing only
+- Our repo: Both PDF and image processing
+- Official repo: OpenAI only
+- Our repo: Claude (recommended) + OpenAI fallback
+
 ## Important Notes
 
-- **Default LLM is Claude** (better citations, lower hallucination)
+- **Default LLM is Claude** (better citations, lower hallucination) but requires valid credit balance
+- **OpenAI fallback available** - use `--llm openai` flag if Claude credits are low
 - **Embeddings always use OpenAI** (Claude has no embedding API)
 - **Use UV for all Python commands** (not pip or virtualenv)
 - **Don't commit `.env`** (contains API keys)
 - **Always test after implementing features** (see TESTING_CLAUDE.md)
+- **Prompts are now external** - edit `app/prompts/metadata_prompt.md` to modify transcription behavior
 
 ## Quick Reference
 
