@@ -1,5 +1,27 @@
+# Data directories
 data/
 logs/
+
+# Environment and secrets
 .env
+.venv/
+*.pyc
+__pycache__/
+
+# IDE and OS files
 *.DS_Store
-app/__pycache__/
+.claude/
+.pytest_cache/
+
+# Generated outputs
+*.html
+timeline.png
+output_images/
+final_report.html
+
+# Large data files
+data.zip
+*.zip
+
+# Empty config directory
+configs/
