@@ -88,6 +88,40 @@ make resume
 
 **Note:** The transcription script shows a cost estimate before processing and asks for confirmation. This prevents unexpected API charges.
 
+### Full Pass Processing (NEW)
+
+For processing all 21,512 documents with batch control, cost limits, and resume capability:
+
+```bash
+# Interactive mode - confirm each batch (recommended for first use)
+make full-pass
+
+# Auto mode with budget limit
+make full-pass-auto BATCH_SIZE=medium MAX_COST=50
+
+# Resume from previous session
+make full-pass-resume
+
+# Check current status
+make full-pass-status
+
+# Reset state and start fresh
+make full-pass-reset
+```
+
+**Features:**
+- ✅ **Batch control** - Process in chunks (tiny=10, small=100, medium=500, large=1000)
+- ✅ **Cost control** - Set budget limits and track spending in real-time
+- ✅ **Time control** - Set max hours, schedule processing windows
+- ✅ **Stop/Resume** - Graceful shutdown (Ctrl+C) and resume from exact position
+- ✅ **Quality monitoring** - Real-time success rates, confidence tracking
+- ✅ **Checkpoints** - Auto-save every 100 documents
+- ✅ **Interim reports** - Progress summaries at intervals
+
+**Estimated cost for full pass:** ~$32 (21,512 docs × $0.0015/doc)
+
+See `research/FULL_PASS_PLAN.md` for complete documentation.
+
 ### Analysis & Visualization
 
 ```bash

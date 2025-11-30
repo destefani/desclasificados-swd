@@ -95,6 +95,54 @@ make resume-some FILES_TO_PROCESS=10
 
 **Cost Estimation**: Before processing, the script displays an estimated cost based on the number of files and model used, then asks for confirmation. This helps prevent unexpected API charges. The estimate accounts for resume mode (skips already-transcribed files).
 
+### Full Pass Processing
+
+For batch processing all 21,512 documents with advanced control features:
+
+```bash
+# Interactive mode (confirm each batch) - recommended
+make full-pass
+
+# Auto mode with budget control
+make full-pass-auto BATCH_SIZE=large MAX_COST=50
+
+# Resume from previous session
+make full-pass-resume
+
+# Check current status without processing
+make full-pass-status
+
+# Reset state and start over
+make full-pass-reset
+
+# Direct CLI usage (more options)
+uv run python -m app.full_pass --batch-size medium --mode interactive
+uv run python -m app.full_pass --batch-size 500 --max-cost 50 --max-hours 8
+uv run python -m app.full_pass --resume --checkpoint-interval 50
+```
+
+**Key Features:**
+- **Batch Control**: Process in configurable chunks (tiny=10, small=100, medium=500, large=1000, or custom)
+- **Cost Control**: Set budget limits (`--max-cost`), track real-time spending, automatic abort on overrun
+- **Time Control**: Set duration limits (`--max-hours`), scheduled processing windows
+- **Stop/Resume**: Graceful shutdown (Ctrl+C), state persistence, checkpoint every N documents, resume from exact position
+- **Quality Monitoring**: Real-time dashboard, confidence tracking, low-confidence flagging, automatic rollback triggers
+- **Progress Tracking**: Persistent state in `data/transcription_state.json`, interim reports, ETAs
+
+**Architecture:**
+- `app/state_manager.py` - State persistence and recovery
+- `app/batch_processor.py` - Batch processing with graceful shutdown
+- `app/full_pass.py` - CLI interface
+- `app/transcribe.py` - Enhanced with `transcribe_single_image()` function for metrics
+
+**State File** (`data/transcription_state.json`):
+Tracks session ID, progress, costs, quality metrics, processing speed, ETA, failed documents, and low-confidence documents.
+
+**Checkpoints** (`data/checkpoints/`):
+Automatic checkpoints every 100 documents (configurable), keeps last 5 checkpoints, allows resume from specific checkpoint.
+
+See `research/FULL_PASS_PLAN.md` for complete architecture and implementation details.
+
 **Prompt Version**: The transcription system now uses **Prompt v2** by default, which includes:
 - ✅ OpenAI Structured Outputs (100% JSON schema compliance)
 - ✅ Confidence scoring for quality control
