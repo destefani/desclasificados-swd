@@ -149,13 +149,13 @@ def create_document_chunks(transcripts: List[Dict[str, Any]]) -> List[Dict[str, 
 
         text_chunks = chunk_text(doc_data["text"])
 
-        for i, chunk_text in enumerate(text_chunks):
+        for i, text_chunk in enumerate(text_chunks):
             chunk = {
                 "chunk_id": f"{doc_data['document_id']}_chunk_{i:03d}",
                 "document_id": doc_data["document_id"],
                 "chunk_index": i,
                 "total_chunks": len(text_chunks),
-                "text": chunk_text,
+                "text": text_chunk,
                 "document_date": doc_data["document_date"],
                 "classification_level": doc_data["classification_level"],
                 "document_type": doc_data["document_type"],
