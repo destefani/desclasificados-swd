@@ -74,15 +74,19 @@ uv run python -m app.rag.cli stats
 ### Document Transcription
 
 ```bash
-# Transcribe 1 file (default)
+# Transcribe 1 file (default - uses Prompt v2)
 make transcribe
 
-# Transcribe 10 files
+# Transcribe 10 files (shows cost estimate & asks for confirmation)
 make transcribe-some FILES_TO_PROCESS=10
 
-# Resume transcription (skip existing)
+# Resume transcription (skip existing, shows estimate for remaining files only)
 make resume
 ```
+
+**Prompt v2 (Default):** Uses OpenAI Structured Outputs with 100% schema compliance, confidence scoring, and enhanced metadata extraction. See `app/prompts/PROMPT_V2_GUIDE.md`.
+
+**Note:** The transcription script shows a cost estimate before processing and asks for confirmation. This prevents unexpected API charges.
 
 ### Analysis & Visualization
 
@@ -181,6 +185,14 @@ uv run python -m app.rag.cli query "Your question" --llm openai
 
 ### One-Time Setup
 - Build RAG index: ~$0.60 (5,611 docs)
+
+### Document Transcription (with gpt-4o-mini)
+- Per document: ~$0.0008-0.0010
+- 100 documents: ~$0.08-0.10
+- 1,000 documents: ~$0.80-1.00
+- All 21,502 images: ~$17-21
+
+**Note:** Transcription script shows cost estimate before processing and requires confirmation.
 
 ### Per-Query
 - Claude 3.5 Haiku (default): ~$0.02-0.03

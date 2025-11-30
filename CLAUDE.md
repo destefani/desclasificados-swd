@@ -25,7 +25,7 @@ The US government declassified ~20,000 CIA documents about the Chilean dictators
 
 ### Key Modules
 
-- **`app/transcribe.py`** - Legacy transcription using OpenAI Responses API (currently uses non-standard API format)
+- **`app/transcribe.py`** - Image transcription using OpenAI Chat Completions API with vision models (reads from `data/images/`)
 - **`app/transcribe_v2.py`** - Production transcription with rate limiting, JSON schema validation, and robust error handling (uses standard Chat Completions API)
 - **`app/analyze_documents.py`** - Aggregates metadata from JSON transcripts and generates HTML reports with timeline charts
 - **`app/visualize_transcripts.py`** - Creates matplotlib visualizations (classification distribution, timeline, keywords)
@@ -37,12 +37,19 @@ The US government declassified ~20,000 CIA documents about the Chilean dictators
 
 ```
 data/
-├── original_pdfs/      # Source PDF files
-├── images/             # Extracted document images (JPEG)
-├── generated_transcripts/  # JSON output (structured metadata)
-├── generated_transcripts_v1/  # Legacy transcripts
-└── session.json        # Session data
+├── archive/                    # Historical transcription outputs (archived)
+│   ├── generated_transcripts_v1/  # Legacy JSON (5,613 files)
+│   ├── generated_transcripts_v2/  # Previous JSON (14 files)
+│   ├── transcripts_pdf/           # PDF transcripts (21,512 files)
+│   └── transcripts_txt/           # TXT transcripts (18,363 files)
+├── original_pdfs/              # Source PDF files (21,512 files)
+├── images/                     # Extracted document images - JPEG (21,512 files)
+├── generated_transcripts/      # Current JSON transcriptions (active work)
+├── vector_db/                  # ChromaDB vector database for RAG
+└── session.json                # Session data
 ```
+
+**Note:** The `data/archive/` directory contains all historical transcription outputs. Current transcription work goes to `data/generated_transcripts/`.
 
 ### Transcript JSON Schema
 
@@ -86,7 +93,18 @@ make resume
 make resume-some FILES_TO_PROCESS=10
 ```
 
-**Important**: The default transcription script (`app/transcribe.py`) currently uses `OPENAI_MODEL` env var but appears to use a non-standard API format. Use `app/transcribe_v2.py` for production work with proper rate limiting and validation.
+**Cost Estimation**: Before processing, the script displays an estimated cost based on the number of files and model used, then asks for confirmation. This helps prevent unexpected API charges. The estimate accounts for resume mode (skips already-transcribed files).
+
+**Prompt Version**: The transcription system now uses **Prompt v2** by default, which includes:
+- ✅ OpenAI Structured Outputs (100% JSON schema compliance)
+- ✅ Confidence scoring for quality control
+- ✅ Enhanced field extraction guidance
+- ✅ Keyword taxonomy for consistent categorization
+- ✅ Versioning and rollback capability
+
+To use the legacy v1 prompt: `export PROMPT_VERSION=v1`
+
+See `app/prompts/PROMPT_V2_GUIDE.md` for details.
 
 ### Analysis & Visualization
 
@@ -323,3 +341,4 @@ Refer to these documents when working on features related to research applicatio
 - The Streamlit app in `tests/test_app.py` uses a hardcoded path - update `TRANSCRIPTS_DIR` constant if needed
 - always us uv to manage environments
 - after every new feature implementation, make it easy for the reviewer to test it.
+- always work on a new branch and create a PR when finished. PRs have to be manually accepted by a human in github
