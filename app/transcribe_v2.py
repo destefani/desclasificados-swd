@@ -168,11 +168,18 @@ def normalize_and_fill(data: dict):
         meta["page_count"] = 0
 
 # ---------------------------------------------------------------------------
-# Prompt (truncated for brevity)
+# Prompt - Load from external file for maintainability
 # ---------------------------------------------------------------------------
-PROMPT = """You are given an image of a declassified CIA document related to the Chilean dictatorship (1973-1990).
-Your task is to transcribe, summarize, correct scanning errors, and organize the information in a highly standardized JSON schema for historical research.
-Return ONLY the JSON object described in the following template without markdown fences."""
+# Load the transcription prompt from the markdown file in `app/prompts`.
+# This allows editing the prompt outside of the code. If the file cannot
+# be read, fail fast to ensure we use the canonical prompt.
+prompt_path = Path(__file__).parent / "prompts" / "metadata_prompt.md"
+try:
+    PROMPT = prompt_path.read_text(encoding="utf-8")
+except Exception as e:
+    logging.error(f"Failed to read prompt file {prompt_path}: {e}")
+    # Fail fast: do not continue without the canonical prompt file.
+    raise RuntimeError(f"Prompt file missing or unreadable: {prompt_path}: {e}")
 
 # ---------------------------------------------------------------------------
 # Core call + validation
