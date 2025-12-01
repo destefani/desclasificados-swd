@@ -19,9 +19,10 @@ A system for processing, searching, and analyzing ~20,000 declassified CIA docum
 - 83% test success rate on research queries
 - Interactive and CLI query modes
 - Automated testing infrastructure
-- **NEW:** Prompt decoupling - prompts now in external files for easy maintenance
-- **NEW:** PDF and image processing support
-- **NEW:** Integrated with official repository (desclasificados-swd)
+- Prompt decoupling - prompts now in external files for easy maintenance
+- PDF and image processing support
+- Integrated with official repository (desclasificados-swd)
+- **NEW:** Sensitive content tracking (financial, violence, torture) - structured extraction of money flows, violent incidents, and human rights abuses
 
 ⚠️ **Known Limitations:**
 - Coverage gaps in late-period documents (1988-1990)
@@ -85,6 +86,11 @@ make resume
 ```
 
 **Prompt v2 (Default):** Uses OpenAI Structured Outputs with 100% schema compliance, confidence scoring, and enhanced metadata extraction. See `app/prompts/PROMPT_V2_GUIDE.md`.
+
+**Sensitive Content Tracking (NEW):** Documents are now analyzed for:
+- `financial_references` - Money amounts, actors (CIA, ITT, etc.), purposes (campaign funding, bribes, covert ops)
+- `violence_references` - Incident types (assassination, bombing, kidnapping), victims, perpetrators
+- `torture_references` - Detention centers (Villa Grimaldi, Londres 38), victims, perpetrators
 
 **Note:** The transcription script shows a cost estimate before processing and asks for confirmation. This prevents unexpected API charges.
 
