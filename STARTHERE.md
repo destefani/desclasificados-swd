@@ -7,7 +7,7 @@
 A system for processing, searching, and analyzing ~20,000 declassified CIA documents about the Chilean dictatorship (1973-1990). The project:
 
 1. **Extracts** images from PDF documents
-2. **Transcribes** them using OpenAI vision models (GPT-4o)
+2. **Transcribes** them using OpenAI vision models (GPT-5-nano recommended)
 3. **Indexes** them in a vector database
 4. **Answers questions** using RAG (Retrieval-Augmented Generation) with Claude or OpenAI
 
@@ -124,7 +124,7 @@ make full-pass-reset
 - ✅ **Checkpoints** - Auto-save every 100 documents
 - ✅ **Interim reports** - Progress summaries at intervals
 
-**Estimated cost for full pass:** ~$32 (21,512 docs × $0.0015/doc)
+**Estimated cost for full pass:** See [Cost Estimates](#cost-estimates) section - depends heavily on model choice.
 
 See `research/FULL_PASS_PLAN.md` for complete documentation.
 
@@ -226,15 +226,45 @@ uv run python -m app.rag.cli query "Your question" --llm openai
 ### One-Time Setup
 - Build RAG index: ~$0.60 (5,611 docs)
 
-### Document Transcription (with gpt-4o-mini)
-- Per document: ~$0.0008-0.0010
-- 100 documents: ~$0.08-0.10
-- 1,000 documents: ~$0.80-1.00
-- All 21,502 images: ~$17-21
+### Document Transcription - IMPORTANT COST WARNING
 
-**Note:** Transcription script shows cost estimate before processing and requires confirmation.
+**Real-world experience (December 2024):** Processing 1,352 documents with GPT-4o cost ~$100 USD (~$0.074/doc). The original estimates below were wrong for vision tasks.
 
-### Per-Query
+#### Why Vision Costs More Than Expected
+GPT-4o-mini uses ~33x more tokens per image while being 33x cheaper per token, resulting in **similar or higher costs** than GPT-4o for vision tasks. This is a known pricing quirk.
+
+#### Model Comparison for Vision Tasks (2025)
+
+| Model | Input/1M | Output/1M | Est. per doc | Full pass (21,512) |
+|-------|----------|-----------|--------------|-------------------|
+| **GPT-5-nano** | $0.05 | $0.40 | ~$0.002-0.005 | ~$40-100 |
+| **GPT-5-mini** | $0.25 | $2.00 | ~$0.01-0.02 | ~$200-400 |
+| **GPT-5** | $1.25 | $10.00 | ~$0.05-0.10 | ~$1,000-2,000 |
+| GPT-4o (actual) | $2.50 | $10.00 | ~$0.074 | ~$1,590 |
+| GPT-4o-mini | $0.15 | $0.60 | ~$0.07* | ~$1,500* |
+
+*GPT-4o-mini vision costs are similar to GPT-4o due to higher token usage per image.
+
+#### Recommendation: GPT-5-nano for Full Pass
+
+**Why GPT-5-nano:**
+- Cheapest option with vision support (August 2025 release)
+- Good for structured extraction tasks
+- 90% caching discount available
+- Supports 272K token context
+
+**Before running full pass:**
+1. Test on 50-100 documents first
+2. Validate transcription quality
+3. Calculate actual per-document cost
+4. Then scale up
+
+#### Current Progress
+- **Processed:** 1,352 documents (6.3%)
+- **Remaining:** 20,160 documents
+- **Archive (v1):** 5,611 docs (older format, in RAG index)
+
+### Per-Query (RAG)
 - Claude 3.5 Haiku (default): ~$0.02-0.03
 - OpenAI GPT-4o-mini: ~$0.02-0.03
 - Claude 3.5 Sonnet (complex): ~$0.06-0.10
