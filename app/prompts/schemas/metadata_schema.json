@@ -26,7 +26,10 @@
         "language",
         "keywords",
         "page_count",
-        "document_summary"
+        "document_summary",
+        "financial_references",
+        "violence_references",
+        "torture_references"
       ],
       "additionalProperties": false,
       "properties": {
@@ -141,6 +144,126 @@
           "minLength": 50,
           "maxLength": 1500,
           "description": "Concise historical summary (1-3 sentences, 50-1500 characters)"
+        },
+        "financial_references": {
+          "type": "object",
+          "required": ["amounts", "financial_actors", "purposes"],
+          "additionalProperties": false,
+          "description": "Financial information mentioned in the document (funding, bribes, economic operations)",
+          "properties": {
+            "amounts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["value", "currency", "context"],
+                "additionalProperties": false,
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "description": "Numeric amount as string (e.g., '250000', '1000000')"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": ["USD", "CLP", "OTHER", "UNKNOWN"],
+                    "description": "Currency code"
+                  },
+                  "context": {
+                    "type": "string",
+                    "description": "Brief context for the amount (e.g., 'PDC campaign funding', 'bribe to military officer')"
+                  }
+                }
+              },
+              "description": "Monetary amounts mentioned in the document"
+            },
+            "financial_actors": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Z0-9\\s\\-]+$"
+              },
+              "description": "Organizations or individuals involved in financial transactions (uppercase)"
+            },
+            "purposes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["CAMPAIGN FUNDING", "COVERT OPERATION", "BRIBERY", "ECONOMIC AID", "MILITARY AID", "PROPAGANDA", "MEDIA FUNDING", "LABOR UNION FUNDING", "OTHER"]
+              },
+              "description": "Purpose categories for financial activities"
+            }
+          }
+        },
+        "violence_references": {
+          "type": "object",
+          "required": ["incident_types", "victims", "perpetrators", "has_violence_content"],
+          "additionalProperties": false,
+          "description": "References to violent incidents in the document",
+          "properties": {
+            "incident_types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["ASSASSINATION", "ATTEMPTED ASSASSINATION", "BOMBING", "KIDNAPPING", "EXECUTION", "SHOOTING", "ARMED CONFLICT", "RAID", "OTHER"]
+              },
+              "description": "Types of violent incidents mentioned"
+            },
+            "victims": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Names of victims in 'LAST, FIRST' format (uppercase)"
+            },
+            "perpetrators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or organizations responsible (e.g., 'DINA', 'MILITARY', 'CNI')"
+            },
+            "has_violence_content": {
+              "type": "boolean",
+              "description": "True if document contains references to violent acts"
+            }
+          }
+        },
+        "torture_references": {
+          "type": "object",
+          "required": ["detention_centers", "victims", "perpetrators", "methods_mentioned", "has_torture_content"],
+          "additionalProperties": false,
+          "description": "References to torture and human rights abuses in the document",
+          "properties": {
+            "detention_centers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Z0-9\\s\\-]+$"
+              },
+              "description": "Known detention/torture centers mentioned (e.g., 'VILLA GRIMALDI', 'LONDRES 38', 'ESTADIO NACIONAL')"
+            },
+            "victims": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Names of torture victims in 'LAST, FIRST' format (uppercase)"
+            },
+            "perpetrators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or organizations responsible (e.g., 'DINA', 'CNI', 'MILITARY')"
+            },
+            "methods_mentioned": {
+              "type": "boolean",
+              "description": "True if specific torture methods are described in the document"
+            },
+            "has_torture_content": {
+              "type": "boolean",
+              "description": "True if document contains references to torture or severe human rights abuses"
+            }
+          }
         }
       }
     },

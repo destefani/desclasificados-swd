@@ -224,7 +224,8 @@ FULL_SCHEMA = {
                 "people_mentioned", "country", "city",
                 "other_place", "document_title", "document_description",
                 "archive_location", "observations", "language",
-                "keywords", "page_count", "document_summary"
+                "keywords", "page_count", "document_summary",
+                "financial_references", "violence_references", "torture_references"
             ],
             "properties": {
                 "document_id": {"type": "string"},
@@ -246,7 +247,37 @@ FULL_SCHEMA = {
                 "city": {"type": "array"},
                 "other_place": {"type": "array"},
                 "keywords": {"type": "array"},
-                "page_count": {"type": "number"}
+                "page_count": {"type": "number"},
+                "financial_references": {
+                    "type": "object",
+                    "required": ["amounts", "financial_actors", "purposes"],
+                    "properties": {
+                        "amounts": {"type": "array"},
+                        "financial_actors": {"type": "array"},
+                        "purposes": {"type": "array"}
+                    }
+                },
+                "violence_references": {
+                    "type": "object",
+                    "required": ["incident_types", "victims", "perpetrators", "has_violence_content"],
+                    "properties": {
+                        "incident_types": {"type": "array"},
+                        "victims": {"type": "array"},
+                        "perpetrators": {"type": "array"},
+                        "has_violence_content": {"type": "boolean"}
+                    }
+                },
+                "torture_references": {
+                    "type": "object",
+                    "required": ["detention_centers", "victims", "perpetrators", "methods_mentioned", "has_torture_content"],
+                    "properties": {
+                        "detention_centers": {"type": "array"},
+                        "victims": {"type": "array"},
+                        "perpetrators": {"type": "array"},
+                        "methods_mentioned": {"type": "boolean"},
+                        "has_torture_content": {"type": "boolean"}
+                    }
+                }
             }
         },
         "original_text": {"type": "string"},
@@ -320,6 +351,53 @@ def auto_repair_response(data: dict) -> dict:
             metadata["page_count"] = int(metadata["page_count"]) if metadata["page_count"] else 0
         except (ValueError, TypeError):
             metadata["page_count"] = 0
+
+    # Ensure financial_references has proper structure
+    if "financial_references" not in metadata or not isinstance(metadata.get("financial_references"), dict):
+        metadata["financial_references"] = {"amounts": [], "financial_actors": [], "purposes": []}
+    else:
+        fin_ref = metadata["financial_references"]
+        if not isinstance(fin_ref.get("amounts"), list):
+            fin_ref["amounts"] = []
+        if not isinstance(fin_ref.get("financial_actors"), list):
+            fin_ref["financial_actors"] = []
+        if not isinstance(fin_ref.get("purposes"), list):
+            fin_ref["purposes"] = []
+
+    # Ensure violence_references has proper structure
+    if "violence_references" not in metadata or not isinstance(metadata.get("violence_references"), dict):
+        metadata["violence_references"] = {
+            "incident_types": [], "victims": [], "perpetrators": [], "has_violence_content": False
+        }
+    else:
+        vio_ref = metadata["violence_references"]
+        if not isinstance(vio_ref.get("incident_types"), list):
+            vio_ref["incident_types"] = []
+        if not isinstance(vio_ref.get("victims"), list):
+            vio_ref["victims"] = []
+        if not isinstance(vio_ref.get("perpetrators"), list):
+            vio_ref["perpetrators"] = []
+        if not isinstance(vio_ref.get("has_violence_content"), bool):
+            vio_ref["has_violence_content"] = False
+
+    # Ensure torture_references has proper structure
+    if "torture_references" not in metadata or not isinstance(metadata.get("torture_references"), dict):
+        metadata["torture_references"] = {
+            "detention_centers": [], "victims": [], "perpetrators": [],
+            "methods_mentioned": False, "has_torture_content": False
+        }
+    else:
+        tor_ref = metadata["torture_references"]
+        if not isinstance(tor_ref.get("detention_centers"), list):
+            tor_ref["detention_centers"] = []
+        if not isinstance(tor_ref.get("victims"), list):
+            tor_ref["victims"] = []
+        if not isinstance(tor_ref.get("perpetrators"), list):
+            tor_ref["perpetrators"] = []
+        if not isinstance(tor_ref.get("methods_mentioned"), bool):
+            tor_ref["methods_mentioned"] = False
+        if not isinstance(tor_ref.get("has_torture_content"), bool):
+            tor_ref["has_torture_content"] = False
 
     # Ensure top-level text fields are strings
     for field in ["original_text", "reviewed_text"]:

@@ -1,11 +1,12 @@
 ---
-prompt_version: 2.0.0
+prompt_version: 2.1.0
 prompt_name: "metadata_extraction_standard"
-last_updated: 2024-11-30
+last_updated: 2024-12-01
 author: "desclasificados-swd team"
 model_compatibility: ["gpt-4o-2024-08-06", "gpt-4o-mini-2024-07-18"]
 uses_structured_outputs: true
 changelog:
+  - v2.1.0 (2024-12-01): Added sensitive content tracking (financial_references, violence_references, torture_references)
   - v2.0.0 (2024-11-30): Structured Outputs support, confidence scoring, enhanced field guidance, keyword taxonomy, few-shot examples
   - v1.0.0 (2024-10-01): Initial prompt (implicit version)
 performance_baseline:
@@ -218,6 +219,93 @@ ALLENDE GOVERNMENT, PINOCHET REGIME, CHRISTIAN DEMOCRATS, COMMUNIST PARTY, MILIT
 - Prefer specific over general ("OPERATION CONDOR" > "INTELLIGENCE")
 - Focus on main themes, not every mention
 
+### Sensitive Content Tracking
+
+Extract information about financial activities, violence, and torture/human rights abuses. These fields are REQUIRED - if no relevant content exists, use empty arrays and false for boolean flags.
+
+#### Financial References (`financial_references`)
+
+Track monetary amounts, financial actors, and purposes mentioned in documents.
+
+**amounts** (array of objects)
+- Extract ALL monetary amounts mentioned
+- Each amount requires:
+  - `value`: Numeric string (e.g., "250000", "1000000")
+  - `currency`: "USD", "CLP", "OTHER", or "UNKNOWN"
+  - `context`: Brief description of what the money was for
+- Examples:
+  - {"value": "250000", "currency": "USD", "context": "PDC campaign funding for 1970 election"}
+  - {"value": "1000000", "currency": "USD", "context": "covert support to opposition media"}
+- If amounts are redacted: note in `observations` field, leave array empty
+
+**financial_actors** (array of strings)
+- Organizations or individuals involved in financial transactions
+- Format: UPPERCASE
+- Examples: "CIA", "ITT CORPORATION", "STATE DEPARTMENT", "40 COMMITTEE", "PDC"
+
+**purposes** (array of enum values)
+- Categories: "CAMPAIGN FUNDING", "COVERT OPERATION", "BRIBERY", "ECONOMIC AID", "MILITARY AID", "PROPAGANDA", "MEDIA FUNDING", "LABOR UNION FUNDING", "OTHER"
+- Select all that apply
+
+#### Violence References (`violence_references`)
+
+Track references to violent incidents, victims, and perpetrators.
+
+**incident_types** (array of enum values)
+- Categories: "ASSASSINATION", "ATTEMPTED ASSASSINATION", "BOMBING", "KIDNAPPING", "EXECUTION", "SHOOTING", "ARMED CONFLICT", "RAID", "OTHER"
+- Examples:
+  - Letelier car bombing → "ASSASSINATION", "BOMBING"
+  - Caravan of Death → "EXECUTION"
+  - Kidnapping of political opponents → "KIDNAPPING"
+
+**victims** (array of strings)
+- Names in "LAST, FIRST" format (uppercase)
+- Include all individuals mentioned as victims of violence
+- Examples: "LETELIER, ORLANDO", "PRATS, CARLOS", "LEIGHTON, BERNARDO"
+
+**perpetrators** (array of strings)
+- Individuals or organizations responsible
+- Common values: "DINA", "CNI", "MILITARY", "OPERATION CONDOR", "PINOCHET REGIME"
+- Can include individual names if identified
+
+**has_violence_content** (boolean)
+- `true` if document contains ANY references to violent acts
+- `false` if document has no violence-related content
+
+#### Torture References (`torture_references`)
+
+Track references to torture, detention centers, and human rights abuses.
+
+**detention_centers** (array of strings)
+- Known detention/torture facilities mentioned
+- Format: UPPERCASE
+- Common centers:
+  - "VILLA GRIMALDI" (also known as Cuartel Terranova)
+  - "LONDRES 38"
+  - "ESTADIO NACIONAL"
+  - "ESTADIO CHILE"
+  - "COLONIA DIGNIDAD"
+  - "TEJAS VERDES"
+  - "LA VENDA SEXY"
+  - "CUATRO ALAMOS"
+  - "TRES ALAMOS"
+
+**victims** (array of strings)
+- Names in "LAST, FIRST" format (uppercase)
+- Include individuals mentioned as torture victims or detainees
+
+**perpetrators** (array of strings)
+- Individuals or organizations responsible
+- Common values: "DINA", "CNI", "MILITARY", "CARABINEROS"
+
+**methods_mentioned** (boolean)
+- `true` if specific torture methods are described
+- `false` if torture is referenced but methods not detailed
+
+**has_torture_content** (boolean)
+- `true` if document contains ANY references to torture or severe human rights abuses
+- `false` if document has no torture-related content
+
 ## Text Transcription
 
 ### original_text
@@ -306,5 +394,10 @@ Return a JSON object conforming to the provided schema. The schema enforces:
 - Enum constraints (classification levels, document types, language)
 - Array structures for multi-value fields
 - Confidence scoring object
+- Sensitive content tracking (financial_references, violence_references, torture_references)
 
 Your response will be validated against the schema automatically.
+
+**Important:** The sensitive content fields are REQUIRED. If no relevant content exists:
+- Use empty arrays for `amounts`, `victims`, `perpetrators`, etc.
+- Use `false` for boolean flags (`has_violence_content`, `has_torture_content`, `methods_mentioned`)
