@@ -11,6 +11,11 @@
 **Cost**: ~$59 with Batch API (50% discount)
 
 ### Progress
+- **Processed:** 6,405 / 21,512 files (29.8%)
+- **Primary model:** gpt-4.1-mini (4,924 files)
+- **Success rate:** 100%
+- **Avg confidence:** 0.922
+
 ```bash
 # Check how many done
 ls data/generated_transcripts/gpt-4.1-mini/*.json 2>/dev/null | wc -l
@@ -338,10 +343,11 @@ GPT-4o-mini uses ~33x more tokens per image while being 33x cheaper per token, r
 3. Calculate actual per-document cost
 4. Then scale up
 
-#### Current Progress
-- **Processed:** 1,352 documents (6.3%)
-- **Remaining:** 20,160 documents
+#### Current Progress (Dec 2024)
+- **Processed:** 6,405 documents (29.8%)
+- **Remaining:** 15,107 documents
 - **Archive (v1):** 5,611 docs (older format, in RAG index)
+- **Open PR:** [#11](https://github.com/destefani/desclasificados-swd/pull/11) - Sensitive content tracking + multi-model support
 
 ### Per-Query (RAG)
 - Claude 3.5 Haiku (default): ~$0.02-0.03
