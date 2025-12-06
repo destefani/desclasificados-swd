@@ -2,6 +2,86 @@
 
 **Start every development session by reading this file.**
 
+---
+
+## ACTIVE: GPT-4.1-mini Full Pass (December 2024)
+
+**Status**: Ready to run full pass via Batch API
+**Model**: `gpt-4.1-mini` (produces full OCR text with native PDF support)
+**Cost**: ~$59 with Batch API (50% discount)
+
+### Progress
+```bash
+# Check how many done
+ls data/generated_transcripts/gpt-4.1-mini/*.json 2>/dev/null | wc -l
+```
+
+### RECOMMENDED: Batch API (50% OFF) ~$59
+
+The batch command automatically splits 21,402 files into 11 batches of 2,000 files each (to stay under OpenAI's 512MB upload limit).
+
+**Run in tmux (recommended):**
+```bash
+# Start tmux session
+tmux new -s batch-upload
+
+# Submit all 11 batches
+uv run python -m app.transcribe_openai \
+  --batch \
+  --model gpt-4.1-mini \
+  --resume \
+  --yes
+
+# Detach: Ctrl+B then D
+# Reattach: tmux attach -t batch-upload
+```
+
+**Check status:**
+```bash
+uv run python -m app.transcribe_openai --batch-list
+```
+
+**Download results for each batch:**
+```bash
+uv run python -m app.transcribe_openai \
+  --batch-download <BATCH_ID> \
+  --model gpt-4.1-mini
+```
+
+**Important notes:**
+- Each batch takes 2-4 hours to process (max 24h)
+- Results are stored for ~30 days
+- Download results as soon as batches complete
+- Batch session info saved in `data/batch_jobs/`
+
+### Alternative: Sync API (~$118)
+```bash
+tmux new -s openai-full-pass
+uv run python -m app.transcribe_openai \
+  --model gpt-4.1-mini \
+  --max-workers 10 \
+  --resume \
+  --yes
+```
+
+### Monitor
+```bash
+watch -n 10 'ls data/generated_transcripts/gpt-4.1-mini/*.json 2>/dev/null | wc -l'
+```
+
+### Key Files
+- `app/transcribe_openai.py` - OpenAI transcription module (native PDF)
+- `research/GPT41_NANO_FULL_PASS_PLAN.md` - Detailed plan
+- `reports/Model_OCR_Comparison_Report.pdf` - Model comparison
+
+### Quality Notes
+- Phase 2 tested: 89% success, full OCR text confirmed
+- Multi-page PDFs work (2-6 pages tested)
+- Financial amounts extracted correctly ($1,240,000 example)
+- Confidence scores: 0.85-0.90
+
+---
+
 ## What This Is
 
 A system for processing, searching, and analyzing ~20,000 declassified CIA documents about the Chilean dictatorship (1973-1990). The project:
@@ -233,25 +313,24 @@ uv run python -m app.rag.cli query "Your question" --llm openai
 #### Why Vision Costs More Than Expected
 GPT-4o-mini uses ~33x more tokens per image while being 33x cheaper per token, resulting in **similar or higher costs** than GPT-4o for vision tasks. This is a known pricing quirk.
 
-#### Model Comparison for Vision Tasks (2025)
+#### Model Comparison for Vision/PDF Tasks (December 2024)
 
-| Model | Input/1M | Output/1M | Est. per doc | Full pass (21,512) |
-|-------|----------|-----------|--------------|-------------------|
-| **GPT-5-nano** | $0.05 | $0.40 | ~$0.002-0.005 | ~$40-100 |
-| **GPT-5-mini** | $0.25 | $2.00 | ~$0.01-0.02 | ~$200-400 |
-| **GPT-5** | $1.25 | $10.00 | ~$0.05-0.10 | ~$1,000-2,000 |
-| GPT-4o (actual) | $2.50 | $10.00 | ~$0.074 | ~$1,590 |
-| GPT-4o-mini | $0.15 | $0.60 | ~$0.07* | ~$1,500* |
+| Model | Input/1M | Output/1M | Full OCR? | Full pass (21,512) |
+|-------|----------|-----------|-----------|-------------------|
+| **gpt-4.1-mini** | $0.40 | $1.60 | **YES** | **~$118** |
+| gpt-4.1-nano | $0.10 | $0.40 | NO (placeholder) | N/A |
+| Claude Haiku | $0.25 | $1.25 | NO (placeholder) | N/A |
+| Claude Sonnet | $3.00 | $15.00 | YES | ~$1,010 |
+| GPT-4o | $2.50 | $10.00 | YES | ~$1,590 |
 
-*GPT-4o-mini vision costs are similar to GPT-4o due to higher token usage per image.
+#### Recommendation: gpt-4.1-mini for Full Pass
 
-#### Recommendation: GPT-5-nano for Full Pass
-
-**Why GPT-5-nano:**
-- Cheapest option with vision support (August 2025 release)
-- Good for structured extraction tasks
-- 90% caching discount available
-- Supports 272K token context
+**Why gpt-4.1-mini:**
+- Native PDF support (no image conversion needed)
+- Produces actual OCR text (not placeholders)
+- 88% cheaper than Claude Sonnet
+- All pages of multi-page PDFs processed
+- Quality validated: 0.85-0.90 confidence scores
 
 **Before running full pass:**
 1. Test on 50-100 documents first

@@ -27,6 +27,7 @@ The US government declassified ~20,000 CIA documents about the Chilean dictators
 
 - **`app/transcribe.py`** - Image transcription using OpenAI Chat Completions API with vision models (reads from `data/images/`)
 - **`app/transcribe_v2.py`** - Production transcription with rate limiting, JSON schema validation, and robust error handling (uses standard Chat Completions API)
+- **`app/transcribe_claude.py`** - **Claude-based transcription** with PDF support, structured outputs, and batch processing
 - **`app/analyze_documents.py`** - Aggregates metadata from JSON transcripts and generates HTML reports with timeline charts
 - **`app/visualize_transcripts.py`** - Creates matplotlib visualizations (classification distribution, timeline, keywords)
 - **`app/config.py`** - Centralized configuration for paths and logging
@@ -94,6 +95,62 @@ make resume-some FILES_TO_PROCESS=10
 ```
 
 **Cost Estimation**: Before processing, the script displays an estimated cost based on the number of files and model used, then asks for confirmation. This helps prevent unexpected API charges. The estimate accounts for resume mode (skips already-transcribed files).
+
+### Claude Transcription (Recommended)
+
+The `app/transcribe_claude.py` module provides Claude-based document transcription with native PDF support.
+
+```bash
+# Transcribe PDFs with Claude Haiku (recommended for full pass)
+uv run python -m app.transcribe_claude --model claude-3-5-haiku-20241022 --use-pdf --max-files 10
+
+# Transcribe images (first page only - NOT recommended)
+uv run python -m app.transcribe_claude --model claude-3-5-haiku-20241022 --max-files 10
+
+# Check status
+uv run python -m app.transcribe_claude --status
+```
+
+#### CRITICAL: PDFs vs Images Decision (2024-12-04)
+
+**ALWAYS USE `--use-pdf` FLAG for complete transcription.**
+
+| Source | What it contains | Coverage |
+|--------|------------------|----------|
+| `data/images/` | First page only of each PDF | **INCOMPLETE** (18% of docs are single-page) |
+| `data/original_pdfs/` | All pages (~3.54 avg per PDF) | **COMPLETE** |
+
+**Stats:**
+- Total PDFs: 21,512
+- Total pages: ~76,152 (3.54 average pages per document)
+- Cost with PDFs: ~$550 (Standard API) vs ~$157 with images
+- **Decision**: Full coverage required. Use PDFs regardless of cost.
+
+See `research/HAIKU_FULL_PASS_PLAN.md` for complete plan and cost analysis.
+
+#### CRITICAL: Model OCR Capabilities (2024-12-04)
+
+**Not all models transcribe actual text** - some only extract metadata or refuse entirely.
+
+| Model | Full OCR | Cost (21K PDFs) | Notes |
+|-------|----------|-----------------|-------|
+| **gpt-4.1-nano** | **YES** | **~$30** | **CHEAPEST - RECOMMENDED** |
+| **gpt-4.1-mini** | **YES** | ~$118 | Good quality/cost balance |
+| gpt-4o-mini | **NO** | ~$44 | REFUSED to transcribe |
+| gpt-4o | YES | ~$735 | Expensive |
+| gpt-5.1 | YES | ~$588 | Used for existing transcriptions |
+| claude-3-5-haiku | **NO** | ~$270 | Returns placeholder text only |
+| claude-sonnet-4.5 | YES | ~$1,010 | High quality but expensive |
+
+**Recommended: `gpt-4.1-nano` (~$30 for full pass)**
+
+**Confirmed working models for full OCR:**
+- `gpt-4.1-nano` - Cheapest at $0.10/$0.40 per M tokens
+- `gpt-4.1-mini` - Better quality at $0.40/$1.60 per M tokens
+- `gpt-5.1-2025-11-13` - Used for existing `chatgpt-5-1/` transcriptions
+- `claude-sonnet-4-5-20250929` - Highest quality but most expensive
+
+See `research/HAIKU_FULL_PASS_PLAN.md` for complete testing results and cost analysis.
 
 ### Full Pass Processing
 

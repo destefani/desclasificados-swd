@@ -94,6 +94,34 @@ rag-interactive:
 rag-query:
 	uv run python -m app.rag.cli query "$(QUERY)"
 
+# ---------------------------------------------------------------------------
+# Claude Transcription (Anthropic API)
+# ---------------------------------------------------------------------------
+
+# Target: transcribe-claude
+# Transcribe documents using Claude API (real-time mode)
+transcribe-claude:
+	uv run python -m app.transcribe_claude --max-files $(FILES_TO_PROCESS)
+
+# Target: transcribe-claude-batch
+# Transcribe all documents using Claude Batch API (50% discount)
+transcribe-claude-batch:
+	uv run python -m app.transcribe_claude --batch --max-files 0
+
+# Target: transcribe-claude-batch-some
+# Transcribe limited documents using Claude Batch API
+transcribe-claude-batch-some:
+	uv run python -m app.transcribe_claude --batch --max-files $(FILES_TO_PROCESS)
+
+# Target: transcribe-claude-test
+# Test Claude transcription with 5 documents
+transcribe-claude-test:
+	uv run python -m app.transcribe_claude --max-files 5
+
+# ---------------------------------------------------------------------------
+# Full Pass Processing (OpenAI - Legacy)
+# ---------------------------------------------------------------------------
+
 # Target: full-pass
 # Run full pass processing with interactive confirmation (default: medium batch size)
 full-pass:
@@ -166,40 +194,52 @@ shell:
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  install          - Install dependencies with UV"
-	@echo "  install-dev      - Install with dev dependencies"
-	@echo "  transcribe       - Run transcribe with MAX_FILES=$(MAX_FILES)"
-	@echo "  transcribe-all   - Transcribe all files"
-	@echo "  transcribe-some  - Transcribe FILES_TO_PROCESS=$(FILES_TO_PROCESS) files"
-	@echo "  resume           - Resume transcription (skip existing)"
-	@echo "  resume-some      - Resume with limited files"
-	@echo "  analyze          - Run document analysis"
-	@echo "  visualize        - Run transcript visualization"
-	@echo "  rag-build        - Build RAG vector database index"
-	@echo "  rag-rebuild      - Rebuild RAG index (reset)"
-	@echo "  rag-stats        - Show RAG database statistics"
-	@echo "  rag-interactive  - Start RAG interactive mode"
-	@echo "  rag-query        - Query RAG (usage: make rag-query QUERY='question')"
-	@echo "  full-pass        - Run full pass processing (interactive)"
-	@echo "  full-pass-auto   - Run full pass (auto mode, use BATCH_SIZE= MAX_COST=)"
-	@echo "  full-pass-resume - Resume from previous full pass session"
-	@echo "  full-pass-status - Show current full pass status"
-	@echo "  full-pass-reset  - Reset full pass state"
-	@echo "  test             - Run tests"
-	@echo "  lint             - Run linting"
-	@echo "  format           - Format code"
-	@echo "  clean            - Remove all generated files and caches"
-	@echo "  clean-outputs    - Remove only output files"
-	@echo "  update           - Update all dependencies"
-	@echo "  lock             - Update lock file"
-	@echo "  shell            - Start shell with UV environment"
-	@echo "  help             - Show this help message"
+	@echo ""
+	@echo "Setup:"
+	@echo "  install              - Install dependencies with UV"
+	@echo "  install-dev          - Install with dev dependencies"
+	@echo ""
+	@echo "Claude Transcription (recommended):"
+	@echo "  transcribe-claude-test      - Test with 5 documents"
+	@echo "  transcribe-claude           - Transcribe FILES_TO_PROCESS docs (real-time)"
+	@echo "  transcribe-claude-batch     - Transcribe ALL docs (50%% off, async)"
+	@echo "  transcribe-claude-batch-some - Batch process FILES_TO_PROCESS docs"
+	@echo ""
+	@echo "OpenAI Transcription (legacy):"
+	@echo "  transcribe           - Run transcribe with MAX_FILES=$(MAX_FILES)"
+	@echo "  transcribe-all       - Transcribe all files"
+	@echo "  transcribe-some      - Transcribe FILES_TO_PROCESS=$(FILES_TO_PROCESS) files"
+	@echo "  resume               - Resume transcription (skip existing)"
+	@echo "  full-pass            - Run full pass processing (interactive)"
+	@echo "  full-pass-auto       - Run full pass (auto mode)"
+	@echo ""
+	@echo "RAG (Question Answering):"
+	@echo "  rag-build            - Build RAG vector database index"
+	@echo "  rag-rebuild          - Rebuild RAG index (reset)"
+	@echo "  rag-stats            - Show RAG database statistics"
+	@echo "  rag-interactive      - Start RAG interactive mode"
+	@echo "  rag-query            - Query RAG (usage: make rag-query QUERY='question')"
+	@echo ""
+	@echo "Analysis:"
+	@echo "  analyze              - Run document analysis"
+	@echo "  visualize            - Run transcript visualization"
+	@echo ""
+	@echo "Development:"
+	@echo "  test                 - Run tests"
+	@echo "  lint                 - Run linting"
+	@echo "  format               - Format code"
+	@echo "  clean                - Remove all generated files and caches"
+	@echo "  clean-outputs        - Remove only output files"
+	@echo "  update               - Update all dependencies"
+	@echo "  shell                - Start shell with UV environment"
+	@echo "  help                 - Show this help message"
 
 # Default target
 .DEFAULT_GOAL := help
 
 # Phony targets (not files)
 .PHONY: install install-dev transcribe transcribe-all transcribe-some resume resume-some \
+        transcribe-claude transcribe-claude-batch transcribe-claude-batch-some transcribe-claude-test \
         test lint format analyze visualize rag-build rag-rebuild rag-stats rag-interactive \
         rag-query full-pass full-pass-auto full-pass-resume full-pass-status full-pass-reset \
         clean clean-outputs update lock run shell help
