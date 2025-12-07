@@ -41,6 +41,41 @@ transcribe-status:
 	uv run python -m app.transcribe --status
 
 # =============================================================================
+# BATCH PROCESSING (50% cost savings)
+# =============================================================================
+#
+# Use the OpenAI Batch API for large jobs at 50% reduced cost.
+# Trade-off: Results within 24 hours (often faster) vs real-time.
+#
+# Usage:
+#   make batch-run N=1000         All-in-one workflow
+#   make batch-pending            Show pending documents
+#   make batch-jobs               List batch jobs
+#
+
+# All-in-one: prepare, submit, poll, retrieve
+batch-run:
+	@CMD="uv run python -m app.batch run --poll"; \
+	if [ -n "$(N)" ]; then CMD="$$CMD --limit $(N)"; fi; \
+	if [ "$(YES)" = "1" ]; then CMD="$$CMD --yes"; fi; \
+	$$CMD
+
+# Prepare batch file only (for manual submission)
+batch-prepare:
+	@CMD="uv run python -m app.batch prepare"; \
+	if [ -n "$(N)" ]; then CMD="$$CMD --limit $(N)"; fi; \
+	if [ "$(YES)" = "1" ]; then CMD="$$CMD --yes"; fi; \
+	$$CMD
+
+# Show pending documents count
+batch-pending:
+	uv run python -m app.batch pending
+
+# List all batch jobs
+batch-jobs:
+	uv run python -m app.batch jobs
+
+# =============================================================================
 # RAG (Question Answering)
 # =============================================================================
 
@@ -158,6 +193,13 @@ help:
 	@echo "                   Options: N=100 BUDGET=50 YES=1"
 	@echo "  transcribe-status  Show current status"
 	@echo ""
+	@echo "Batch Processing (50% savings):"
+	@echo "  batch-run        All-in-one batch workflow"
+	@echo "                   Options: N=1000 YES=1"
+	@echo "  batch-prepare    Create batch file only"
+	@echo "  batch-pending    Show pending documents"
+	@echo "  batch-jobs       List batch jobs"
+	@echo ""
 	@echo "RAG (Question Answering):"
 	@echo "  rag-build        Build vector database index"
 	@echo "  rag-rebuild      Rebuild index from scratch"
@@ -192,6 +234,7 @@ help:
 .DEFAULT_GOAL := help
 
 .PHONY: install install-dev transcribe transcribe-status \
+        batch-run batch-prepare batch-pending batch-jobs \
         rag-build rag-rebuild rag-stats rag-interactive rag-query \
         eval-stats eval-validate eval-sample eval-report \
         analyze visualize test test-unit lint format typecheck \

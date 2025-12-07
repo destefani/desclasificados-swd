@@ -4,6 +4,37 @@
 
 ---
 
+## 🆕 NEW: Batch API Implementation (2025-12-07)
+
+**Batch processing is now available for 50% cost savings.**
+
+```bash
+# Quick start - process 1000 docs with batch API
+make batch-run N=1000 YES=1
+
+# Or use CLI directly
+uv run python -m app.batch run -n 1000 --poll --yes
+```
+
+| Method | Cost | Time | Savings |
+|--------|------|------|---------|
+| Synchronous | ~$498 | ~2.5 hours | - |
+| **Batch API** | ~$249 | ≤24 hours | **$249 (50%)** |
+
+**Files added:**
+- `app/batch.py` - CLI for batch processing
+- `app/utils/batch_processor.py` - Core batch logic
+- `docs/BATCH_API_IMPLEMENTATION_PLAN.md` - Technical docs
+
+**Note:** Test batch (3 docs) hit OpenAI billing limit. Once billing is resolved:
+```bash
+uv run python -m app.batch submit file-JdWbTvMzepBZHEt2KWomUa
+```
+
+See [Batch Processing section](#batch-processing-50-cost-savings) below for full documentation.
+
+---
+
 ## ⚠️ CRITICAL: PDF vs JPEG Issue
 
 **ALWAYS use PDFs for transcription, NEVER use JPEGs.**
@@ -154,6 +185,35 @@ MAX_TOKENS_PER_MINUTE=450000 uv run python -m app.transcribe --workers 20 --yes
 ```
 
 Check your tier at: https://platform.openai.com/settings/organization/limits
+
+### Batch Processing (50% Cost Savings)
+
+For large transcription jobs, use the Batch API for 50% cost reduction:
+
+```bash
+# All-in-one: prepare, submit, poll, retrieve
+uv run python -m app.batch run -n 1000 --poll --yes
+
+# Step-by-step workflow
+uv run python -m app.batch prepare -n 1000     # Create batch file
+uv run python -m app.batch submit-file <file>   # Upload and submit
+uv run python -m app.batch poll <batch_id>      # Wait for completion
+uv run python -m app.batch retrieve <batch_id>  # Download results
+
+# Check pending documents
+uv run python -m app.batch pending
+
+# List batch jobs
+uv run python -m app.batch jobs
+```
+
+**Cost comparison:**
+| Method | Cost per doc | 18k docs | Time |
+|--------|-------------|----------|------|
+| Synchronous | ~$0.0275 | ~$498 | ~2.5 hours |
+| Batch API | ~$0.0138 | ~$249 | ≤24 hours |
+
+See `docs/BATCH_API_IMPLEMENTATION_PLAN.md` for technical details.
 
 ### Quality Evaluation
 

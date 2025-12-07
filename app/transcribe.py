@@ -233,7 +233,7 @@ class FailedDocumentsTracker:
 
 
 class CostTracker:
-    """Thread-safe cost tracker for API usage."""
+    """Thread-safe cost tracker for API usage with persistence."""
 
     def __init__(self) -> None:
         self.total_input_tokens = 0
@@ -259,6 +259,25 @@ class CostTracker:
             self.total_input_tokens * pricing.input_rate
             + self.total_output_tokens * pricing.output_rate
         )
+
+    def save_to_history(self, model: str, output_dir: Path, docs_processed: int, elapsed_seconds: float) -> None:
+        """Append cost data to history file."""
+        from datetime import datetime
+
+        history_file = output_dir / "cost_history.jsonl"
+        record = {
+            "timestamp": datetime.now().isoformat(),
+            "model": model,
+            "documents_processed": docs_processed,
+            "elapsed_seconds": round(elapsed_seconds, 1),
+            "input_tokens": self.total_input_tokens,
+            "output_tokens": self.total_output_tokens,
+            "estimated_cost": round(self.get_cost(model), 4),
+        }
+
+        with self._lock:
+            with open(history_file, "a") as f:
+                f.write(json.dumps(record) + "\n")
 
     def print_summary(self, model: str) -> None:
         """Print cost summary."""
@@ -959,6 +978,7 @@ def process_files(
 
     if not dry_run and results["success"] > 0:
         cost_tracker.print_summary(model)
+        cost_tracker.save_to_history(model, output_dir, results["success"], elapsed)
 
     # Report on failures with breakdown by type
     total_failures = failure_tracker.get_count()
@@ -1072,7 +1092,64 @@ Environment variables:
         help="Validate existing outputs for completeness issues",
     )
 
+    parser.add_argument(
+        "--cost-history",
+        action="store_true",
+        help="Show cost history for all runs",
+    )
+
     return parser.parse_args()
+
+
+def show_cost_history(model: str) -> None:
+    """Display cost history from all runs."""
+    output_dir = DATA_DIR / "generated_transcripts" / model
+    history_file = output_dir / "cost_history.jsonl"
+
+    if not history_file.exists():
+        print(f"No cost history found for model: {model}")
+        print(f"Cost history will be recorded after the next transcription run.")
+        return
+
+    print()
+    print("=" * 70)
+    print(f"COST HISTORY - {model}")
+    print("=" * 70)
+
+    total_docs = 0
+    total_cost = 0.0
+    total_input = 0
+    total_output = 0
+    total_time = 0.0
+
+    print(f"{'Timestamp':<20} {'Docs':>6} {'Time':>10} {'Input Tok':>12} {'Output Tok':>12} {'Cost':>10}")
+    print("-" * 70)
+
+    with open(history_file) as f:
+        for line in f:
+            record = json.loads(line)
+            ts = record["timestamp"][:16].replace("T", " ")
+            docs = record["documents_processed"]
+            elapsed = record["elapsed_seconds"]
+            input_tok = record["input_tokens"]
+            output_tok = record["output_tokens"]
+            cost = record["estimated_cost"]
+
+            time_str = f"{elapsed/60:.1f}m" if elapsed >= 60 else f"{elapsed:.0f}s"
+            print(f"{ts:<20} {docs:>6} {time_str:>10} {input_tok:>12,} {output_tok:>12,} ${cost:>8.4f}")
+
+            total_docs += docs
+            total_cost += cost
+            total_input += input_tok
+            total_output += output_tok
+            total_time += elapsed
+
+    print("-" * 70)
+    time_str = f"{total_time/60:.1f}m" if total_time >= 60 else f"{total_time:.0f}s"
+    print(f"{'TOTAL':<20} {total_docs:>6} {time_str:>10} {total_input:>12,} {total_output:>12,} ${total_cost:>8.4f}")
+    print()
+    print(f"Average cost per document: ${total_cost/total_docs:.4f}" if total_docs > 0 else "")
+    print()
 
 
 def main() -> None:
@@ -1081,6 +1158,11 @@ def main() -> None:
 
     # Get current status
     status = get_status()
+
+    # Cost history mode
+    if args.cost_history:
+        show_cost_history(status.model)
+        return
 
     # Validate mode
     if args.validate:

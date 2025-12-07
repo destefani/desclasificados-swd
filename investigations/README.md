@@ -8,6 +8,7 @@ This directory contains documented investigations of issues found during transcr
 |----|-------|------|--------|----------|
 | [001](./001-empty-reviewed-text.md) | Empty reviewed_text in Document 24930 | 2025-12-07 | Resolved | Medium |
 | [002](./002-low-chars-per-page-documents.md) | Documents with Low Characters Per Page Ratio | 2025-12-07 | Resolved | Low |
+| [003](./003-batch-api-implementation.md) | Batch API Implementation (50% cost savings) | 2025-12-07 | Complete | High |
 
 ## Investigation Template
 
