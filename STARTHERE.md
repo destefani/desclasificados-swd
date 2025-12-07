@@ -13,17 +13,31 @@ A system for processing, searching, and analyzing ~20,000 declassified CIA docum
 
 ## Current Status
 
+### Transcription Progress
+
+| Metric | Value |
+|--------|-------|
+| **Total Documents** | 21,512 |
+| **Transcribed** | 4,937 (22.9%) |
+| **Remaining** | 16,575 (77.1%) |
+| **Primary Model** | gpt-4.1-mini |
+
+See `reports/TRANSCRIPTION_ASSESSMENT_2025-12-07.md` for full analysis.
+
 ✅ **Production Ready:**
 - RAG system with 5,611 documents indexed (6,929 chunks)
 - Dual LLM support: **Claude 3.5 Haiku (default)** and OpenAI GPT-4o-mini
 - 83% test success rate on research queries
 - Interactive and CLI query modes
 - Automated testing infrastructure
-- **NEW:** Prompt decoupling - prompts now in external files for easy maintenance
-- **NEW:** PDF and image processing support
-- **NEW:** Integrated with official repository (desclasificados-swd)
+- **NEW:** Shared utilities module (`app/utils/`) for code reuse
+- **NEW:** Comprehensive unit tests (65 tests passing)
+- **NEW:** Prompt v2.1 with sensitive content tracking (financial, violence, torture)
+- Prompt decoupling - prompts now in external files for easy maintenance
+- PDF and image processing support
 
 ⚠️ **Known Limitations:**
+- 77% of documents still need transcription
 - Coverage gaps in late-period documents (1988-1990)
 - Some thematic areas underrepresented (economics, culture)
 - Claude API requires valid credit balance (can use OpenAI as fallback)
@@ -135,11 +149,14 @@ make visualize
 ### Testing
 
 ```bash
-# Test Claude integration
-uv run python test_claude_integration.py
+# Run unit tests (65 tests for utilities)
+uv run pytest tests/unit/ -v
 
 # Run all tests
 make test
+
+# Test Claude integration
+uv run python test_claude_integration.py
 ```
 
 ## Project Structure
@@ -153,20 +170,32 @@ make test
 │   │   ├── qa_pipeline.py      # OpenAI integration
 │   │   ├── vector_store.py     # ChromaDB operations
 │   │   └── README.md           # RAG documentation
-│   ├── prompts/                # External prompt files (NEW)
-│   │   ├── metadata_prompt.md  # Document transcription prompt
+│   ├── prompts/                # External prompt files
+│   │   ├── metadata_prompt_v2.md   # Document transcription prompt (v2)
+│   │   ├── schemas/            # JSON schemas for validation
 │   │   └── README.md           # Prompt documentation
-│   ├── transcribe.py           # PDF transcription (updated)
-│   ├── transcribe_v2.py        # Production image transcription
+│   ├── utils/                  # Shared utilities (NEW)
+│   │   ├── cost_tracker.py     # Thread-safe API cost tracking
+│   │   ├── rate_limiter.py     # Sliding window rate limiting
+│   │   └── response_repair.py  # Auto-repair and validation
+│   ├── transcribe.py           # OpenAI transcription (main)
+│   ├── transcribe_claude.py    # Claude transcription
+│   ├── state_manager.py        # Session persistence
+│   ├── batch_processor.py      # Batch processing
 │   ├── analyze_documents.py    # Metadata aggregation
 │   └── visualize_transcripts.py  # Matplotlib charts
 ├── data/
-│   ├── original_pdfs/          # Source PDFs
-│   ├── images/                 # Extracted images
-│   ├── generated_transcripts/  # Structured JSON output
+│   ├── original_pdfs/          # Source PDFs (21,512)
+│   ├── images/                 # Extracted images (21,512)
+│   ├── generated_transcripts/  # Model-specific output dirs
+│   │   ├── gpt-4.1-mini/       # 4,924 transcripts
+│   │   ├── chatgpt-5-1/        # 1,352 transcripts
+│   │   └── ...
 │   └── vector_db/              # ChromaDB index
 ├── docs/                       # Comprehensive documentation
-├── tests/                      # Test suite
+├── reports/                    # Assessment reports
+├── tests/
+│   └── unit/                   # Unit tests (65 tests)
 └── Makefile                    # Task automation
 ```
 
@@ -175,10 +204,11 @@ make test
 | File | Purpose |
 |------|---------|
 | **STARTHERE.md** | This file - read first every session |
-| **CLAUDE.md** | Instructions for me (Claude Code) about the project |
-| **TESTING_CLAUDE.md** | How to test Claude integration |
+| **CLAUDE.md** | Instructions for Claude Code about the project |
+| **reports/*.md** | Assessment reports and analysis |
 | **docs/PROJECT_CONTEXT.md** | Historical context, use cases, ethics |
 | **app/rag/README.md** | Complete RAG system documentation |
+| **app/prompts/PROMPT_V2_GUIDE.md** | Prompt engineering guide |
 | **Makefile** | All available commands (`make help`) |
 
 ## Common Workflows
