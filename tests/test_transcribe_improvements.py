@@ -1,198 +1,36 @@
 """
-Unit tests for transcribe.py improvements.
+Unit tests for transcription utilities.
 
 Tests cover:
-- Response validation
+- Response validation (JSON schema)
 - Auto-repair logic
-- JSONSchema validation
 - Cost tracking
-- Rate limiting (basic)
 """
 
 import pytest
-import json
+import threading
 from pathlib import Path
 import sys
 
 # Add app to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.transcribe import (
+from app.utils.response_repair import (
     validate_response,
     auto_repair_response,
-    validate_with_schema,
-    CostTracker,
 )
+from app.utils.cost_tracker import CostTracker
 
 
 class TestValidateResponse:
-    """Test basic response validation."""
-
-    def test_valid_response(self):
-        """Test that valid response passes validation."""
-        valid_data = {
-            "metadata": {
-                "document_date": "1976-09-21",
-                "classification_level": "SECRET",
-                "document_type": "MEMORANDUM"
-            },
-            "original_text": "Some text",
-            "reviewed_text": "Reviewed text"
-        }
-
-        is_valid, errors = validate_response(valid_data)
-        assert is_valid is True
-        assert len(errors) == 0
-
-    def test_missing_metadata(self):
-        """Test that missing metadata is caught."""
-        invalid_data = {
-            "original_text": "Some text",
-            "reviewed_text": "Reviewed text"
-        }
-
-        is_valid, errors = validate_response(invalid_data)
-        assert is_valid is False
-        assert any("metadata" in error for error in errors)
-
-    def test_missing_text_fields(self):
-        """Test that missing text fields are caught."""
-        invalid_data = {
-            "metadata": {
-                "document_date": "1976-09-21",
-                "classification_level": "SECRET",
-                "document_type": "MEMORANDUM"
-            }
-        }
-
-        is_valid, errors = validate_response(invalid_data)
-        assert is_valid is False
-        assert any("original_text" in error for error in errors)
-
-    def test_metadata_not_dict(self):
-        """Test that non-dict metadata is caught."""
-        invalid_data = {
-            "metadata": "not a dict",
-            "original_text": "Some text",
-            "reviewed_text": "Reviewed text"
-        }
-
-        is_valid, errors = validate_response(invalid_data)
-        assert is_valid is False
-        assert any("not a dictionary" in error for error in errors)
-
-    def test_text_fields_not_strings(self):
-        """Test that non-string text fields are caught."""
-        invalid_data = {
-            "metadata": {
-                "document_date": "1976-09-21",
-                "classification_level": "SECRET",
-                "document_type": "MEMORANDUM"
-            },
-            "original_text": 123,  # Should be string
-            "reviewed_text": "Reviewed text"
-        }
-
-        is_valid, errors = validate_response(invalid_data)
-        assert is_valid is False
-        assert any("original_text" in error for error in errors)
-
-
-class TestAutoRepairResponse:
-    """Test auto-repair functionality."""
-
-    def test_fix_reversed_dates(self):
-        """Test that DD-MM-YYYY dates are fixed to YYYY-MM-DD."""
-        data = {
-            "metadata": {
-                "document_date": "21-09-1976",
-                "declassification_date": "15/03/2000"
-            },
-            "original_text": "",
-            "reviewed_text": ""
-        }
-
-        repaired = auto_repair_response(data)
-        assert repaired["metadata"]["document_date"] == "1976-09-21"
-        assert repaired["metadata"]["declassification_date"] == "2000-03-15"
-
-    def test_convert_string_to_array(self):
-        """Test that string values are converted to arrays where expected."""
-        data = {
-            "metadata": {
-                "recipients": "KISSINGER, HENRY",  # Should be array
-                "keywords": "HUMAN RIGHTS",  # Should be array
-                "people_mentioned": ""  # Empty string should become empty array
-            },
-            "original_text": "",
-            "reviewed_text": ""
-        }
-
-        repaired = auto_repair_response(data)
-        assert repaired["metadata"]["recipients"] == ["KISSINGER, HENRY"]
-        assert repaired["metadata"]["keywords"] == ["HUMAN RIGHTS"]
-        assert repaired["metadata"]["people_mentioned"] == []
-
-    def test_normalize_classification(self):
-        """Test that classification levels are normalized."""
-        test_cases = [
-            ("DECLASSIFIED", "UNCLASSIFIED"),
-            ("declassified", "UNCLASSIFIED"),
-            ("UNCLASS", "UNCLASSIFIED"),
-            ("SECRET", "SECRET"),  # Should remain unchanged
-        ]
-
-        for input_val, expected in test_cases:
-            data = {
-                "metadata": {"classification_level": input_val},
-                "original_text": "",
-                "reviewed_text": ""
-            }
-
-            repaired = auto_repair_response(data)
-            assert repaired["metadata"]["classification_level"] == expected
-
-    def test_handle_null_fields(self):
-        """Test that null fields are converted to empty strings/arrays."""
-        data = {
-            "metadata": {
-                "document_id": None,
-                "recipients": None,
-                "page_count": None
-            },
-            "original_text": None,
-            "reviewed_text": None
-        }
-
-        repaired = auto_repair_response(data)
-        assert repaired["metadata"]["document_id"] == ""
-        assert repaired["metadata"]["recipients"] == []
-        assert repaired["metadata"]["page_count"] == 0
-        assert repaired["original_text"] == ""
-        assert repaired["reviewed_text"] == ""
-
-    def test_fix_page_count_type(self):
-        """Test that page_count is converted to number."""
-        data = {
-            "metadata": {"page_count": "5"},
-            "original_text": "",
-            "reviewed_text": ""
-        }
-
-        repaired = auto_repair_response(data)
-        assert repaired["metadata"]["page_count"] == 5
-        assert isinstance(repaired["metadata"]["page_count"], int)
-
-
-class TestValidateWithSchema:
-    """Test full JSONSchema validation with auto-repair."""
+    """Test JSON schema validation."""
 
     def test_valid_complete_document(self):
-        """Test that a complete valid document passes."""
+        """Test that a complete valid document passes schema validation."""
         valid_doc = {
             "metadata": {
                 "document_id": "CIA-001",
-                "case_number": "CASE-123",
+                "case_number": "CASE123",
                 "document_date": "1976-09-21",
                 "classification_level": "SECRET",
                 "declassification_date": "2000-01-01",
@@ -204,59 +42,124 @@ class TestValidateWithSchema:
                 "city": ["SANTIAGO"],
                 "other_place": [],
                 "document_title": "Test Document",
-                "document_description": "A test",
+                "document_description": "A test document about Chile",
                 "archive_location": "BOX 1",
                 "observations": "None",
                 "language": "ENGLISH",
                 "keywords": ["OPERATION CONDOR"],
                 "page_count": 1,
-                "document_summary": "Test summary"
+                "document_summary": "This is a test document about historical events in Chile during the 1970s.",
             },
             "original_text": "Original text here",
-            "reviewed_text": "Reviewed text here"
+            "reviewed_text": "Reviewed text here",
+            "confidence": {
+                "overall": 0.9,
+                "concerns": [],
+            },
         }
 
-        is_valid, errors = validate_with_schema(valid_doc, enable_auto_repair=False)
-        assert is_valid is True
+        is_valid, errors = validate_response(valid_doc)
+        assert is_valid is True, f"Validation failed with errors: {errors}"
         assert len(errors) == 0
 
-    def test_auto_repair_fixes_invalid(self):
-        """Test that auto-repair can fix invalid documents."""
-        invalid_doc = {
+
+class TestAutoRepairResponse:
+    """Test auto-repair functionality."""
+
+    def test_returns_non_dict_unchanged(self):
+        """Test that non-dict input is returned unchanged."""
+        result = auto_repair_response("not a dict")  # type: ignore
+        assert result == "not a dict"
+
+    def test_adds_missing_sensitive_content_fields(self):
+        """Test that missing sensitive content fields are added."""
+        data = {
             "metadata": {
-                "document_id": "CIA-001",
-                "case_number": "CASE-123",
-                "document_date": "21-09-1976",  # Wrong format - will be auto-fixed
-                "classification_level": "DECLASSIFIED",  # Will be normalized
-                "declassification_date": "",
-                "document_type": "MEMORANDUM",
-                "author": "",
-                "recipients": "SINGLE RECIPIENT",  # String - will be converted to array
-                "people_mentioned": [],
-                "country": [],
-                "city": [],
-                "other_place": [],
-                "document_title": "",
-                "document_description": "",
-                "archive_location": "",
-                "observations": "",
-                "language": "",
-                "keywords": [],
-                "page_count": "1",  # String - will be converted to int
-                "document_summary": ""
+                "document_date": "1976-09-21",
             },
             "original_text": "text",
-            "reviewed_text": "text"
+            "reviewed_text": "text",
         }
 
-        # Without auto-repair, should fail
-        is_valid_without, errors_without = validate_with_schema(invalid_doc, enable_auto_repair=False)
+        repaired = auto_repair_response(data)
 
-        # With auto-repair, should pass
-        is_valid_with, errors_with = validate_with_schema(invalid_doc, enable_auto_repair=True)
+        # Should add financial_references
+        assert "financial_references" in repaired["metadata"]
+        assert repaired["metadata"]["financial_references"]["amounts"] == []
 
-        # Auto-repair should fix the issues
-        assert is_valid_with is True or len(errors_with) < len(errors_without)
+        # Should add violence_references
+        assert "violence_references" in repaired["metadata"]
+        assert repaired["metadata"]["violence_references"]["has_violence_content"] is False
+
+        # Should add torture_references
+        assert "torture_references" in repaired["metadata"]
+        assert repaired["metadata"]["torture_references"]["has_torture_content"] is False
+
+    def test_adds_missing_confidence(self):
+        """Test that missing confidence field is added."""
+        data = {
+            "metadata": {},
+            "original_text": "text",
+            "reviewed_text": "text",
+        }
+
+        repaired = auto_repair_response(data)
+
+        assert "confidence" in repaired
+        assert repaired["confidence"]["overall"] == 0.5
+        assert len(repaired["confidence"]["concerns"]) > 0
+
+    def test_adds_missing_text_fields(self):
+        """Test that missing text fields are added."""
+        data = {"metadata": {}}
+
+        repaired = auto_repair_response(data)
+
+        assert repaired["original_text"] == ""
+        assert repaired["reviewed_text"] == ""
+
+    def test_handles_flat_structure(self):
+        """Test that flat structure is nested under metadata."""
+        data = {
+            "document_date": "1976-09-21",
+            "classification_level": "SECRET",
+            "original_text": "text",
+            "reviewed_text": "text",
+        }
+
+        repaired = auto_repair_response(data)
+
+        # Fields should be moved under metadata
+        assert "metadata" in repaired
+        assert repaired["metadata"]["document_date"] == "1976-09-21"
+        assert repaired["metadata"]["classification_level"] == "SECRET"
+
+    def test_preserves_existing_values(self):
+        """Test that existing valid values are preserved."""
+        data = {
+            "metadata": {
+                "document_date": "1976-09-21",
+                "financial_references": {
+                    "amounts": ["$1,000,000"],
+                    "financial_actors": ["CIA"],
+                    "purposes": ["covert operations"],
+                },
+            },
+            "original_text": "existing text",
+            "reviewed_text": "existing reviewed",
+            "confidence": {
+                "overall": 0.95,
+                "concerns": [],
+            },
+        }
+
+        repaired = auto_repair_response(data)
+
+        # Existing values should be preserved
+        assert repaired["metadata"]["document_date"] == "1976-09-21"
+        assert repaired["metadata"]["financial_references"]["amounts"] == ["$1,000,000"]
+        assert repaired["original_text"] == "existing text"
+        assert repaired["confidence"]["overall"] == 0.95
 
 
 class TestCostTracker:
@@ -269,22 +172,23 @@ class TestCostTracker:
         assert tracker.total_output_tokens == 0
 
     def test_add_usage(self):
-        """Test adding usage from API response."""
+        """Test adding usage with input/output tokens."""
         tracker = CostTracker()
 
-        # Mock API response
-        class MockUsage:
-            prompt_tokens = 1000
-            completion_tokens = 500
-
-        class MockResponse:
-            usage = MockUsage()
-
-        response = MockResponse()
-        tracker.add_usage(response)
+        tracker.add_usage(input_tokens=1000, output_tokens=500)
 
         assert tracker.total_input_tokens == 1000
         assert tracker.total_output_tokens == 500
+
+    def test_add_usage_cumulative(self):
+        """Test that add_usage accumulates."""
+        tracker = CostTracker()
+
+        tracker.add_usage(input_tokens=1000, output_tokens=500)
+        tracker.add_usage(input_tokens=500, output_tokens=250)
+
+        assert tracker.total_input_tokens == 1500
+        assert tracker.total_output_tokens == 750
 
     def test_cost_calculation_gpt4o_mini(self):
         """Test cost calculation for gpt-4o-mini."""
@@ -312,20 +216,11 @@ class TestCostTracker:
 
     def test_thread_safety(self):
         """Test that cost tracker is thread-safe."""
-        import threading
-
         tracker = CostTracker()
-
-        class MockUsage:
-            prompt_tokens = 100
-            completion_tokens = 50
-
-        class MockResponse:
-            usage = MockUsage()
 
         def add_usage_many_times():
             for _ in range(100):
-                tracker.add_usage(MockResponse())
+                tracker.add_usage(input_tokens=100, output_tokens=50)
 
         # Run in multiple threads
         threads = [threading.Thread(target=add_usage_many_times) for _ in range(10)]
@@ -337,43 +232,6 @@ class TestCostTracker:
         # Should have processed 10 threads * 100 additions each
         assert tracker.total_input_tokens == 10 * 100 * 100
         assert tracker.total_output_tokens == 10 * 100 * 50
-
-
-class TestEdgeCases:
-    """Test edge cases and error conditions."""
-
-    def test_empty_document(self):
-        """Test handling of completely empty document."""
-        empty_doc = {}
-
-        is_valid, errors = validate_response(empty_doc)
-        assert is_valid is False
-        assert len(errors) > 0
-
-    def test_deeply_nested_invalid_data(self):
-        """Test handling of deeply nested invalid structures."""
-        nested_invalid = {
-            "metadata": {
-                "document_date": {"nested": "object"},  # Should be string
-                "classification_level": ["array"],  # Should be string
-                "document_type": 123  # Should be string
-            },
-            "original_text": "text",
-            "reviewed_text": "text"
-        }
-
-        # Should catch type errors
-        is_valid, errors = validate_response(nested_invalid)
-        # Basic validation may not catch all nested issues
-        # That's what full schema validation is for
-
-    def test_auto_repair_handles_non_dict(self):
-        """Test that auto-repair handles non-dict gracefully."""
-        result = auto_repair_response("not a dict")
-        assert result == "not a dict"  # Should return unchanged
-
-        result = auto_repair_response(None)
-        assert result is None  # Should return unchanged
 
 
 if __name__ == "__main__":

@@ -44,16 +44,26 @@ class PricingTier:
         return self.output_rate * 0.5
 
 
-# Pricing configurations for supported models
+# Pricing configurations for supported models (updated 2025-12-07)
+# Source: https://openai.com/api/pricing/
 PRICING = {
+    # OpenAI GPT-5 family (newest)
+    "gpt-5.1": PricingTier(1.25, 10.00, 0.625, 5.00),
+    "gpt-5": PricingTier(1.25, 10.00, 0.625, 5.00),
+    "gpt-5-mini": PricingTier(0.25, 2.00, 0.125, 1.00),
+    "gpt-5-nano": PricingTier(0.05, 0.40, 0.025, 0.20),
     # OpenAI GPT-4.1 family
-    "gpt-4.1-nano": PricingTier(0.10, 0.40),
-    "gpt-4.1-mini": PricingTier(0.40, 1.60),
-    "gpt-4.1": PricingTier(2.00, 8.00),
+    "gpt-4.1": PricingTier(2.00, 8.00, 1.00, 4.00),
+    "gpt-4.1-mini": PricingTier(0.40, 1.60, 0.20, 0.80),
+    "gpt-4.1-nano": PricingTier(0.10, 0.40, 0.05, 0.20),
     # OpenAI GPT-4o family
-    "gpt-4o": PricingTier(2.50, 10.00),
-    "gpt-4o-mini": PricingTier(0.15, 0.60),
-    "gpt-4o-2024-11-20": PricingTier(2.50, 10.00),
+    "gpt-4o": PricingTier(2.50, 10.00, 1.25, 5.00),
+    "gpt-4o-mini": PricingTier(0.15, 0.60, 0.075, 0.30),
+    "gpt-4o-2024-11-20": PricingTier(2.50, 10.00, 1.25, 5.00),
+    # OpenAI o-series (reasoning models)
+    "o1": PricingTier(15.00, 60.00, 7.50, 30.00),
+    "o3": PricingTier(10.00, 40.00, 2.50, 10.00),
+    "o4-mini": PricingTier(1.10, 4.40, 0.55, 2.20),
     # Claude models
     "claude-sonnet-4-5-20250929": PricingTier(3.00, 15.00, 1.50, 7.50),
     "claude-sonnet-4-5": PricingTier(3.00, 15.00, 1.50, 7.50),

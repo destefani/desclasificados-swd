@@ -2,14 +2,31 @@
 
 **Start every development session by reading this file.**
 
+---
+
+## ⚠️ CRITICAL: PDF vs JPEG Issue
+
+**ALWAYS use PDFs for transcription, NEVER use JPEGs.**
+
+| Issue | Impact |
+|-------|--------|
+| ~70% of PDFs have multiple pages | JPEGs only contain the first page |
+| 21,512 PDFs → 21,512 JPEGs | **~65,000+ pages were being missed** |
+| Existing JPEG-based transcripts | **Incomplete - missing most content** |
+
+**The `data/images/` directory contains ONLY first pages. DO NOT USE for transcription.**
+
+**Correct source:** `data/original_pdfs/` - Complete multi-page documents
+
+---
+
 ## What This Is
 
 A system for processing, searching, and analyzing ~20,000 declassified CIA documents about the Chilean dictatorship (1973-1990). The project:
 
-1. **Extracts** images from PDF documents
-2. **Transcribes** them using OpenAI vision models (GPT-4o)
-3. **Indexes** them in a vector database
-4. **Answers questions** using RAG (Retrieval-Augmented Generation) with Claude or OpenAI
+1. **Transcribes** PDFs directly using OpenAI vision models (all pages)
+2. **Indexes** them in a vector database
+3. **Answers questions** using RAG (Retrieval-Augmented Generation) with Claude or OpenAI
 
 ## Current Status
 
@@ -18,11 +35,22 @@ A system for processing, searching, and analyzing ~20,000 declassified CIA docum
 | Metric | Value |
 |--------|-------|
 | **Total Documents** | 21,512 |
-| **Transcribed** | 4,937 (22.9%) |
-| **Remaining** | 16,575 (77.1%) |
-| **Primary Model** | gpt-4.1-mini |
+| **Transcribed (gpt-5-mini)** | 1,125 |
+| **Remaining** | ~20,387 |
+| **Primary Model** | gpt-5-mini |
 
-See `reports/TRANSCRIPTION_ASSESSMENT_2025-12-07.md` for full analysis.
+### Quality Evaluation (gpt-5-mini batch)
+
+| Metric | Value |
+|--------|-------|
+| **Documents Evaluated** | 1,125 |
+| **Mean Confidence** | 0.861 |
+| **High Confidence (>0.8)** | 71.7% |
+| **Low Confidence (<0.6)** | 0.4% |
+| **Validation Errors** | 0 |
+| **Issues Fixed** | 1 (empty reviewed_text) |
+
+See `investigations/` for documented quality issues and resolutions.
 
 ✅ **Production Ready:**
 - RAG system with 5,611 documents indexed (6,929 chunks)
@@ -88,53 +116,60 @@ uv run python -m app.rag.cli stats
 ### Document Transcription
 
 ```bash
-# Transcribe 1 file (default - uses Prompt v2)
+# Process all remaining documents (shows estimate, asks confirmation)
 make transcribe
 
-# Transcribe 10 files (shows cost estimate & asks for confirmation)
-make transcribe-some FILES_TO_PROCESS=10
+# Process specific number of files
+make transcribe N=100
 
-# Resume transcription (skip existing, shows estimate for remaining files only)
-make resume
-```
+# With budget limit (stops when cost reaches limit)
+make transcribe N=1000 BUDGET=50
 
-**Prompt v2 (Default):** Uses OpenAI Structured Outputs with 100% schema compliance, confidence scoring, and enhanced metadata extraction. See `app/prompts/PROMPT_V2_GUIDE.md`.
+# Skip confirmation prompt
+make transcribe YES=1
 
-**Note:** The transcription script shows a cost estimate before processing and asks for confirmation. This prevents unexpected API charges.
-
-### Full Pass Processing (NEW)
-
-For processing all 21,512 documents with batch control, cost limits, and resume capability:
-
-```bash
-# Interactive mode - confirm each batch (recommended for first use)
-make full-pass
-
-# Auto mode with budget limit
-make full-pass-auto BATCH_SIZE=medium MAX_COST=50
-
-# Resume from previous session
-make full-pass-resume
-
-# Check current status
-make full-pass-status
-
-# Reset state and start fresh
-make full-pass-reset
+# Check status without processing
+make transcribe-status
 ```
 
 **Features:**
-- ✅ **Batch control** - Process in chunks (tiny=10, small=100, medium=500, large=1000)
-- ✅ **Cost control** - Set budget limits and track spending in real-time
-- ✅ **Time control** - Set max hours, schedule processing windows
-- ✅ **Stop/Resume** - Graceful shutdown (Ctrl+C) and resume from exact position
-- ✅ **Quality monitoring** - Real-time success rates, confidence tracking
-- ✅ **Checkpoints** - Auto-save every 100 documents
-- ✅ **Interim reports** - Progress summaries at intervals
+- Automatically resumes from where it left off
+- Shows cost estimate before processing
+- Graceful shutdown with Ctrl+C (just run again to continue)
+- Budget limiting to control costs
 
-**Estimated cost for full pass:** ~$32 (21,512 docs × $0.0015/doc)
+**Estimated cost:** ~$0.0038/document with gpt-4.1-mini
 
-See `research/FULL_PASS_PLAN.md` for complete documentation.
+**Fast processing (for higher OpenAI tiers):**
+
+```bash
+# Tier 4+ (~30-45 min for full corpus)
+MAX_TOKENS_PER_MINUTE=2000000 uv run python -m app.transcribe --workers 50 --yes
+
+# Tier 3 (~1 hour)
+MAX_TOKENS_PER_MINUTE=800000 uv run python -m app.transcribe --workers 30 --yes
+
+# Tier 2 (~1.5 hours)
+MAX_TOKENS_PER_MINUTE=450000 uv run python -m app.transcribe --workers 20 --yes
+```
+
+Check your tier at: https://platform.openai.com/settings/organization/limits
+
+### Quality Evaluation
+
+```bash
+# Statistics for transcripts
+make eval-stats MODEL=gpt-5-mini
+
+# Validate all transcripts for issues
+make eval-validate MODEL=gpt-5-mini
+
+# Generate stratified sample for manual review
+make eval-sample MODEL=gpt-5-mini
+
+# Full evaluation report
+make eval-report MODEL=gpt-5-mini
+```
 
 ### Analysis & Visualization
 
@@ -178,10 +213,7 @@ uv run python test_claude_integration.py
 │   │   ├── cost_tracker.py     # Thread-safe API cost tracking
 │   │   ├── rate_limiter.py     # Sliding window rate limiting
 │   │   └── response_repair.py  # Auto-repair and validation
-│   ├── transcribe.py           # OpenAI transcription (main)
-│   ├── transcribe_claude.py    # Claude transcription
-│   ├── state_manager.py        # Session persistence
-│   ├── batch_processor.py      # Batch processing
+│   ├── transcribe.py           # Document transcription (main)
 │   ├── analyze_documents.py    # Metadata aggregation
 │   └── visualize_transcripts.py  # Matplotlib charts
 ├── data/
@@ -193,6 +225,7 @@ uv run python test_claude_integration.py
 │   │   └── ...
 │   └── vector_db/              # ChromaDB index
 ├── docs/                       # Comprehensive documentation
+├── investigations/             # Documented quality issues (NEW)
 ├── reports/                    # Assessment reports
 ├── tests/
 │   └── unit/                   # Unit tests (65 tests)
@@ -231,7 +264,7 @@ uv run python -m app.rag.cli interactive
 # 1. Add PDFs to data/original_pdfs/
 # 2. Extract images (if not already done)
 # 3. Transcribe new images
-make transcribe-some FILES_TO_PROCESS=<N>
+make transcribe N=100
 
 # 4. Update RAG index
 uv run python -m app.rag.cli build
@@ -335,11 +368,11 @@ This project has been integrated with the official repository at `github.com/des
 
 ```bash
 # The 5 commands you'll use most:
-uv run python -m app.rag.cli interactive          # Research questions
-uv run python -m app.rag.cli query "..."          # Single query
-make transcribe-some FILES_TO_PROCESS=10          # Process documents
-make analyze                                      # Generate reports
-uv run python test_claude_integration.py          # Test system
+make transcribe                    # Process documents
+make transcribe-status             # Check progress
+make rag-interactive               # Research questions
+make rag-query QUERY="..."         # Single query
+make test                          # Run tests
 ```
 
 ---
