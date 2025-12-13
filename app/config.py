@@ -14,12 +14,15 @@ TRANSCRIPTS_DIR = Path(DATA_DIR, "generated_transcripts")
 # This defines the current schema version used for transcription.
 # Transcripts are stored in subdirectories named: {model}-{schema_version}
 # When the schema changes, update this version to keep transcripts separate.
-METADATA_SCHEMA_VERSION = "v2.1.0"
+METADATA_SCHEMA_VERSION = "v2.2.0"
 
 # Schema version history:
 # - v1.0.0: Legacy schema (JPEG-based, no confidence)
 # - v2.0.0: Structured outputs with confidence scoring
 # - v2.1.0: Added sensitive content tracking (financial, violence, torture references)
+# - v2.2.0: Added organizations_mentioned, disappearance_references, date_range;
+#           structured amounts with normalized values; standardized enums for
+#           incident_types, purposes, torture methods; added has_financial_content
 
 
 # Logger

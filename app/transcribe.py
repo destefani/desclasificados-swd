@@ -991,7 +991,7 @@ def print_validation_report(result: ValidationResult) -> None:
 
 def get_status() -> TranscriptionStatus:
     """Get current transcription status using PDFs as source."""
-    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+    model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
     pdfs_dir = DATA_DIR / "original_pdfs"
     output_dir_name = get_output_dir_name(model)
     output_dir = DATA_DIR / "generated_transcripts" / output_dir_name
@@ -1242,7 +1242,7 @@ Fast processing (higher OpenAI tiers):
   MAX_TOKENS_PER_MINUTE=2000000 %(prog)s --workers 50 --yes
 
 Environment variables:
-  OPENAI_MODEL             Model to use (default: gpt-4.1-mini)
+  OPENAI_MODEL             Model to use (default: gpt-5-mini)
   MAX_TOKENS_PER_MINUTE    Rate limit in tokens/min (default: 10000000)
         """,
     )

@@ -4,7 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## ⚠️ CRITICAL: PDF vs JPEG Issue - READ FIRST
+## ⚠️ CRITICAL RULES
+
+### Never Delete Generated Files
+**NEVER delete generated transcripts or data files.** Always archive them properly:
+- When schema versions change, rename directories to include the version (e.g., `gpt-5-mini` → `gpt-5-mini-v2.0.0`)
+- Move outdated files to `data/archive/` with clear versioning
+- Document archived files in `data/archive/README.md`
+
+### PDF vs JPEG Issue - READ FIRST
 
 **ALWAYS use PDFs for transcription, NEVER use JPEGs.**
 
@@ -396,3 +404,4 @@ Refer to these documents when working on features related to research applicatio
 - Always use typing
 - always document investigations
 - always keep dataset progress log up to date
+- never delete generated files. Always archive them properly
