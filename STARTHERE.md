@@ -2,14 +2,79 @@
 
 **Start every development session by reading this file.**
 
+---
+
+## 🆕 NEW: Chunked Processing for Large PDFs (2025-12-13)
+
+**Large documents (>30 pages) are now automatically split into chunks.**
+
+This fixes the "incomplete output" issue where large PDFs (89-139 pages) were truncated.
+
+```bash
+# Retry incomplete documents (with chunked processing)
+uv run python -m app.transcribe --retry-incomplete --yes
+
+# Retry all failed documents
+uv run python -m app.transcribe --retry-failed --yes
+```
+
+**How it works:**
+- Documents >30 pages are split into 20-page chunks
+- Chunks are processed **in parallel** (up to 4 concurrent) for faster processing
+- Results are merged with deduplicated metadata
+
+**Performance:** A 139-page document (7 chunks) now processes ~4x faster with parallel chunk processing.
+
+**Files added:**
+- `app/utils/chunked_pdf.py` - PDF splitting and result merging
+- `tests/unit/test_chunked_pdf.py` - 15 unit tests
+
+---
+
+## 🆕 Batch API Implementation (2025-12-07)
+
+**Batch processing is available for 50% cost savings.**
+
+```bash
+# Quick start - process 1000 docs with batch API
+make batch-run N=1000 YES=1
+
+# Or use CLI directly
+uv run python -m app.batch run -n 1000 --poll --yes
+```
+
+| Method | Cost | Time | Savings |
+|--------|------|------|---------|
+| Synchronous | ~$498 | ~2.5 hours | - |
+| **Batch API** | ~$249 | ≤24 hours | **$249 (50%)** |
+
+See [Batch Processing section](#batch-processing-50-cost-savings) below for full documentation.
+
+---
+
+## ⚠️ CRITICAL: PDF vs JPEG Issue
+
+**ALWAYS use PDFs for transcription, NEVER use JPEGs.**
+
+| Issue | Impact |
+|-------|--------|
+| ~70% of PDFs have multiple pages | JPEGs only contain the first page |
+| 21,512 PDFs → 21,512 JPEGs | **~65,000+ pages were being missed** |
+| Existing JPEG-based transcripts | **Incomplete - missing most content** |
+
+**The `data/images/` directory contains ONLY first pages. DO NOT USE for transcription.**
+
+**Correct source:** `data/original_pdfs/` - Complete multi-page documents
+
+---
+
 ## What This Is
 
 A system for processing, searching, and analyzing ~20,000 declassified CIA documents about the Chilean dictatorship (1973-1990). The project:
 
-1. **Extracts** images from PDF documents
-2. **Transcribes** them using OpenAI vision models (GPT-4o)
-3. **Indexes** them in a vector database
-4. **Answers questions** using RAG (Retrieval-Augmented Generation) with Claude or OpenAI
+1. **Transcribes** PDFs directly using OpenAI vision models (all pages)
+2. **Indexes** them in a vector database
+3. **Answers questions** using RAG (Retrieval-Augmented Generation) with Claude or OpenAI
 
 ## Current Status
 
@@ -18,11 +83,25 @@ A system for processing, searching, and analyzing ~20,000 declassified CIA docum
 | Metric | Value |
 |--------|-------|
 | **Total Documents** | 21,512 |
-| **Transcribed** | 4,937 (22.9%) |
-| **Remaining** | 16,575 (77.1%) |
-| **Primary Model** | gpt-4.1-mini |
+| **Transcribed (gpt-5-mini)** | 5,666 |
+| **Remaining** | ~15,846 |
+| **Primary Model** | gpt-5-mini |
 
-See `reports/TRANSCRIPTION_ASSESSMENT_2025-12-07.md` for full analysis.
+### Quality Evaluation (gpt-5-mini) - Updated 2025-12-13
+
+| Metric | Value |
+|--------|-------|
+| **Documents Evaluated** | 5,666 |
+| **Mean Confidence** | 0.877 |
+| **High Confidence (>0.85)** | 82.7% |
+| **Medium Confidence (0.70-0.85)** | 17.0% |
+| **Low Confidence (<0.70)** | 0.2% (13 docs) |
+| **Validation Errors** | 0 |
+| **Missing Documents** | 14 (content filtered or incomplete) |
+
+See `investigations/004-gpt5-mini-quality-evaluation.md` for full evaluation details.
+
+**Dataset Progress Log:** `data/generated_transcripts/gpt-5-mini/PROGRESS_LOG.md`
 
 ✅ **Production Ready:**
 - RAG system with 5,611 documents indexed (6,929 chunks)
@@ -88,53 +167,91 @@ uv run python -m app.rag.cli stats
 ### Document Transcription
 
 ```bash
-# Transcribe 1 file (default - uses Prompt v2)
+# Process all remaining documents (shows estimate, asks confirmation)
 make transcribe
 
-# Transcribe 10 files (shows cost estimate & asks for confirmation)
-make transcribe-some FILES_TO_PROCESS=10
+# Process specific number of files
+make transcribe N=100
 
-# Resume transcription (skip existing, shows estimate for remaining files only)
-make resume
-```
+# With budget limit (stops when cost reaches limit)
+make transcribe N=1000 BUDGET=50
 
-**Prompt v2 (Default):** Uses OpenAI Structured Outputs with 100% schema compliance, confidence scoring, and enhanced metadata extraction. See `app/prompts/PROMPT_V2_GUIDE.md`.
+# Skip confirmation prompt
+make transcribe YES=1
 
-**Note:** The transcription script shows a cost estimate before processing and asks for confirmation. This prevents unexpected API charges.
-
-### Full Pass Processing (NEW)
-
-For processing all 21,512 documents with batch control, cost limits, and resume capability:
-
-```bash
-# Interactive mode - confirm each batch (recommended for first use)
-make full-pass
-
-# Auto mode with budget limit
-make full-pass-auto BATCH_SIZE=medium MAX_COST=50
-
-# Resume from previous session
-make full-pass-resume
-
-# Check current status
-make full-pass-status
-
-# Reset state and start fresh
-make full-pass-reset
+# Check status without processing
+make transcribe-status
 ```
 
 **Features:**
-- ✅ **Batch control** - Process in chunks (tiny=10, small=100, medium=500, large=1000)
-- ✅ **Cost control** - Set budget limits and track spending in real-time
-- ✅ **Time control** - Set max hours, schedule processing windows
-- ✅ **Stop/Resume** - Graceful shutdown (Ctrl+C) and resume from exact position
-- ✅ **Quality monitoring** - Real-time success rates, confidence tracking
-- ✅ **Checkpoints** - Auto-save every 100 documents
-- ✅ **Interim reports** - Progress summaries at intervals
+- Automatically resumes from where it left off
+- Shows cost estimate before processing
+- Graceful shutdown with Ctrl+C (just run again to continue)
+- Budget limiting to control costs
 
-**Estimated cost for full pass:** ~$32 (21,512 docs × $0.0015/doc)
+**Estimated cost:** ~$0.0038/document with gpt-4.1-mini
 
-See `research/FULL_PASS_PLAN.md` for complete documentation.
+**Fast processing (for higher OpenAI tiers):**
+
+```bash
+# Tier 4+ (~30-45 min for full corpus)
+MAX_TOKENS_PER_MINUTE=2000000 uv run python -m app.transcribe --workers 50 --yes
+
+# Tier 3 (~1 hour)
+MAX_TOKENS_PER_MINUTE=800000 uv run python -m app.transcribe --workers 30 --yes
+
+# Tier 2 (~1.5 hours)
+MAX_TOKENS_PER_MINUTE=450000 uv run python -m app.transcribe --workers 20 --yes
+```
+
+Check your tier at: https://platform.openai.com/settings/organization/limits
+
+### Batch Processing (50% Cost Savings)
+
+For large transcription jobs, use the Batch API for 50% cost reduction:
+
+```bash
+# All-in-one: prepare, submit, poll, retrieve
+uv run python -m app.batch run -n 1000 --poll --yes
+
+# Step-by-step workflow
+uv run python -m app.batch prepare -n 1000     # Create batch file
+uv run python -m app.batch submit-file <file>   # Upload and submit
+uv run python -m app.batch poll <batch_id>      # Wait for completion
+uv run python -m app.batch retrieve <batch_id>  # Download results
+
+# Check pending documents
+uv run python -m app.batch pending
+
+# List batch jobs
+uv run python -m app.batch jobs
+```
+
+**Cost comparison:**
+| Method | Cost per doc | 18k docs | Time |
+|--------|-------------|----------|------|
+| Synchronous | ~$0.0275 | ~$498 | ~2.5 hours |
+| Batch API | ~$0.0138 | ~$249 | ≤24 hours |
+
+See `docs/BATCH_API_IMPLEMENTATION_PLAN.md` for technical details.
+
+### Quality Evaluation
+
+```bash
+# Statistics for transcripts
+make eval-stats MODEL=gpt-5-mini
+
+# Validate all transcripts for issues
+make eval-validate MODEL=gpt-5-mini
+
+# Generate stratified sample for manual review
+make eval-sample MODEL=gpt-5-mini
+
+# Full evaluation report
+make eval-report MODEL=gpt-5-mini
+```
+
+See `docs/QUALITY_TESTING_METHODS.md` for comprehensive quality testing documentation.
 
 ### Analysis & Visualization
 
@@ -178,10 +295,7 @@ uv run python test_claude_integration.py
 │   │   ├── cost_tracker.py     # Thread-safe API cost tracking
 │   │   ├── rate_limiter.py     # Sliding window rate limiting
 │   │   └── response_repair.py  # Auto-repair and validation
-│   ├── transcribe.py           # OpenAI transcription (main)
-│   ├── transcribe_claude.py    # Claude transcription
-│   ├── state_manager.py        # Session persistence
-│   ├── batch_processor.py      # Batch processing
+│   ├── transcribe.py           # Document transcription (main)
 │   ├── analyze_documents.py    # Metadata aggregation
 │   └── visualize_transcripts.py  # Matplotlib charts
 ├── data/
@@ -193,6 +307,7 @@ uv run python test_claude_integration.py
 │   │   └── ...
 │   └── vector_db/              # ChromaDB index
 ├── docs/                       # Comprehensive documentation
+├── investigations/             # Documented quality issues (NEW)
 ├── reports/                    # Assessment reports
 ├── tests/
 │   └── unit/                   # Unit tests (65 tests)
@@ -207,6 +322,7 @@ uv run python test_claude_integration.py
 | **CLAUDE.md** | Instructions for Claude Code about the project |
 | **reports/*.md** | Assessment reports and analysis |
 | **docs/PROJECT_CONTEXT.md** | Historical context, use cases, ethics |
+| **docs/QUALITY_TESTING_METHODS.md** | Quality testing documentation |
 | **app/rag/README.md** | Complete RAG system documentation |
 | **app/prompts/PROMPT_V2_GUIDE.md** | Prompt engineering guide |
 | **Makefile** | All available commands (`make help`) |
@@ -231,7 +347,7 @@ uv run python -m app.rag.cli interactive
 # 1. Add PDFs to data/original_pdfs/
 # 2. Extract images (if not already done)
 # 3. Transcribe new images
-make transcribe-some FILES_TO_PROCESS=<N>
+make transcribe N=100
 
 # 4. Update RAG index
 uv run python -m app.rag.cli build
@@ -335,11 +451,11 @@ This project has been integrated with the official repository at `github.com/des
 
 ```bash
 # The 5 commands you'll use most:
-uv run python -m app.rag.cli interactive          # Research questions
-uv run python -m app.rag.cli query "..."          # Single query
-make transcribe-some FILES_TO_PROCESS=10          # Process documents
-make analyze                                      # Generate reports
-uv run python test_claude_integration.py          # Test system
+make transcribe                    # Process documents
+make transcribe-status             # Check progress
+make rag-interactive               # Research questions
+make rag-query QUERY="..."         # Single query
+make test                          # Run tests
 ```
 
 ---

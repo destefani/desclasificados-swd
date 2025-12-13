@@ -43,20 +43,20 @@ METADATA_FIELDS = {
 }
 
 # Default empty structures for sensitive content fields
-DEFAULT_FINANCIAL_REFERENCES = {
+DEFAULT_FINANCIAL_REFERENCES: dict[str, Any] = {
     "amounts": [],
     "financial_actors": [],
     "purposes": [],
 }
 
-DEFAULT_VIOLENCE_REFERENCES = {
+DEFAULT_VIOLENCE_REFERENCES: dict[str, Any] = {
     "incident_types": [],
     "victims": [],
     "perpetrators": [],
     "has_violence_content": False,
 }
 
-DEFAULT_TORTURE_REFERENCES = {
+DEFAULT_TORTURE_REFERENCES: dict[str, Any] = {
     "detention_centers": [],
     "victims": [],
     "perpetrators": [],
@@ -64,7 +64,7 @@ DEFAULT_TORTURE_REFERENCES = {
     "has_torture_content": False,
 }
 
-DEFAULT_CONFIDENCE = {
+DEFAULT_CONFIDENCE: dict[str, Any] = {
     "overall": 0.5,
     "concerns": ["Auto-generated confidence due to missing field"],
 }
@@ -120,9 +120,9 @@ def auto_repair_response(data: dict) -> dict:
     ):
         metadata["violence_references"] = DEFAULT_VIOLENCE_REFERENCES.copy()
     else:
-        for key, default in DEFAULT_VIOLENCE_REFERENCES.items():
+        for key, default_val in DEFAULT_VIOLENCE_REFERENCES.items():
             if key not in metadata["violence_references"]:
-                metadata["violence_references"][key] = default
+                metadata["violence_references"][key] = default_val
 
     # Ensure torture_references exists and has correct structure
     if "torture_references" not in metadata or not isinstance(
@@ -130,9 +130,9 @@ def auto_repair_response(data: dict) -> dict:
     ):
         metadata["torture_references"] = DEFAULT_TORTURE_REFERENCES.copy()
     else:
-        for key, default in DEFAULT_TORTURE_REFERENCES.items():
+        for key, default_val in DEFAULT_TORTURE_REFERENCES.items():
             if key not in metadata["torture_references"]:
-                metadata["torture_references"][key] = default
+                metadata["torture_references"][key] = default_val
 
     # Ensure confidence structure exists
     if "confidence" not in data or not isinstance(data.get("confidence"), dict):

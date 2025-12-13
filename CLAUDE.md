@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## ⚠️ CRITICAL: PDF vs JPEG Issue - READ FIRST
+
+**ALWAYS use PDFs for transcription, NEVER use JPEGs.**
+
+| Issue | Impact |
+|-------|--------|
+| ~70% of PDFs have multiple pages | JPEGs only contain the first page |
+| 21,512 PDFs → 21,512 JPEGs | **~65,000+ pages were being missed** |
+| Existing JPEG-based transcripts | **Incomplete - missing most content** |
+
+**Source directories:**
+- ❌ `data/images/` - ONLY contains first pages. **DO NOT USE for transcription.**
+- ✅ `data/original_pdfs/` - Complete multi-page documents. **USE THIS.**
+
+**The transcription system now uses PDFs by default.** If you see any code processing JPEGs from `data/images/`, it is likely outdated or incorrect.
+
+---
+
 ## Project Overview
 
 This project processes declassified CIA documents related to the Chilean dictatorship (1973-1990). It extracts images from PDFs, transcribes them using OpenAI's vision models (GPT-4o/GPT-4o-mini), and generates structured JSON metadata with standardized historical information for research purposes.
@@ -19,37 +39,41 @@ The US government declassified ~20,000 CIA documents about the Chilean dictators
 
 ### Data Pipeline Flow
 
-1. **PDF Processing** → Extract images from original PDFs (`data/original_pdfs/`)
-2. **Image Transcription** → Process images (`data/images/`) with vision models to generate structured JSON transcripts
+1. **PDF Transcription** → Process PDFs directly from `data/original_pdfs/` with vision models
+2. **JSON Generation** → Generate structured JSON transcripts with metadata
 3. **Analysis & Visualization** → Aggregate metadata and create timelines, reports, and interactive dashboards
+
+**Note:** The previous pipeline extracted images first, but this missed ~65,000+ pages from multi-page PDFs. The current pipeline processes PDFs directly.
 
 ### Key Modules
 
-- **`app/transcribe.py`** - Image transcription using OpenAI Chat Completions API with vision models (reads from `data/images/`)
-- **`app/transcribe_v2.py`** - Production transcription with rate limiting, JSON schema validation, and robust error handling (uses standard Chat Completions API)
+- **`app/transcribe.py`** - PDF transcription using OpenAI Chat Completions API with vision models (reads from `data/original_pdfs/`)
+- **`app/evaluate.py`** - Quality evaluation CLI for transcript validation (stats, sample, validate, report)
 - **`app/analyze_documents.py`** - Aggregates metadata from JSON transcripts and generates HTML reports with timeline charts
 - **`app/visualize_transcripts.py`** - Creates matplotlib visualizations (classification distribution, timeline, keywords)
 - **`app/config.py`** - Centralized configuration for paths and logging
 - **`app/data/pdf_extractor.py`** - Extracts text from PDFs using PyPDF2
-- **`tests/test_app.py`** - Streamlit app for interactive document exploration
+- **`tests/streamlit_app.py`** - Streamlit app for interactive document exploration
 
 ### Data Structure
 
 ```
 data/
-├── archive/                    # Historical transcription outputs (archived)
-│   ├── generated_transcripts_v1/  # Legacy JSON (5,613 files)
-│   ├── generated_transcripts_v2/  # Previous JSON (14 files)
-│   ├── transcripts_pdf/           # PDF transcripts (21,512 files)
-│   └── transcripts_txt/           # TXT transcripts (18,363 files)
-├── original_pdfs/              # Source PDF files (21,512 files)
-├── images/                     # Extracted document images - JPEG (21,512 files)
+├── original_pdfs/              # ✅ SOURCE: Complete PDF files (21,512 files) - USE THIS
+├── images/                     # ⚠️ DEPRECATED: First-page JPEGs only - DO NOT USE
 ├── generated_transcripts/      # Current JSON transcriptions (active work)
+│   └── gpt-4.1-mini/          # Model-specific output directory
+├── archive/                    # Historical transcription outputs (archived)
+│   ├── generated_transcripts_v1/  # Legacy JSON from JPEG processing (INCOMPLETE)
+│   └── ...
 ├── vector_db/                  # ChromaDB vector database for RAG
-└── session.json                # Session data
+└── validation_issues.json      # Documents flagged for quality issues
 ```
 
-**Note:** The `data/archive/` directory contains all historical transcription outputs. Current transcription work goes to `data/generated_transcripts/`.
+**Important:**
+- `data/original_pdfs/` is the **ONLY valid source** for transcription
+- `data/images/` contains only first pages and should NOT be used
+- Existing transcripts in `archive/` from JPEG processing are **incomplete** and need re-processing
 
 ### Transcript JSON Schema
 
@@ -77,82 +101,61 @@ make install-dev
 ### Transcription
 
 ```bash
-# Transcribe 1 file (default)
+# Process all remaining documents
 make transcribe
 
-# Transcribe specific number of files
-make transcribe-some FILES_TO_PROCESS=10
+# Process specific number of files
+make transcribe N=100
 
-# Transcribe all files (uses MAX_WORKERS=32 by default)
-make transcribe-all
+# With budget limit
+make transcribe N=1000 BUDGET=50
 
-# Resume transcription (skip existing JSONs)
-make resume
+# Skip confirmation
+make transcribe YES=1
 
-# Resume with limited files
-make resume-some FILES_TO_PROCESS=10
+# Check status
+make transcribe-status
 ```
 
-**Cost Estimation**: Before processing, the script displays an estimated cost based on the number of files and model used, then asks for confirmation. This helps prevent unexpected API charges. The estimate accounts for resume mode (skips already-transcribed files).
+**Features:**
+- Automatically resumes from where it left off (skips existing JSONs)
+- Shows cost estimate before processing
+- Graceful shutdown with Ctrl+C
+- Budget limiting to control costs
 
-### Full Pass Processing
+**Prompt Version**: Uses Prompt v2 by default with OpenAI Structured Outputs. To use v1: `export PROMPT_VERSION=v1`
 
-For batch processing all 21,512 documents with advanced control features:
+### Quality Evaluation
+
+Before running full corpus transcription, evaluate transcript quality:
 
 ```bash
-# Interactive mode (confirm each batch) - recommended
-make full-pass
+# Show statistics for a model's transcripts
+make eval-stats MODEL=gpt-5-mini
 
-# Auto mode with budget control
-make full-pass-auto BATCH_SIZE=large MAX_COST=50
+# Run validation checks (errors, warnings)
+make eval-validate MODEL=gpt-5-mini
 
-# Resume from previous session
-make full-pass-resume
+# Generate stratified sample for manual review
+make eval-sample MODEL=gpt-5-mini
 
-# Check current status without processing
-make full-pass-status
-
-# Reset state and start over
-make full-pass-reset
-
-# Direct CLI usage (more options)
-uv run python -m app.full_pass --batch-size medium --mode interactive
-uv run python -m app.full_pass --batch-size 500 --max-cost 50 --max-hours 8
-uv run python -m app.full_pass --resume --checkpoint-interval 50
+# Generate full HTML quality report
+make eval-report MODEL=gpt-5-mini
 ```
 
-**Key Features:**
-- **Batch Control**: Process in configurable chunks (tiny=10, small=100, medium=500, large=1000, or custom)
-- **Cost Control**: Set budget limits (`--max-cost`), track real-time spending, automatic abort on overrun
-- **Time Control**: Set duration limits (`--max-hours`), scheduled processing windows
-- **Stop/Resume**: Graceful shutdown (Ctrl+C), state persistence, checkpoint every N documents, resume from exact position
-- **Quality Monitoring**: Real-time dashboard, confidence tracking, low-confidence flagging, automatic rollback triggers
-- **Progress Tracking**: Persistent state in `data/transcription_state.json`, interim reports, ETAs
+**CLI equivalent:**
+```bash
+uv run python -m app.evaluate stats gpt-5-mini
+uv run python -m app.evaluate validate gpt-5-mini
+uv run python -m app.evaluate sample gpt-5-mini --output samples/
+uv run python -m app.evaluate report gpt-5-mini --output quality_report.html
+```
 
-**Architecture:**
-- `app/state_manager.py` - State persistence and recovery
-- `app/batch_processor.py` - Batch processing with graceful shutdown
-- `app/full_pass.py` - CLI interface
-- `app/transcribe.py` - Enhanced with `transcribe_single_image()` function for metrics
-
-**State File** (`data/transcription_state.json`):
-Tracks session ID, progress, costs, quality metrics, processing speed, ETA, failed documents, and low-confidence documents.
-
-**Checkpoints** (`data/checkpoints/`):
-Automatic checkpoints every 100 documents (configurable), keeps last 5 checkpoints, allows resume from specific checkpoint.
-
-See `research/FULL_PASS_PLAN.md` for complete architecture and implementation details.
-
-**Prompt Version**: The transcription system now uses **Prompt v2** by default, which includes:
-- ✅ OpenAI Structured Outputs (100% JSON schema compliance)
-- ✅ Confidence scoring for quality control
-- ✅ Enhanced field extraction guidance
-- ✅ Keyword taxonomy for consistent categorization
-- ✅ Versioning and rollback capability
-
-To use the legacy v1 prompt: `export PROMPT_VERSION=v1`
-
-See `app/prompts/PROMPT_V2_GUIDE.md` for details.
+**Quality Metrics:**
+- **Confidence scores**: Mean, median, distribution (high/medium/low)
+- **Metadata completeness**: Missing dates, authors, document types
+- **Validation**: Schema compliance, date format, classification levels
+- **Concerns analysis**: OCR quality, illegibility, redactions
 
 ### Analysis & Visualization
 
@@ -382,11 +385,14 @@ Refer to these documents when working on features related to research applicatio
 
 ## Important Notes
 
+- **CRITICAL: Always use PDFs from `data/original_pdfs/` for transcription, never JPEGs from `data/images/`**
 - The `main.py` file in the root is a placeholder and not actively used
 - Multiple virtual environments exist (`.venv/` and `app/.venv/`) - the root `.venv/` is the primary one
-- The project contains both `generated_transcripts/` and `generated_transcripts_v1/` directories - v1 contains legacy outputs
-- Image files are assumed to be JPEG format in `data/images/`
-- The Streamlit app in `tests/test_app.py` uses a hardcoded path - update `TRANSCRIPTS_DIR` constant if needed
-- always us uv to manage environments
-- after every new feature implementation, make it easy for the reviewer to test it.
-- always work on a new branch and create a PR when finished. PRs have to be manually accepted by a human in github
+- Legacy transcripts in `archive/generated_transcripts_v1/` are from JPEG processing and are **incomplete**
+- The Streamlit app in `tests/streamlit_app.py` uses a hardcoded path - update `TRANSCRIPTS_DIR` constant if needed
+- Always use uv to manage environments
+- After every new feature implementation, make it easy for the reviewer to test it
+- Always work on a new branch and create a PR when finished. PRs have to be manually accepted by a human in github
+- Always use typing
+- always document investigations
+- always keep dataset progress log up to date

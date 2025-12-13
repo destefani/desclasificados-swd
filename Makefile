@@ -1,205 +1,251 @@
-# Makefile for automating setup and running the transcribe script with UV
+# Makefile for CIA Declassified Documents Project
+#
+# Usage:
+#   make install        Install dependencies
+#   make transcribe     Transcribe documents (main command)
+#   make test           Run tests
+#   make help           Show all commands
 
-# Variables
-SCRIPT_MODULE = app.transcribe
-MAX_FILES = 1
-# By default, transcribe-some uses 5 files; you can override it below.
-FILES_TO_PROCESS ?= 5
-# Number of parallel workers for API calls
-MAX_WORKERS ?= 32
+# =============================================================================
+# SETUP
+# =============================================================================
 
-# Target: install
-# UV automatically creates and manages the virtual environment
 install:
 	uv sync
 
-# Target: install-dev
-# Install with development dependencies
 install-dev:
 	uv sync --dev
 
-# Target: transcribe
-# Basic transcribe with configurable max files
+# =============================================================================
+# TRANSCRIPTION
+# =============================================================================
+#
+# Primary command for transcribing documents. Automatically resumes from
+# where it left off and supports graceful shutdown (Ctrl+C).
+#
+# Usage:
+#   make transcribe              Process all remaining documents
+#   make transcribe N=100        Process 100 documents
+#   make transcribe BUDGET=50    Stop at $50 budget
+#   make transcribe YES=1        Skip confirmation prompt
+#
 transcribe:
-	uv run python -m $(SCRIPT_MODULE) --max-files $(MAX_FILES)
+	@CMD="uv run python -m app.transcribe"; \
+	if [ -n "$(N)" ]; then CMD="$$CMD --limit $(N)"; fi; \
+	if [ -n "$(BUDGET)" ]; then CMD="$$CMD --budget $(BUDGET)"; fi; \
+	if [ "$(YES)" = "1" ]; then CMD="$$CMD --yes"; fi; \
+	$$CMD
 
-# Target: transcribe-all
-# Runs the script for all files (max_files=0 means no limit)
-transcribe-all:
-	uv run python -m $(SCRIPT_MODULE) --max-files 0 --max-workers $(MAX_WORKERS)
+# Show transcription status without processing
+transcribe-status:
+	uv run python -m app.transcribe --status
 
-# Target: transcribe-some
-# By default, runs the script for 5 files. You can override it:
-#    make transcribe-some FILES_TO_PROCESS=10
-transcribe-some:
-	uv run python -m $(SCRIPT_MODULE) --max-files $(FILES_TO_PROCESS)
+# =============================================================================
+# BATCH PROCESSING (50% cost savings)
+# =============================================================================
+#
+# Use the OpenAI Batch API for large jobs at 50% reduced cost.
+# Trade-off: Results within 24 hours (often faster) vs real-time.
+#
+# Usage:
+#   make batch-run N=1000         All-in-one workflow
+#   make batch-pending            Show pending documents
+#   make batch-jobs               List batch jobs
+#
 
-# Target: resume
-# Resumes where it left off (skips files that have existing .json)
-resume:
-	uv run python -m $(SCRIPT_MODULE) --resume --max-files 0
+# All-in-one: prepare, submit, poll, retrieve
+batch-run:
+	@CMD="uv run python -m app.batch run --poll"; \
+	if [ -n "$(N)" ]; then CMD="$$CMD --limit $(N)"; fi; \
+	if [ "$(YES)" = "1" ]; then CMD="$$CMD --yes"; fi; \
+	$$CMD
 
-# Target: resume-some
-# Resume with limited files
-resume-some:
-	uv run python -m $(SCRIPT_MODULE) --resume --max-files $(FILES_TO_PROCESS)
+# Prepare batch file only (for manual submission)
+batch-prepare:
+	@CMD="uv run python -m app.batch prepare"; \
+	if [ -n "$(N)" ]; then CMD="$$CMD --limit $(N)"; fi; \
+	if [ "$(YES)" = "1" ]; then CMD="$$CMD --yes"; fi; \
+	$$CMD
 
-# Target: test
-# Run tests with pytest
-test:
-	uv run pytest tests/
+# Show pending documents count
+batch-pending:
+	uv run python -m app.batch pending
 
-# Target: lint
-# Run linting with ruff (if installed)
-lint:
-	uv run ruff check .
+# List all batch jobs
+batch-jobs:
+	uv run python -m app.batch jobs
 
-# Target: format
-# Format code with ruff (if installed)
-format:
-	uv run ruff format .
+# =============================================================================
+# RAG (Question Answering)
+# =============================================================================
 
-# Target: analyze
-# Run the analyze_documents script
-analyze:
-	uv run python -m app.analyze_documents
-
-# Target: visualize
-# Run the visualize_transcripts script
-visualize:
-	uv run python -m app.visualize_transcripts
-
-# Target: rag-build
-# Build the RAG vector database index
 rag-build:
 	uv run python -m app.rag.cli build
 
-# Target: rag-rebuild
-# Rebuild the RAG index (reset and build)
 rag-rebuild:
 	uv run python -m app.rag.cli build --reset
 
-# Target: rag-stats
-# Show RAG database statistics
 rag-stats:
 	uv run python -m app.rag.cli stats
 
-# Target: rag-interactive
-# Start RAG interactive query mode
 rag-interactive:
 	uv run python -m app.rag.cli interactive
 
-# Target: rag-query
-# Query the RAG system (usage: make rag-query QUERY="your question")
+# Usage: make rag-query QUERY="your question"
 rag-query:
 	uv run python -m app.rag.cli query "$(QUERY)"
 
-# Target: full-pass
-# Run full pass processing with interactive confirmation (default: medium batch size)
-full-pass:
-	uv run python -m app.full_pass --batch-size medium --mode interactive
+# =============================================================================
+# QUALITY EVALUATION
+# =============================================================================
+#
+# Commands for evaluating transcript quality before full corpus processing.
+#
+# Usage:
+#   make eval-stats MODEL=gpt-5-mini      Show statistics
+#   make eval-validate MODEL=gpt-5-mini   Run validation checks
+#   make eval-sample MODEL=gpt-5-mini     Generate sample for manual review
+#   make eval-report MODEL=gpt-5-mini     Generate full HTML report
+#
+eval-stats:
+	uv run python -m app.evaluate stats $(MODEL)
 
-# Target: full-pass-auto
-# Run full pass in auto mode (all batches without confirmation)
-# Usage: make full-pass-auto BATCH_SIZE=large MAX_COST=50
-BATCH_SIZE ?= medium
-MAX_COST ?=
-full-pass-auto:
-	@if [ -n "$(MAX_COST)" ]; then \
-		uv run python -m app.full_pass --batch-size $(BATCH_SIZE) --mode auto --max-cost $(MAX_COST); \
-	else \
-		uv run python -m app.full_pass --batch-size $(BATCH_SIZE) --mode auto; \
-	fi
+eval-validate:
+	uv run python -m app.evaluate validate $(MODEL)
 
-# Target: full-pass-resume
-# Resume from previous full pass session
-full-pass-resume:
-	uv run python -m app.full_pass --resume
+eval-sample:
+	uv run python -m app.evaluate sample $(MODEL) --output samples_$(MODEL)
 
-# Target: full-pass-status
-# Show current full pass status
-full-pass-status:
-	uv run python -m app.full_pass --status
+eval-report:
+	uv run python -m app.evaluate report $(MODEL)
 
-# Target: full-pass-reset
-# Reset full pass state
-full-pass-reset:
-	uv run python -m app.full_pass --reset
+# Show dataset progress summary
+progress:
+	@echo "=== GPT-5-mini Dataset Progress ==="
+	@echo ""
+	@echo "Total PDFs: $$(find data/original_pdfs -name '*.pdf' 2>/dev/null | wc -l | tr -d ' ')"
+	@echo "Transcribed: $$(find data/generated_transcripts/gpt-5-mini -name '*.json' ! -name 'failed_*' ! -name 'incomplete_*' ! -name 'processing_*' 2>/dev/null | wc -l | tr -d ' ')"
+	@echo ""
+	@echo "See data/generated_transcripts/gpt-5-mini/PROGRESS_LOG.md for full history"
 
-# Target: clean
-# Remove UV's cache and Python artifacts
+# =============================================================================
+# ANALYSIS
+# =============================================================================
+
+analyze:
+	uv run python -m app.analyze_documents
+
+visualize:
+	uv run python -m app.visualize_transcripts
+
+# =============================================================================
+# TESTING & CODE QUALITY
+# =============================================================================
+
+test:
+	uv run pytest tests/
+
+test-unit:
+	uv run pytest tests/unit/ -v
+
+lint:
+	uv run ruff check .
+
+format:
+	uv run ruff format .
+
+typecheck:
+	uv run mypy app/ --ignore-missing-imports
+
+# =============================================================================
+# UTILITIES
+# =============================================================================
+
 clean:
 	rm -rf .venv
 	rm -rf $(shell find . -type d -name '__pycache__')
 	rm -rf $(shell find . -type d -name '*.egg-info')
 	rm -rf .pytest_cache
 	rm -rf .ruff_cache
+	rm -rf .mypy_cache
 	uv cache clean
 
-# Target: clean-outputs
-# Remove generated outputs but keep environment
-clean-outputs:
-	rm -rf data/generated_transcripts/*.json
-	rm -rf output_images/*
-
-# Target: update
-# Update all dependencies to latest versions
 update:
 	uv sync --upgrade
 
-# Target: lock
-# Update the lock file
 lock:
 	uv lock
 
-# Target: run
-# Generic target to run any Python module with UV
+# Generic target to run any Python module
 # Usage: make run MODULE=app.main
 run:
 	uv run python -m $(MODULE)
 
-# Target: shell
-# Start a shell with the UV environment activated
 shell:
 	uv run bash
 
-# Help target
-help:
-	@echo "Available targets:"
-	@echo "  install          - Install dependencies with UV"
-	@echo "  install-dev      - Install with dev dependencies"
-	@echo "  transcribe       - Run transcribe with MAX_FILES=$(MAX_FILES)"
-	@echo "  transcribe-all   - Transcribe all files"
-	@echo "  transcribe-some  - Transcribe FILES_TO_PROCESS=$(FILES_TO_PROCESS) files"
-	@echo "  resume           - Resume transcription (skip existing)"
-	@echo "  resume-some      - Resume with limited files"
-	@echo "  analyze          - Run document analysis"
-	@echo "  visualize        - Run transcript visualization"
-	@echo "  rag-build        - Build RAG vector database index"
-	@echo "  rag-rebuild      - Rebuild RAG index (reset)"
-	@echo "  rag-stats        - Show RAG database statistics"
-	@echo "  rag-interactive  - Start RAG interactive mode"
-	@echo "  rag-query        - Query RAG (usage: make rag-query QUERY='question')"
-	@echo "  full-pass        - Run full pass processing (interactive)"
-	@echo "  full-pass-auto   - Run full pass (auto mode, use BATCH_SIZE= MAX_COST=)"
-	@echo "  full-pass-resume - Resume from previous full pass session"
-	@echo "  full-pass-status - Show current full pass status"
-	@echo "  full-pass-reset  - Reset full pass state"
-	@echo "  test             - Run tests"
-	@echo "  lint             - Run linting"
-	@echo "  format           - Format code"
-	@echo "  clean            - Remove all generated files and caches"
-	@echo "  clean-outputs    - Remove only output files"
-	@echo "  update           - Update all dependencies"
-	@echo "  lock             - Update lock file"
-	@echo "  shell            - Start shell with UV environment"
-	@echo "  help             - Show this help message"
+# =============================================================================
+# HELP
+# =============================================================================
 
-# Default target
+help:
+	@echo ""
+	@echo "CIA Declassified Documents Project"
+	@echo "==================================="
+	@echo ""
+	@echo "Setup:"
+	@echo "  install          Install dependencies"
+	@echo "  install-dev      Install with dev dependencies"
+	@echo ""
+	@echo "Transcription:"
+	@echo "  transcribe       Process documents (main command)"
+	@echo "                   Options: N=100 BUDGET=50 YES=1"
+	@echo "  transcribe-status  Show current status"
+	@echo ""
+	@echo "Batch Processing (50% savings):"
+	@echo "  batch-run        All-in-one batch workflow"
+	@echo "                   Options: N=1000 YES=1"
+	@echo "  batch-prepare    Create batch file only"
+	@echo "  batch-pending    Show pending documents"
+	@echo "  batch-jobs       List batch jobs"
+	@echo ""
+	@echo "RAG (Question Answering):"
+	@echo "  rag-build        Build vector database index"
+	@echo "  rag-rebuild      Rebuild index from scratch"
+	@echo "  rag-stats        Show database statistics"
+	@echo "  rag-interactive  Start interactive query mode"
+	@echo "  rag-query        Query (usage: make rag-query QUERY='...')"
+	@echo ""
+	@echo "Quality Evaluation:"
+	@echo "  eval-stats       Show transcript statistics"
+	@echo "  eval-validate    Run validation checks"
+	@echo "  eval-sample      Generate sample for review"
+	@echo "  eval-report      Generate full HTML report"
+	@echo "                   (use MODEL=gpt-5-mini)"
+	@echo "  progress         Show dataset creation progress"
+	@echo ""
+	@echo "Analysis:"
+	@echo "  analyze          Generate HTML report"
+	@echo "  visualize        Create visualizations"
+	@echo ""
+	@echo "Testing:"
+	@echo "  test             Run all tests"
+	@echo "  test-unit        Run unit tests only"
+	@echo "  lint             Run linting"
+	@echo "  format           Format code"
+	@echo "  typecheck        Run mypy type checking"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  clean            Remove caches and venv"
+	@echo "  update           Update dependencies"
+	@echo "  help             Show this message"
+	@echo ""
+
 .DEFAULT_GOAL := help
 
-# Phony targets (not files)
-.PHONY: install install-dev transcribe transcribe-all transcribe-some resume resume-some \
-        test lint format analyze visualize rag-build rag-rebuild rag-stats rag-interactive \
-        rag-query full-pass full-pass-auto full-pass-resume full-pass-status full-pass-reset \
-        clean clean-outputs update lock run shell help
+.PHONY: install install-dev transcribe transcribe-status \
+        batch-run batch-prepare batch-pending batch-jobs \
+        rag-build rag-rebuild rag-stats rag-interactive rag-query \
+        eval-stats eval-validate eval-sample eval-report progress \
+        analyze visualize test test-unit lint format typecheck \
+        clean update lock run shell help
