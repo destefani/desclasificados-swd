@@ -1,34 +1,68 @@
 # Historical Research
 
-Research and analysis of the declassified CIA documents related to the Chilean dictatorship (1973-1990).
+Research related to the declassified CIA documents on the Chilean dictatorship (1973-1990).
+
+## Two Research Tracks
+
+This research is organized into **two separate tracks**:
+
+### Track 1: Document Analysis
+**Plan**: `RESEARCH_PLAN.md`
+
+Direct analysis of the declassified document corpus:
+- Thematic investigations (Operation Condor, human rights, etc.)
+- Case studies (Letelier assassination, coup, etc.)
+- Network analysis of actors and organizations
+- Timeline construction from documents
+
+### Track 2: Contextual Research
+**Plan**: `CONTEXT_RESEARCH_PLAN.md`
+
+Background knowledge to interpret documents:
+- US government structure and agencies
+- Chilean political history and actors
+- Cold War regional context
+- Secondary literature review
+- Document interpretation methodology
+
+---
 
 ## Directory Structure
 
 ```
 historical/
 ├── README.md                    # This file
-├── RESEARCH_PLAN.md            # Comprehensive research plan and methodology
+├── RESEARCH_PLAN.md            # Track 1: Document analysis methodology
+├── CONTEXT_RESEARCH_PLAN.md    # Track 2: Contextual research methodology
 │
-├── themes/                      # Thematic investigations
-│   ├── operation-condor/       # Regional intelligence coordination
-│   ├── human-rights/           # Human rights violations documentation
-│   ├── political-interference/ # US intervention in Chilean politics
-│   ├── economic-policy/        # Economic warfare and policy influence
-│   └── media-propaganda/       # Media manipulation and psychological ops
+├── context/                     # Track 2: Background research
+│   ├── glossary.md
+│   ├── us-government/
+│   ├── chile/
+│   ├── cold-war/
+│   ├── biographies/
+│   └── methodology/
 │
-├── cases/                       # Specific case studies
-│   ├── letelier-assassination/ # Orlando Letelier murder (1976)
-│   ├── caravan-of-death/       # Caravana de la Muerte (1973)
-│   ├── allende-overthrow/      # Coup planning and execution (1970-1973)
-│   └── dina-operations/        # DINA intelligence operations
+├── themes/                      # Track 1: Thematic investigations
+│   ├── operation-condor/
+│   ├── human-rights/
+│   ├── political-interference/
+│   ├── economic-policy/
+│   └── media-propaganda/
 │
-├── timelines/                   # Chronological analyses
+├── cases/                       # Track 1: Specific case studies
+│   ├── letelier-assassination/
+│   ├── caravan-of-death/
+│   ├── allende-overthrow/
+│   └── dina-operations/
 │
-├── networks/                    # Network analysis (people, organizations)
+├── timelines/                   # Track 1: Chronological analyses
 │
-├── literature/                  # Academic papers, bibliographies
+├── networks/                    # Track 1: Network analysis
 │
-└── findings/                    # Consolidated research findings
+├── literature/                  # Track 2: Academic sources
+│
+└── findings/                    # Track 1: Consolidated findings
 ```
 
 ## Research Methodology
