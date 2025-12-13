@@ -90,12 +90,22 @@ class ValidationIssue:
 
 def load_transcripts(model_dir: Path) -> list[tuple[Path, dict[str, Any]]]:
     """Load all JSON transcripts from a model directory."""
+    # Files to exclude (not transcripts)
+    excluded_files = {"failed_documents.json", "incomplete_documents.json", "processing_state.json"}
+
     transcripts = []
     for json_file in sorted(model_dir.glob("*.json")):
+        # Skip non-transcript files
+        if json_file.name in excluded_files:
+            continue
         try:
             with open(json_file, encoding="utf-8") as f:
                 data = json.load(f)
-                transcripts.append((json_file, data))
+                # Only include dict-type data (transcripts), skip lists
+                if isinstance(data, dict):
+                    transcripts.append((json_file, data))
+                else:
+                    print(f"Skipping non-transcript file: {json_file.name}")
         except json.JSONDecodeError as e:
             print(f"Error parsing {json_file}: {e}")
         except Exception as e:

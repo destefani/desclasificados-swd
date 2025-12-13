@@ -40,6 +40,15 @@ from tqdm import tqdm
 
 from app.config import DATA_DIR, ROOT_DIR
 from app.utils.cost_tracker import PRICING, PricingTier
+from app.utils.chunked_pdf import (
+    needs_chunking,
+    split_pdf,
+    merge_chunk_results,
+    get_pdf_page_count,
+    ChunkResult,
+    DEFAULT_CHUNK_THRESHOLD,
+    DEFAULT_CHUNK_SIZE,
+)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -661,6 +670,178 @@ def transcribe_single_document(
         return record_failure(f"Failed to write output: {e}")
 
 
+def transcribe_chunked_document(
+    filename: str,
+    pdfs_dir: Path,
+    output_dir: Path,
+    model: str,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    failure_tracker: Optional[FailedDocumentsTracker] = None,
+) -> str:
+    """
+    Transcribe a large PDF document by processing it in chunks.
+
+    For documents with many pages (>30 by default), this function:
+    1. Splits the PDF into smaller chunks
+    2. Transcribes each chunk separately
+    3. Merges the results into a single transcript
+
+    Args:
+        filename: PDF filename to process
+        pdfs_dir: Directory containing PDFs
+        output_dir: Directory for JSON outputs
+        model: OpenAI model to use
+        chunk_size: Number of pages per chunk (default 20)
+        failure_tracker: Optional tracker for recording failures
+
+    Returns:
+        "success", "skipped", or "failed"
+    """
+    file_path = pdfs_dir / filename
+    output_filename = output_dir / (os.path.splitext(filename)[0] + ".json")
+
+    def record_failure(reason: str, finish_reason: Optional[str] = None, partial: Optional[str] = None) -> str:
+        """Helper to record failure and return 'failed'."""
+        logging.error(f"✗ {filename} | {reason}")
+        if failure_tracker:
+            failure_tracker.add_failure(filename, reason, finish_reason, partial)
+        return "failed"
+
+    # Skip if already exists
+    if output_filename.exists():
+        return "skipped"
+
+    start_time = time.time()
+
+    # Get page count and split PDF
+    try:
+        total_pages = get_pdf_page_count(file_path)
+        chunks = split_pdf(file_path, chunk_size)
+        logging.info(f"⚡ {filename} | {total_pages} pages | Splitting into {len(chunks)} chunks")
+    except Exception as e:
+        return record_failure(f"Failed to split PDF: {e}")
+
+    # Process each chunk in parallel for faster processing
+    def process_single_chunk(
+        chunk_info: tuple[int, tuple[int, int, bytes]]
+    ) -> ChunkResult:
+        """Process a single chunk and return the result."""
+        i, (start_page, end_page, pdf_bytes) = chunk_info
+        chunk_num = i + 1
+
+        # Encode chunk PDF
+        base64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
+
+        # Build message content
+        chunk_filename = f"{os.path.splitext(filename)[0]}_chunk{chunk_num}.pdf"
+        content: list[dict[str, Any]] = [
+            {"type": "text", "text": PROMPT},
+            {
+                "type": "file",
+                "file": {
+                    "filename": chunk_filename,
+                    "file_data": f"data:application/pdf;base64,{base64_pdf}",
+                },
+            },
+        ]
+
+        # Call API
+        try:
+            response = call_api_with_retry(
+                messages=[{"role": "user", "content": content}],
+                model=model,
+            )
+
+            choice = response.choices[0]
+            response_text = choice.message.content or ""
+            finish_reason = choice.finish_reason
+
+            if finish_reason != "stop":
+                logging.warning(f"  Chunk {chunk_num}: finish_reason={finish_reason}")
+                return ChunkResult(
+                    chunk_index=i,
+                    start_page=start_page,
+                    end_page=end_page,
+                    success=False,
+                    error=f"finish_reason: {finish_reason}",
+                )
+
+            # Parse JSON
+            cleaned_text = response_text.replace("```json", "").replace("```", "").strip()
+            chunk_data = json.loads(cleaned_text)
+
+            logging.debug(f"  Chunk {chunk_num}: success")
+            return ChunkResult(
+                chunk_index=i,
+                start_page=start_page,
+                end_page=end_page,
+                success=True,
+                data=chunk_data,
+            )
+
+        except Exception as e:
+            logging.warning(f"  Chunk {chunk_num}: failed - {e}")
+            return ChunkResult(
+                chunk_index=i,
+                start_page=start_page,
+                end_page=end_page,
+                success=False,
+                error=str(e),
+            )
+
+    # Process chunks in parallel (max 4 concurrent to avoid rate limits)
+    chunk_results: list[ChunkResult] = []
+    max_chunk_workers = min(4, len(chunks))  # Limit parallel chunks to avoid rate limits
+
+    with ThreadPoolExecutor(max_workers=max_chunk_workers) as chunk_executor:
+        chunk_futures = {
+            chunk_executor.submit(process_single_chunk, (i, chunk)): i
+            for i, chunk in enumerate(chunks)
+        }
+
+        for future in as_completed(chunk_futures):
+            result = future.result()
+            chunk_results.append(result)
+
+    # Sort by chunk index to maintain order
+    chunk_results.sort(key=lambda x: x.chunk_index)
+
+    # Check if we got enough successful chunks
+    successful_count = sum(1 for c in chunk_results if c.success)
+    if successful_count == 0:
+        return record_failure(f"All {len(chunks)} chunks failed")
+
+    if successful_count < len(chunks) * 0.5:
+        logging.warning(f"⚠️  {filename} | Only {successful_count}/{len(chunks)} chunks succeeded")
+
+    # Merge results
+    try:
+        merged_data = merge_chunk_results(chunk_results, filename, total_pages)
+    except Exception as e:
+        return record_failure(f"Failed to merge chunks: {e}")
+
+    # Validate merged result
+    enable_auto_repair = not USE_STRUCTURED_OUTPUTS
+    is_valid, errors = validate_with_schema(merged_data, enable_auto_repair)
+
+    if not is_valid:
+        logging.warning(f"⚠️  {filename} | Merged result has validation issues: {errors}")
+        # Don't fail - save anyway since we have partial data
+
+    # Write output
+    try:
+        with open(output_filename, "w", encoding="utf-8") as out_file:
+            json.dump(merged_data, out_file, ensure_ascii=False, indent=4)
+
+        elapsed = time.time() - start_time
+        size_kb = output_filename.stat().st_size / 1024
+        logging.info(f"✓ {filename} | {total_pages} pages ({len(chunks)} chunks) | {size_kb:.1f} KB | {elapsed:.2f}s")
+        return "success"
+
+    except Exception as e:
+        return record_failure(f"Failed to write output: {e}")
+
+
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
@@ -925,11 +1106,24 @@ def process_files(
     print(f"Processing {len(files)} documents with {workers} workers...")
     print()
 
+    def process_document(filename: str) -> str:
+        """Route document to appropriate processor based on size."""
+        file_path = pdfs_dir / filename
+
+        # Check if document needs chunked processing
+        if needs_chunking(file_path, threshold=DEFAULT_CHUNK_THRESHOLD):
+            return transcribe_chunked_document(
+                filename, pdfs_dir, output_dir, model,
+                chunk_size=DEFAULT_CHUNK_SIZE, failure_tracker=failure_tracker
+            )
+        else:
+            return transcribe_single_document(
+                filename, pdfs_dir, output_dir, model, dry_run, failure_tracker
+            )
+
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
-            executor.submit(
-                transcribe_single_document, f, pdfs_dir, output_dir, model, dry_run, failure_tracker
-            ): f
+            executor.submit(process_document, f): f
             for f in files
         }
 
@@ -1098,6 +1292,18 @@ Environment variables:
         help="Show cost history for all runs",
     )
 
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Retry documents from failed_documents.json (includes incomplete outputs)",
+    )
+
+    parser.add_argument(
+        "--retry-incomplete",
+        action="store_true",
+        help="Retry only documents with incomplete output (not content-filtered)",
+    )
+
     return parser.parse_args()
 
 
@@ -1152,6 +1358,50 @@ def show_cost_history(model: str) -> None:
     print()
 
 
+def get_failed_documents(model: str, incomplete_only: bool = False) -> list[str]:
+    """Get list of failed documents to retry.
+
+    Args:
+        model: Model name for output directory
+        incomplete_only: If True, only include incomplete outputs (not content-filtered)
+
+    Returns:
+        List of filenames to retry
+    """
+    output_dir = DATA_DIR / "generated_transcripts" / model
+    failed_file = output_dir / "failed_documents.json"
+
+    if not failed_file.exists():
+        return []
+
+    with open(failed_file) as f:
+        failed_docs = json.load(f)
+
+    # Get unique filenames
+    seen = set()
+    files_to_retry = []
+
+    for doc in failed_docs:
+        filename = doc.get("filename", "")
+        reason = doc.get("reason", "")
+
+        if filename in seen:
+            continue
+
+        # Skip content-filtered docs if incomplete_only
+        if incomplete_only and "content_filter" in reason.lower():
+            continue
+
+        # Skip quota errors (will fail again)
+        if "quota" in reason.lower() or "429" in reason:
+            continue
+
+        seen.add(filename)
+        files_to_retry.append(filename)
+
+    return files_to_retry
+
+
 def main() -> None:
     """Main entry point."""
     args = parse_args()
@@ -1176,6 +1426,53 @@ def main() -> None:
         print_status(status)
         if status.remaining > 0:
             print_estimate(status.remaining, status.model)
+        return
+
+    # Retry failed mode
+    if args.retry_failed or args.retry_incomplete:
+        files_to_retry = get_failed_documents(status.model, incomplete_only=args.retry_incomplete)
+
+        if not files_to_retry:
+            print("No failed documents to retry.")
+            return
+
+        # Remove existing outputs so they can be re-processed
+        output_dir = DATA_DIR / "generated_transcripts" / status.model
+        removed = 0
+        for filename in files_to_retry:
+            json_path = output_dir / (os.path.splitext(filename)[0] + ".json")
+            if json_path.exists():
+                json_path.unlink()
+                removed += 1
+
+        mode = "incomplete" if args.retry_incomplete else "failed"
+        print(f"\nRetry Mode: {mode} documents")
+        print(f"Found {len(files_to_retry)} documents to retry")
+        if removed > 0:
+            print(f"Removed {removed} existing outputs")
+        print()
+
+        estimated_cost = print_estimate(len(files_to_retry), status.model)
+
+        # Confirmation
+        if not args.yes and not args.dry_run:
+            try:
+                response = input("Proceed with retry? [y/N]: ").strip().lower()
+                if response not in ("y", "yes"):
+                    print("Cancelled.")
+                    return
+            except (EOFError, KeyboardInterrupt):
+                print("\nCancelled.")
+                return
+
+        # Process
+        process_files(
+            files=files_to_retry,
+            model=status.model,
+            dry_run=args.dry_run,
+            max_workers=args.workers,
+            strict=args.strict,
+        )
         return
 
     # Nothing to do

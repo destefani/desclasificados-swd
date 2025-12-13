@@ -119,6 +119,15 @@ eval-sample:
 eval-report:
 	uv run python -m app.evaluate report $(MODEL)
 
+# Show dataset progress summary
+progress:
+	@echo "=== GPT-5-mini Dataset Progress ==="
+	@echo ""
+	@echo "Total PDFs: $$(find data/original_pdfs -name '*.pdf' 2>/dev/null | wc -l | tr -d ' ')"
+	@echo "Transcribed: $$(find data/generated_transcripts/gpt-5-mini -name '*.json' ! -name 'failed_*' ! -name 'incomplete_*' ! -name 'processing_*' 2>/dev/null | wc -l | tr -d ' ')"
+	@echo ""
+	@echo "See data/generated_transcripts/gpt-5-mini/PROGRESS_LOG.md for full history"
+
 # =============================================================================
 # ANALYSIS
 # =============================================================================
@@ -213,6 +222,7 @@ help:
 	@echo "  eval-sample      Generate sample for review"
 	@echo "  eval-report      Generate full HTML report"
 	@echo "                   (use MODEL=gpt-5-mini)"
+	@echo "  progress         Show dataset creation progress"
 	@echo ""
 	@echo "Analysis:"
 	@echo "  analyze          Generate HTML report"
@@ -236,6 +246,6 @@ help:
 .PHONY: install install-dev transcribe transcribe-status \
         batch-run batch-prepare batch-pending batch-jobs \
         rag-build rag-rebuild rag-stats rag-interactive rag-query \
-        eval-stats eval-validate eval-sample eval-report \
+        eval-stats eval-validate eval-sample eval-report progress \
         analyze visualize test test-unit lint format typecheck \
         clean update lock run shell help

@@ -4,9 +4,36 @@
 
 ---
 
-## 🆕 NEW: Batch API Implementation (2025-12-07)
+## 🆕 NEW: Chunked Processing for Large PDFs (2025-12-13)
 
-**Batch processing is now available for 50% cost savings.**
+**Large documents (>30 pages) are now automatically split into chunks.**
+
+This fixes the "incomplete output" issue where large PDFs (89-139 pages) were truncated.
+
+```bash
+# Retry incomplete documents (with chunked processing)
+uv run python -m app.transcribe --retry-incomplete --yes
+
+# Retry all failed documents
+uv run python -m app.transcribe --retry-failed --yes
+```
+
+**How it works:**
+- Documents >30 pages are split into 20-page chunks
+- Chunks are processed **in parallel** (up to 4 concurrent) for faster processing
+- Results are merged with deduplicated metadata
+
+**Performance:** A 139-page document (7 chunks) now processes ~4x faster with parallel chunk processing.
+
+**Files added:**
+- `app/utils/chunked_pdf.py` - PDF splitting and result merging
+- `tests/unit/test_chunked_pdf.py` - 15 unit tests
+
+---
+
+## 🆕 Batch API Implementation (2025-12-07)
+
+**Batch processing is available for 50% cost savings.**
 
 ```bash
 # Quick start - process 1000 docs with batch API
@@ -20,16 +47,6 @@ uv run python -m app.batch run -n 1000 --poll --yes
 |--------|------|------|---------|
 | Synchronous | ~$498 | ~2.5 hours | - |
 | **Batch API** | ~$249 | ≤24 hours | **$249 (50%)** |
-
-**Files added:**
-- `app/batch.py` - CLI for batch processing
-- `app/utils/batch_processor.py` - Core batch logic
-- `docs/BATCH_API_IMPLEMENTATION_PLAN.md` - Technical docs
-
-**Note:** Test batch (3 docs) hit OpenAI billing limit. Once billing is resolved:
-```bash
-uv run python -m app.batch submit file-JdWbTvMzepBZHEt2KWomUa
-```
 
 See [Batch Processing section](#batch-processing-50-cost-savings) below for full documentation.
 
@@ -66,22 +83,25 @@ A system for processing, searching, and analyzing ~20,000 declassified CIA docum
 | Metric | Value |
 |--------|-------|
 | **Total Documents** | 21,512 |
-| **Transcribed (gpt-5-mini)** | 1,125 |
-| **Remaining** | ~20,387 |
+| **Transcribed (gpt-5-mini)** | 5,666 |
+| **Remaining** | ~15,846 |
 | **Primary Model** | gpt-5-mini |
 
-### Quality Evaluation (gpt-5-mini batch)
+### Quality Evaluation (gpt-5-mini) - Updated 2025-12-13
 
 | Metric | Value |
 |--------|-------|
-| **Documents Evaluated** | 1,125 |
-| **Mean Confidence** | 0.861 |
-| **High Confidence (>0.8)** | 71.7% |
-| **Low Confidence (<0.6)** | 0.4% |
+| **Documents Evaluated** | 5,666 |
+| **Mean Confidence** | 0.877 |
+| **High Confidence (>0.85)** | 82.7% |
+| **Medium Confidence (0.70-0.85)** | 17.0% |
+| **Low Confidence (<0.70)** | 0.2% (13 docs) |
 | **Validation Errors** | 0 |
-| **Issues Fixed** | 1 (empty reviewed_text) |
+| **Missing Documents** | 14 (content filtered or incomplete) |
 
-See `investigations/` for documented quality issues and resolutions.
+See `investigations/004-gpt5-mini-quality-evaluation.md` for full evaluation details.
+
+**Dataset Progress Log:** `data/generated_transcripts/gpt-5-mini/PROGRESS_LOG.md`
 
 ✅ **Production Ready:**
 - RAG system with 5,611 documents indexed (6,929 chunks)
@@ -231,6 +251,8 @@ make eval-sample MODEL=gpt-5-mini
 make eval-report MODEL=gpt-5-mini
 ```
 
+See `docs/QUALITY_TESTING_METHODS.md` for comprehensive quality testing documentation.
+
 ### Analysis & Visualization
 
 ```bash
@@ -300,6 +322,7 @@ uv run python test_claude_integration.py
 | **CLAUDE.md** | Instructions for Claude Code about the project |
 | **reports/*.md** | Assessment reports and analysis |
 | **docs/PROJECT_CONTEXT.md** | Historical context, use cases, ethics |
+| **docs/QUALITY_TESTING_METHODS.md** | Quality testing documentation |
 | **app/rag/README.md** | Complete RAG system documentation |
 | **app/prompts/PROMPT_V2_GUIDE.md** | Prompt engineering guide |
 | **Makefile** | All available commands (`make help`) |

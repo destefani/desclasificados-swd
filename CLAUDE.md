@@ -395,3 +395,4 @@ Refer to these documents when working on features related to research applicatio
 - Always work on a new branch and create a PR when finished. PRs have to be manually accepted by a human in github
 - Always use typing
 - always document investigations
+- always keep dataset progress log up to date
