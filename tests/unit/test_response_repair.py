@@ -112,7 +112,7 @@ class TestAutoRepairResponse:
         assert tr["detention_centers"] == []
         assert tr["victims"] == []
         assert tr["perpetrators"] == []
-        assert tr["methods_mentioned"] is False
+        assert tr["methods_mentioned"] == []
         assert tr["has_torture_content"] is False
 
     def test_confidence_added_if_missing(self):
@@ -161,7 +161,7 @@ class TestAutoRepairResponse:
                     "detention_centers": [],
                     "victims": [],
                     "perpetrators": [],
-                    "methods_mentioned": False,
+                    "methods_mentioned": [],
                     "has_torture_content": False,
                 },
             },
@@ -219,7 +219,7 @@ class TestValidateResponse:
                     "detention_centers": [],
                     "victims": [],
                     "perpetrators": [],
-                    "methods_mentioned": False,
+                    "methods_mentioned": [],
                     "has_torture_content": False,
                 },
             },
@@ -355,5 +355,5 @@ class TestDefaultStructures:
         assert "perpetrators" in DEFAULT_TORTURE_REFERENCES
         assert "methods_mentioned" in DEFAULT_TORTURE_REFERENCES
         assert "has_torture_content" in DEFAULT_TORTURE_REFERENCES
-        assert DEFAULT_TORTURE_REFERENCES["methods_mentioned"] is False
+        assert DEFAULT_TORTURE_REFERENCES["methods_mentioned"] == []
         assert DEFAULT_TORTURE_REFERENCES["has_torture_content"] is False

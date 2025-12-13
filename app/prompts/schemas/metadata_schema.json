@@ -26,7 +26,10 @@
         "language",
         "keywords",
         "page_count",
-        "document_summary"
+        "document_summary",
+        "financial_references",
+        "violence_references",
+        "torture_references"
       ],
       "additionalProperties": false,
       "properties": {
@@ -141,6 +144,108 @@
           "minLength": 50,
           "maxLength": 1500,
           "description": "Concise historical summary (1-3 sentences, 50-1500 characters)"
+        },
+        "financial_references": {
+          "type": "object",
+          "required": ["amounts", "financial_actors", "purposes"],
+          "additionalProperties": false,
+          "description": "Financial information mentioned in the document (funding, payments, budgets)",
+          "properties": {
+            "amounts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Monetary amounts mentioned (e.g., '$500,000', '1 million dollars')"
+            },
+            "financial_actors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Organizations or individuals involved in financial transactions"
+            },
+            "purposes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Stated purposes for financial transactions (e.g., 'election support', 'media funding')"
+            }
+          }
+        },
+        "violence_references": {
+          "type": "object",
+          "required": ["incident_types", "victims", "perpetrators", "has_violence_content"],
+          "additionalProperties": false,
+          "description": "References to violence, executions, or physical harm",
+          "properties": {
+            "incident_types": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Types of violent incidents (e.g., 'execution', 'assassination', 'armed conflict')"
+            },
+            "victims": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or groups identified as victims"
+            },
+            "perpetrators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or organizations identified as perpetrators"
+            },
+            "has_violence_content": {
+              "type": "boolean",
+              "description": "Whether the document contains violence-related content"
+            }
+          }
+        },
+        "torture_references": {
+          "type": "object",
+          "required": ["detention_centers", "victims", "perpetrators", "methods_mentioned", "has_torture_content"],
+          "additionalProperties": false,
+          "description": "References to torture, detention, or interrogation practices",
+          "properties": {
+            "detention_centers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Named detention facilities or locations"
+            },
+            "victims": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals identified as torture victims"
+            },
+            "perpetrators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or organizations identified as perpetrators"
+            },
+            "methods_mentioned": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Torture methods or practices mentioned"
+            },
+            "has_torture_content": {
+              "type": "boolean",
+              "description": "Whether the document contains torture-related content"
+            }
+          }
         }
       }
     },

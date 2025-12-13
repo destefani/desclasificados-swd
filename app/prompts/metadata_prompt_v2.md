@@ -1,11 +1,12 @@
 ---
-prompt_version: 2.0.0
+prompt_version: 2.1.0
 prompt_name: "metadata_extraction_standard"
-last_updated: 2024-11-30
+last_updated: 2025-12-13
 author: "desclasificados-swd team"
 model_compatibility: ["gpt-4o-2024-08-06", "gpt-4o-mini-2024-07-18"]
 uses_structured_outputs: true
 changelog:
+  - v2.1.0 (2025-12-13): Added sensitive content tracking fields (financial_references, violence_references, torture_references) for human rights research
   - v2.0.0 (2024-11-30): Structured Outputs support, confidence scoring, enhanced field guidance, keyword taxonomy, few-shot examples
   - v1.0.0 (2024-10-01): Initial prompt (implicit version)
 performance_baseline:
@@ -180,6 +181,40 @@ You are a specialized AI for extracting metadata from declassified CIA documents
 - Number of pages visible in THIS image
 - Typically 1 for single-page scans
 - Integer value
+
+### Sensitive Content Tracking
+
+These fields track sensitive historical content for research and accountability purposes.
+
+**financial_references**
+- Track monetary amounts, financial actors, and purposes mentioned in documents
+- **amounts**: Extract monetary figures (e.g., "$500,000", "1 million dollars", "$350,000 per month")
+- **financial_actors**: Organizations or individuals involved (e.g., "CIA", "40 COMMITTEE", "ITT")
+- **purposes**: Stated purposes (e.g., "election support", "media funding", "opposition support", "propaganda")
+- If no financial content, use empty arrays []
+
+**violence_references**
+- Track references to violence, executions, assassinations, or physical harm
+- **incident_types**: Types of violence (e.g., "execution", "assassination", "armed conflict", "bombing")
+- **victims**: Named victims or groups (e.g., "LETELIER, ORLANDO", "political prisoners")
+- **perpetrators**: Named perpetrators (e.g., "DINA", "PINOCHET REGIME", "military junta")
+- **has_violence_content**: Set to `true` if document contains ANY violence references, `false` otherwise
+- If no violence content, use empty arrays [] and `has_violence_content: false`
+
+**torture_references**
+- Track references to torture, detention centers, and interrogation practices
+- **detention_centers**: Named facilities (e.g., "VILLA GRIMALDI", "LONDON 38", "TEJAS VERDES")
+- **victims**: Named torture victims
+- **perpetrators**: Named perpetrators or organizations
+- **methods_mentioned**: Torture methods referenced (e.g., "electric shock", "waterboarding", "prolonged isolation")
+- **has_torture_content**: Set to `true` if document contains ANY torture references, `false` otherwise
+- If no torture content, use empty arrays [] and `has_torture_content: false`
+
+**Important Notes:**
+- These fields are critical for human rights research and historical accountability
+- Extract factual references from the document text only
+- Do not infer or add information not explicitly stated
+- Use consistent naming (uppercase "LAST, FIRST" format for people)
 
 ### Keywords (Thematic Tags)
 
