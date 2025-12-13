@@ -10,6 +10,17 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 DATA_DIR = Path(ROOT_DIR, "data")
 TRANSCRIPTS_DIR = Path(DATA_DIR, "generated_transcripts")
 
+# Metadata Schema Configuration
+# This defines the current schema version used for transcription.
+# Transcripts are stored in subdirectories named: {model}-{schema_version}
+# When the schema changes, update this version to keep transcripts separate.
+METADATA_SCHEMA_VERSION = "v2.1.0"
+
+# Schema version history:
+# - v1.0.0: Legacy schema (JPEG-based, no confidence)
+# - v2.0.0: Structured outputs with confidence scoring
+# - v2.1.0: Added sensitive content tracking (financial, violence, torture references)
+
 
 # Logger
 logging_config = {
