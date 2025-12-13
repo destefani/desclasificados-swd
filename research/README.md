@@ -26,30 +26,52 @@ The research directory serves as a repository for:
 - Academic papers and citations
 - Preliminary findings and hypotheses
 
-## Suggested Structure
+## Current Structure
 
 ```
 research/
 ├── README.md                           # This file
 │
 ├── technical/                          # Technical research
+│   ├── batch-processing/               # Batch transcription implementation
+│   │   ├── PHASE1_IMPLEMENTATION.md    # Full pass processing implementation
+│   │   └── VALIDATION_BATCH_RESULTS.md # Batch validation results (100 docs)
+│   │
+│   ├── prompts/                        # Prompt engineering research
+│   │   ├── PROMPT_IMPROVEMENT_PLAN.md  # Prompt optimization strategy
+│   │   ├── PROMPT_MANAGEMENT_RESEARCH.md # Best practices research
+│   │   └── IMPLEMENTATION_SUMMARY.md   # Implementation summary
+│   │
 │   ├── rag-methods/                    # RAG implementation studies
-│   ├── llm-comparisons/                # LLM performance analysis
-│   ├── ocr-vision-models/              # OCR and vision model tests
-│   ├── embeddings/                     # Embedding technique research
-│   ├── performance/                    # Performance benchmarking
-│   └── architecture/                   # Software architecture studies
+│   │   └── agentic-search.md           # Agentic search paradigm research
+│   │
+│   └── visualizations/                 # Visualization research
+│       ├── README.md                   # Visualizations overview
+│       ├── VISUALIZATIONS_RESEARCH.md  # Visualization strategies
+│       └── TIMELINE_PLAN.md            # Timeline implementation plan
+│
+├── investigations/                     # Issue tracking & debugging
+│   ├── README.md                       # Investigation index & template
+│   ├── 001-empty-reviewed-text.md      # Empty reviewed_text issue
+│   ├── 002-low-chars-per-page-documents.md  # Low chars/page ratio
+│   ├── 003-batch-api-implementation.md # Batch API (50% cost savings)
+│   ├── 004-gpt5-mini-quality-evaluation.md  # GPT-5-mini evaluation
+│   └── assets/                         # Supporting files for investigations
 │
 └── historical/                         # Historical research
+    ├── README.md                       # Historical research overview
+    ├── RESEARCH_PLAN.md               # Comprehensive research plan
     ├── themes/                         # Thematic research areas
-    │   ├── operation-condor/
-    │   ├── human-rights/
-    │   ├── political-interference/
-    │   └── ...
+    │   ├── operation-condor/          # Regional intelligence coordination
+    │   ├── human-rights/              # Human rights violations
+    │   ├── political-interference/    # US intervention in Chilean politics
+    │   ├── economic-policy/           # Economic warfare and influence
+    │   └── media-propaganda/          # Media manipulation and psyops
     ├── cases/                          # Specific case studies
-    │   ├── letelier-assassination/
-    │   ├── caravan-of-death/
-    │   └── ...
+    │   ├── letelier-assassination/    # Orlando Letelier murder (1976)
+    │   ├── caravan-of-death/          # Caravana de la Muerte (1973)
+    │   ├── allende-overthrow/         # Coup planning (1970-1973)
+    │   └── dina-operations/           # DINA intelligence operations
     ├── timelines/                      # Chronological analyses
     ├── networks/                       # Network analysis (people, orgs)
     ├── literature/                     # Academic papers, bibliographies
