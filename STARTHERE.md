@@ -4,6 +4,36 @@
 
 ---
 
+## 🆕 Historical Research Plan Ready (2025-12-13)
+
+**Phase 1 corpus analysis complete.** Ready to begin historical research.
+
+**Quick Start:**
+```bash
+# Re-run corpus analysis after more transcription
+uv run python -c "..." # See research/historical/findings/CORPUS_ANALYSIS_PHASE1.md
+
+# Query the RAG system for research
+uv run python -m app.rag.cli query "What did the CIA know about Operation Condor?"
+uv run python -m app.rag.cli interactive
+```
+
+**Key Findings from 450 documents:**
+- Letelier Assassination: 132 mentions (best documented case)
+- CIA Funding/Covert Action: 90 mentions each
+- 40 Committee: 86 mentions
+- Peak year: 1970 (Allende election)
+
+**Next Steps:**
+1. Continue transcription to increase corpus
+2. Re-run corpus analysis
+3. Begin Case Study 1: Letelier Assassination
+4. Begin Track A: Operation Condor
+
+**See:** `research/historical/RESEARCH_PLAN.md` for full 6-phase plan
+
+---
+
 ## 🆕 NEW: Chunked Processing for Large PDFs (2025-12-13)
 
 **Large documents (>30 pages) are now automatically split into chunks.**
@@ -99,7 +129,7 @@ A system for processing, searching, and analyzing ~20,000 declassified CIA docum
 | **Validation Errors** | 0 |
 | **Missing Documents** | 14 (content filtered or incomplete) |
 
-See `investigations/004-gpt5-mini-quality-evaluation.md` for full evaluation details.
+See `research/investigations/004-gpt5-mini-quality-evaluation.md` for full evaluation details.
 
 **Dataset Progress Log:** `data/generated_transcripts/gpt-5-mini/PROGRESS_LOG.md`
 
@@ -307,7 +337,14 @@ uv run python test_claude_integration.py
 │   │   └── ...
 │   └── vector_db/              # ChromaDB index
 ├── docs/                       # Comprehensive documentation
-├── investigations/             # Documented quality issues (NEW)
+├── research/                   # Research directory
+│   ├── technical/             # Technical research (prompts, RAG, etc.)
+│   ├── investigations/        # Documented quality issues
+│   └── historical/            # Historical research (NEW)
+│       ├── RESEARCH_PLAN.md   # 6-phase research methodology
+│       ├── findings/          # Analysis results
+│       ├── themes/            # Operation Condor, Human Rights, etc.
+│       └── cases/             # Letelier, Caravan of Death, etc.
 ├── reports/                    # Assessment reports
 ├── tests/
 │   └── unit/                   # Unit tests (65 tests)
@@ -320,6 +357,8 @@ uv run python test_claude_integration.py
 |------|---------|
 | **STARTHERE.md** | This file - read first every session |
 | **CLAUDE.md** | Instructions for Claude Code about the project |
+| **research/historical/RESEARCH_PLAN.md** | Historical research plan (6 phases) |
+| **research/historical/findings/** | Corpus analysis and research findings |
 | **reports/*.md** | Assessment reports and analysis |
 | **docs/PROJECT_CONTEXT.md** | Historical context, use cases, ethics |
 | **docs/QUALITY_TESTING_METHODS.md** | Quality testing documentation |
@@ -340,6 +379,29 @@ uv run python -m app.rag.cli interactive
 # - "How did the CIA's assessment of Pinochet change over time?"
 # - "What was Operation Condor?"
 ```
+
+### Historical Research Workflow (NEW)
+
+```bash
+# 1. Re-run corpus analysis after transcription progress
+# See the Python code in research/historical/findings/CORPUS_ANALYSIS_PHASE1.md
+
+# 2. Use RAG for specific research questions
+uv run python -m app.rag.cli query "Documents about Letelier" --start-date 1976-01-01 --end-date 1976-12-31
+uv run python -m app.rag.cli query "Operation Condor intelligence sharing"
+
+# 3. Document findings in research/historical/
+# - themes/operation-condor/
+# - cases/letelier-assassination/
+# - findings/
+```
+
+**Research Priority Order:**
+1. Letelier Assassination (132 keyword mentions - best documented)
+2. Political Interference / Covert Action (90+ documents)
+3. Operation Condor (38 DINA mentions - needs more transcription)
+
+See `research/historical/RESEARCH_PLAN.md` for full methodology.
 
 ### Process New Documents
 
