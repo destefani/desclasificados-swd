@@ -60,7 +60,7 @@ DEFAULT_TORTURE_REFERENCES: dict[str, Any] = {
     "detention_centers": [],
     "victims": [],
     "perpetrators": [],
-    "methods_mentioned": False,
+    "methods_mentioned": [],
     "has_torture_content": False,
 }
 

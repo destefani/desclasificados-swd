@@ -10,12 +10,14 @@
         "document_id",
         "case_number",
         "document_date",
+        "date_range",
         "classification_level",
         "declassification_date",
         "document_type",
         "author",
         "recipients",
         "people_mentioned",
+        "organizations_mentioned",
         "country",
         "city",
         "other_place",
@@ -26,7 +28,11 @@
         "language",
         "keywords",
         "page_count",
-        "document_summary"
+        "document_summary",
+        "financial_references",
+        "violence_references",
+        "torture_references",
+        "disappearance_references"
       ],
       "additionalProperties": false,
       "properties": {
@@ -43,6 +49,28 @@
           "type": "string",
           "description": "ISO 8601 date (YYYY-MM-DD, use 00 for unknown day/month)",
           "pattern": "^\\d{4}-(0[0-9]|1[0-2])-(0[0-9]|[12][0-9]|3[01])$"
+        },
+        "date_range": {
+          "type": "object",
+          "description": "For documents covering a time period (e.g., monthly reports, summaries)",
+          "required": ["start_date", "end_date", "is_approximate"],
+          "additionalProperties": false,
+          "properties": {
+            "start_date": {
+              "type": "string",
+              "description": "Start of the period covered (YYYY-MM-DD)",
+              "pattern": "^(\\d{4}-(0[0-9]|1[0-2])-(0[0-9]|[12][0-9]|3[01]))?$"
+            },
+            "end_date": {
+              "type": "string",
+              "description": "End of the period covered (YYYY-MM-DD)",
+              "pattern": "^(\\d{4}-(0[0-9]|1[0-2])-(0[0-9]|[12][0-9]|3[01]))?$"
+            },
+            "is_approximate": {
+              "type": "boolean",
+              "description": "Whether the date range is approximate or inferred"
+            }
+          }
         },
         "classification_level": {
           "type": "string",
@@ -76,6 +104,30 @@
             "type": "string"
           },
           "description": "People mentioned in document body (not just author/recipients)"
+        },
+        "organizations_mentioned": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type", "country"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Organization name (uppercase)"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["INTELLIGENCE_AGENCY", "POLITICAL_PARTY", "MILITARY", "GOVERNMENT", "MEDIA", "LABOR_UNION", "OTHER"],
+                "description": "Type of organization"
+              },
+              "country": {
+                "type": "string",
+                "description": "Country of the organization (uppercase)"
+              }
+            }
+          },
+          "description": "Organizations mentioned in document with their type and country"
         },
         "country": {
           "type": "array",
@@ -141,6 +193,209 @@
           "minLength": 50,
           "maxLength": 1500,
           "description": "Concise historical summary (1-3 sentences, 50-1500 characters)"
+        },
+        "financial_references": {
+          "type": "object",
+          "required": ["amounts", "financial_actors", "purposes", "has_financial_content"],
+          "additionalProperties": false,
+          "description": "Financial information mentioned in the document (funding, payments, budgets)",
+          "properties": {
+            "amounts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["value", "normalized_usd", "context"],
+                "additionalProperties": false,
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "description": "Original text amount (e.g., '$500,000', '1 million dollars')"
+                  },
+                  "normalized_usd": {
+                    "type": ["number", "null"],
+                    "description": "Normalized amount in USD (null if cannot be determined)"
+                  },
+                  "context": {
+                    "type": "string",
+                    "description": "Brief context for the amount (e.g., 'PDC election funding')"
+                  }
+                }
+              },
+              "description": "Monetary amounts mentioned with normalized values"
+            },
+            "financial_actors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Organizations or individuals involved in financial transactions (uppercase)"
+            },
+            "purposes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ELECTION SUPPORT",
+                  "OPPOSITION SUPPORT",
+                  "PROPAGANDA",
+                  "MEDIA FUNDING",
+                  "POLITICAL ACTION",
+                  "INTELLIGENCE OPERATIONS",
+                  "MILITARY AID",
+                  "ECONOMIC DESTABILIZATION",
+                  "LABOR UNION SUPPORT",
+                  "CIVIC ACTION",
+                  "OTHER"
+                ]
+              },
+              "description": "Standardized purposes for financial transactions"
+            },
+            "has_financial_content": {
+              "type": "boolean",
+              "description": "Whether the document contains financial references"
+            }
+          }
+        },
+        "violence_references": {
+          "type": "object",
+          "required": ["incident_types", "victims", "perpetrators", "has_violence_content"],
+          "additionalProperties": false,
+          "description": "References to violence, executions, or physical harm",
+          "properties": {
+            "incident_types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ASSASSINATION",
+                  "EXECUTION",
+                  "COUP",
+                  "MILITARY COUP",
+                  "BOMBING",
+                  "ARMED CONFLICT",
+                  "REPRESSION",
+                  "DEATH",
+                  "KIDNAPPING",
+                  "SHOOTING",
+                  "MASSACRE",
+                  "CIVIL UNREST",
+                  "OTHER"
+                ]
+              },
+              "description": "Standardized types of violent incidents"
+            },
+            "victims": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or groups identified as victims (uppercase for names)"
+            },
+            "perpetrators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or organizations identified as perpetrators (uppercase)"
+            },
+            "has_violence_content": {
+              "type": "boolean",
+              "description": "Whether the document contains violence-related content"
+            }
+          }
+        },
+        "torture_references": {
+          "type": "object",
+          "required": ["detention_centers", "victims", "perpetrators", "methods_mentioned", "has_torture_content"],
+          "additionalProperties": false,
+          "description": "References to torture, detention, or interrogation practices",
+          "properties": {
+            "detention_centers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Named detention facilities or locations (e.g., VILLA GRIMALDI, LONDON 38)"
+            },
+            "victims": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals identified as torture victims (LAST, FIRST format)"
+            },
+            "perpetrators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or organizations identified as perpetrators (uppercase)"
+            },
+            "methods_mentioned": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ELECTRIC SHOCK",
+                  "WATERBOARDING",
+                  "PROLONGED ISOLATION",
+                  "BEATING",
+                  "SLEEP DEPRIVATION",
+                  "SENSORY DEPRIVATION",
+                  "PSYCHOLOGICAL TORTURE",
+                  "SEXUAL VIOLENCE",
+                  "HANGING",
+                  "BURNING",
+                  "OTHER"
+                ]
+              },
+              "description": "Standardized torture methods or practices mentioned"
+            },
+            "has_torture_content": {
+              "type": "boolean",
+              "description": "Whether the document contains torture-related content"
+            }
+          }
+        },
+        "disappearance_references": {
+          "type": "object",
+          "required": ["victims", "perpetrators", "locations", "dates_mentioned", "has_disappearance_content"],
+          "additionalProperties": false,
+          "description": "References to forced disappearances (desaparecidos)",
+          "properties": {
+            "victims": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals identified as disappeared persons (LAST, FIRST format)"
+            },
+            "perpetrators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Individuals or organizations implicated in disappearances (uppercase)"
+            },
+            "locations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Locations associated with disappearances (last seen, detention sites)"
+            },
+            "dates_mentioned": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Dates associated with disappearances (YYYY-MM-DD or descriptive)"
+            },
+            "has_disappearance_content": {
+              "type": "boolean",
+              "description": "Whether the document contains disappearance-related content"
+            }
+          }
         }
       }
     },

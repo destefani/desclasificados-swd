@@ -267,21 +267,21 @@ def _merge_references(chunks: list[ChunkResult], ref_type: str) -> Optional[dict
             "detention_centers": [],
             "victims": [],
             "perpetrators": [],
-            "methods_mentioned": False,
+            "methods_mentioned": [],
             "has_torture_content": False,
         }
         for refs in all_refs:
             merged["detention_centers"].extend(refs.get("detention_centers", []))
             merged["victims"].extend(refs.get("victims", []))
             merged["perpetrators"].extend(refs.get("perpetrators", []))
-            if refs.get("methods_mentioned"):
-                merged["methods_mentioned"] = True
+            merged["methods_mentioned"].extend(refs.get("methods_mentioned", []))
             if refs.get("has_torture_content"):
                 merged["has_torture_content"] = True
         # Deduplicate
         merged["detention_centers"] = list(set(merged["detention_centers"]))
         merged["victims"] = list(set(merged["victims"]))
         merged["perpetrators"] = list(set(merged["perpetrators"]))
+        merged["methods_mentioned"] = list(set(merged["methods_mentioned"]))
         return merged
 
     return None

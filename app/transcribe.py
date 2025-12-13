@@ -38,7 +38,7 @@ from jsonschema import Draft7Validator
 from openai import OpenAI
 from tqdm import tqdm
 
-from app.config import DATA_DIR, ROOT_DIR
+from app.config import DATA_DIR, ROOT_DIR, METADATA_SCHEMA_VERSION
 from app.utils.cost_tracker import PRICING, PricingTier
 from app.utils.chunked_pdf import (
     needs_chunking,
@@ -104,6 +104,18 @@ EST_OUTPUT_TOKENS = 1500
 token_usage: Deque[tuple[float, int]] = deque()
 request_times: Deque[float] = deque()
 rate_lock = threading.Lock()
+
+
+def get_output_dir_name(model: str) -> str:
+    """
+    Build output directory name including model and schema version.
+
+    Format: {model}-{schema_version}
+    Example: gpt-5-mini-v2.1.0
+
+    This ensures transcripts from different schema versions are kept separate.
+    """
+    return f"{model}-{METADATA_SCHEMA_VERSION}"
 
 
 # ---------------------------------------------------------------------------
@@ -872,7 +884,8 @@ def validate_outputs(model: str, min_text_length: int = 100) -> ValidationResult
     Returns:
         ValidationResult with issues found
     """
-    output_dir = DATA_DIR / "generated_transcripts" / model
+    output_dir_name = get_output_dir_name(model)
+    output_dir = DATA_DIR / "generated_transcripts" / output_dir_name
     issues: list[dict[str, Any]] = []
 
     if not output_dir.exists():
@@ -978,9 +991,10 @@ def print_validation_report(result: ValidationResult) -> None:
 
 def get_status() -> TranscriptionStatus:
     """Get current transcription status using PDFs as source."""
-    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+    model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
     pdfs_dir = DATA_DIR / "original_pdfs"
-    output_dir = DATA_DIR / "generated_transcripts" / model
+    output_dir_name = get_output_dir_name(model)
+    output_dir = DATA_DIR / "generated_transcripts" / output_dir_name
 
     # Get all PDFs (the authoritative source)
     all_pdfs = sorted(
@@ -1033,10 +1047,13 @@ def format_time(seconds: float) -> str:
 
 def print_status(status: TranscriptionStatus) -> None:
     """Print transcription status."""
+    output_dir_name = get_output_dir_name(status.model)
     print()
     print("Transcription Status")
     print("=" * 40)
     print(f"Model:           {status.model}")
+    print(f"Schema version:  {METADATA_SCHEMA_VERSION}")
+    print(f"Output dir:      {output_dir_name}")
     print(f"Total documents: {status.total:,}")
     print(f"Completed:       {status.done:,} ({status.percent_done:.1f}%)")
     print(f"Remaining:       {status.remaining:,}")
@@ -1080,7 +1097,8 @@ def process_files(
         strict: If True, stop on first failure
     """
     pdfs_dir = DATA_DIR / "original_pdfs"
-    output_dir = DATA_DIR / "generated_transcripts" / model
+    output_dir_name = get_output_dir_name(model)
+    output_dir = DATA_DIR / "generated_transcripts" / output_dir_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     workers = max_workers or get_optimal_workers()
@@ -1224,7 +1242,7 @@ Fast processing (higher OpenAI tiers):
   MAX_TOKENS_PER_MINUTE=2000000 %(prog)s --workers 50 --yes
 
 Environment variables:
-  OPENAI_MODEL             Model to use (default: gpt-4.1-mini)
+  OPENAI_MODEL             Model to use (default: gpt-5-mini)
   MAX_TOKENS_PER_MINUTE    Rate limit in tokens/min (default: 10000000)
         """,
     )
@@ -1309,7 +1327,8 @@ Environment variables:
 
 def show_cost_history(model: str) -> None:
     """Display cost history from all runs."""
-    output_dir = DATA_DIR / "generated_transcripts" / model
+    output_dir_name = get_output_dir_name(model)
+    output_dir = DATA_DIR / "generated_transcripts" / output_dir_name
     history_file = output_dir / "cost_history.jsonl"
 
     if not history_file.exists():
@@ -1368,7 +1387,8 @@ def get_failed_documents(model: str, incomplete_only: bool = False) -> list[str]
     Returns:
         List of filenames to retry
     """
-    output_dir = DATA_DIR / "generated_transcripts" / model
+    output_dir_name = get_output_dir_name(model)
+    output_dir = DATA_DIR / "generated_transcripts" / output_dir_name
     failed_file = output_dir / "failed_documents.json"
 
     if not failed_file.exists():
@@ -1437,7 +1457,8 @@ def main() -> None:
             return
 
         # Remove existing outputs so they can be re-processed
-        output_dir = DATA_DIR / "generated_transcripts" / status.model
+        output_dir_name = get_output_dir_name(status.model)
+        output_dir = DATA_DIR / "generated_transcripts" / output_dir_name
         removed = 0
         for filename in files_to_retry:
             json_path = output_dir / (os.path.splitext(filename)[0] + ".json")
