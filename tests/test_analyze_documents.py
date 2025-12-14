@@ -759,3 +759,29 @@ class TestGenerateFullHtmlReport:
 
         # Check for CSS rule for external links
         assert ".pdf-link.external::after" in content
+
+    def test_external_viewer_modal_included(self, temp_dir_with_pdfs):
+        """Should include iframe-based external viewer modal when external_pdf_viewer is set."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(
+            results,
+            output_dir=output_dir,
+            external_pdf_viewer="https://declasseuucl.vercel.app"
+        )
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        # Check for external viewer modal elements
+        assert 'id="external-viewer-modal"' in content
+        assert 'id="external-viewer-iframe"' in content
+        assert 'openExternalViewer' in content
+        assert 'closeExternalViewer' in content
