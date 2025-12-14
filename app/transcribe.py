@@ -97,8 +97,8 @@ if USE_STRUCTURED_OUTPUTS:
 # Rate limiting configuration
 MAX_TPM = int(os.getenv("MAX_TOKENS_PER_MINUTE", "10000000"))  # 10M for gpt-4.1-mini
 MAX_RPM = int(os.getenv("MAX_REQUESTS_PER_MINUTE", "10000"))   # 10k RPM
-EST_TOKENS_PER_DOC = 3000
-EST_OUTPUT_TOKENS = 1500
+EST_TOKENS_PER_DOC = 12000  # Based on actual usage from 493 docs (avg: 11,924)
+EST_OUTPUT_TOKENS = 6500   # Based on actual usage from 493 docs (avg: 6,434)
 
 # Global rate limiting state
 token_usage: Deque[tuple[float, int]] = deque()
