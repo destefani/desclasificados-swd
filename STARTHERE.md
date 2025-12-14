@@ -4,6 +4,25 @@
 
 ---
 
+## 🆕 Full Report Sections Complete (2025-12-14)
+
+**PR #27: GitHub Pages report now includes all sections.**
+
+The full report generator (`generate_full_html_report`) was missing several sections from the basic report. These have been added:
+
+- Financial: Purposes and Financial Actors tables
+- Confidence: Common Concerns table
+- Document Types section with Languages subsection
+- Locations: Countries, Cities, Other Places tables
+- People: Recipients table
+
+**Deploy the updated report:**
+```bash
+make deploy  # Generates report and pushes to GitHub Pages
+```
+
+---
+
 ## 🆕 Historical Research Plan Ready (2025-12-13)
 
 **Phase 1 corpus analysis complete.** Ready to begin historical research.
