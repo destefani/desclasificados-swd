@@ -15,10 +15,29 @@ import collections
 from datetime import datetime
 from typing import Any
 
+from collections import Counter
+
 from dateutil import parser as date_parser
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
+
+from app.visualizations.interactive_timeline import (
+    generate_interactive_timeline,
+    generate_timeline_with_monthly_detail,
+)
+from app.visualizations.network_graph import (
+    generate_people_network,
+    generate_organization_network,
+)
+from app.visualizations.geographic_map import generate_geographic_map
+from app.visualizations.sensitive_content import (
+    generate_sensitive_timeline,
+    generate_perpetrator_victim_network,
+    generate_incident_types_chart,
+    generate_sensitive_summary_cards,
+)
+from app.visualizations.keyword_cloud import generate_keyword_cloud
 
 
 def image_to_base64(image_path: str) -> str:
@@ -98,6 +117,14 @@ def process_documents(
     confidence_scores: list[float] = []
     confidence_concerns = collections.Counter()
 
+    # Classification by year for stacked timeline chart
+    classification_by_year: dict[str, Counter] = collections.defaultdict(collections.Counter)
+
+    # Sensitive content by year for timeline visualization
+    sensitive_content_by_year: dict[str, dict[str, int]] = collections.defaultdict(
+        lambda: {"violence": 0, "torture": 0, "disappearance": 0}
+    )
+
     total_docs = 0
     total_pages = 0
 
@@ -148,6 +175,7 @@ def process_documents(
 
         # Process document date
         doc_date_str = metadata.get("document_date", "")
+        doc_year = "Unknown"  # Track year for classification_by_year
         if doc_date_str:
             timeline_daily[doc_date_str] += 1
             # Extract year and month for aggregated views
@@ -159,6 +187,7 @@ def process_documents(
                     parts = doc_date_str.split("-")
                     year = parts[0] if parts[0] != "0000" else "Unknown"
                     month = f"{parts[0]}-{parts[1]}" if len(parts) >= 2 and parts[1] != "00" else "Unknown"
+                doc_year = year
                 timeline_yearly[year] += 1
                 if month != "Unknown":
                     timeline_monthly[month] += 1
@@ -170,6 +199,7 @@ def process_documents(
         # Classification level
         classification = metadata.get("classification_level", "Unknown") or "Unknown"
         classification_count[classification] += 1
+        classification_by_year[doc_year][classification] += 1
 
         # Language
         language = metadata.get("language", "Unknown") or "Unknown"
@@ -242,6 +272,7 @@ def process_documents(
         vio_refs = metadata.get("violence_references", {})
         if isinstance(vio_refs, dict) and vio_refs.get("has_violence_content"):
             docs_with_violence += 1
+            sensitive_content_by_year[doc_year]["violence"] += 1
             for incident in vio_refs.get("incident_types", []):
                 if incident:
                     violence_incident_types[incident] += 1
@@ -260,6 +291,7 @@ def process_documents(
         tor_refs = metadata.get("torture_references", {})
         if isinstance(tor_refs, dict) and tor_refs.get("has_torture_content"):
             docs_with_torture += 1
+            sensitive_content_by_year[doc_year]["torture"] += 1
             for center in tor_refs.get("detention_centers", []):
                 if center:
                     torture_detention_centers[center] += 1
@@ -283,6 +315,7 @@ def process_documents(
         dis_refs = metadata.get("disappearance_references", {})
         if isinstance(dis_refs, dict) and dis_refs.get("has_disappearance_content"):
             docs_with_disappearance += 1
+            sensitive_content_by_year[doc_year]["disappearance"] += 1
             for victim in dis_refs.get("victims", []):
                 if victim:
                     disappearance_victims[victim] += 1
@@ -319,6 +352,9 @@ def process_documents(
                 "title": metadata.get("document_title", ""),
                 "summary": metadata.get("document_summary", ""),
                 "page_count": page_count if isinstance(page_count, int) else 0,
+                # Include entity data for network visualization
+                "people": metadata.get("people_mentioned", []),
+                "organizations": metadata.get("organizations_mentioned", []),
             })
 
     return {
@@ -333,6 +369,8 @@ def process_documents(
         "recipients_count": recipients_count,
         "doc_type_count": doc_type_count,
         "classification_count": classification_count,
+        "classification_by_year": dict(classification_by_year),
+        "sensitive_content_by_year": dict(sensitive_content_by_year),
         "language_count": language_count,
         "country_count": country_count,
         "city_count": city_count,
@@ -1135,17 +1173,129 @@ def generate_full_html_report(
     """
     os.makedirs(output_dir, exist_ok=True)
 
-    # Generate plots (same as standard report)
-    timeline_path = os.path.join(output_dir, "timeline_yearly.png")
+    # Generate interactive timeline (full report uses JavaScript-based visualization)
+    interactive_timeline_html = generate_timeline_with_monthly_detail(
+        timeline_yearly=results["timeline_yearly"],
+        timeline_monthly=results["timeline_monthly"],
+        classification_by_year=results.get("classification_by_year"),
+        container_id="timeline-chart-full",
+        height="550px",
+    )
+
+    # Generate network graphs (requires all_documents from full_mode)
+    all_documents = results.get("all_documents", [])
+    if all_documents:
+        # Convert all_documents to the format expected by network functions
+        docs_for_network = []
+        for doc in all_documents:
+            docs_for_network.append({
+                "metadata": {
+                    "document_id": doc.get("doc_id", ""),
+                    "people_mentioned": doc.get("people", []),
+                    "organizations_mentioned": doc.get("organizations", []),
+                }
+            })
+
+        people_network_html = generate_people_network(
+            docs_for_network,
+            container_id="people-network-full",
+            height="600px",
+            max_nodes=75,
+            min_occurrences=3,
+            min_edge_weight=2,
+        )
+
+        org_network_html = generate_organization_network(
+            docs_for_network,
+            container_id="org-network-full",
+            height="500px",
+            max_nodes=50,
+            min_occurrences=3,
+            min_edge_weight=2,
+        )
+    else:
+        people_network_html = "<p><em>Network visualization requires full mode data</em></p>"
+        org_network_html = "<p><em>Network visualization requires full mode data</em></p>"
+
+    # Generate geographic map
+    geographic_map_html = generate_geographic_map(
+        city_count=results.get("city_count", Counter()),
+        country_count=results.get("country_count", Counter()),
+        other_place_count=results.get("other_place_count", Counter()),
+        torture_detention_centers=results.get("torture_detention_centers", Counter()),
+        container_id="geographic-map-full",
+        height="600px",
+        show_detention_centers=True,
+        show_condor_countries=True,
+    )
+
+    # Generate sensitive content dashboard
+    sensitive_summary_html = generate_sensitive_summary_cards(
+        docs_with_violence=results.get("docs_with_violence", 0),
+        docs_with_torture=results.get("docs_with_torture", 0),
+        docs_with_disappearance=results.get("docs_with_disappearance", 0),
+        total_docs=results.get("total_docs", 0),
+        violence_victims=results.get("violence_victims", Counter()),
+        torture_victims=results.get("torture_victims", Counter()),
+        disappearance_victims=results.get("disappearance_victims", Counter()),
+        violence_perpetrators=results.get("violence_perpetrators", Counter()),
+        torture_perpetrators=results.get("torture_perpetrators", Counter()),
+        disappearance_perpetrators=results.get("disappearance_perpetrators", Counter()),
+    )
+
+    sensitive_timeline_html = generate_sensitive_timeline(
+        sensitive_content_by_year=results.get("sensitive_content_by_year", {}),
+        container_id="sensitive-timeline-full",
+        height="400px",
+        include_events=True,
+    )
+
+    # Generate perpetrator-victim network (only in full mode with doc mappings)
+    if results.get("full_mode"):
+        perp_victim_network_html = generate_perpetrator_victim_network(
+            violence_victims=results.get("violence_victims", Counter()),
+            violence_perpetrators=results.get("violence_perpetrators", Counter()),
+            torture_victims=results.get("torture_victims", Counter()),
+            torture_perpetrators=results.get("torture_perpetrators", Counter()),
+            disappearance_victims=results.get("disappearance_victims", Counter()),
+            disappearance_perpetrators=results.get("disappearance_perpetrators", Counter()),
+            violence_victim_docs=results.get("violence_victim_docs"),
+            violence_perp_docs=results.get("violence_perp_docs"),
+            torture_victim_docs=results.get("torture_victim_docs"),
+            torture_perp_docs=results.get("torture_perp_docs"),
+            disappearance_victim_docs=results.get("disappearance_victim_docs"),
+            disappearance_perp_docs=results.get("disappearance_perp_docs"),
+            container_id="perp-victim-network-full",
+            height="600px",
+            max_nodes=75,
+            min_mentions=2,
+        )
+    else:
+        perp_victim_network_html = "<p><em>Perpetrator-victim network requires full mode</em></p>"
+
+    incident_types_html = generate_incident_types_chart(
+        violence_incident_types=results.get("violence_incident_types", Counter()),
+        torture_methods=results.get("torture_methods", Counter()),
+        container_id="incident-types-full",
+        height="350px",
+        max_items=12,
+    )
+
+    # Generate keyword word cloud
+    keyword_cloud_html = generate_keyword_cloud(
+        keyword_count=results.get("keywords_count", Counter()),
+        container_id="keyword-cloud-full",
+        width=800,
+        height=400,
+        max_words=80,
+        min_count=2,
+    )
+
+    # Generate static plots for other charts
     classification_path = os.path.join(output_dir, "classification.png")
     doc_types_path = os.path.join(output_dir, "doc_types.png")
     confidence_path = os.path.join(output_dir, "confidence.png")
 
-    timeline_exists = plot_timeline(
-        results["timeline_yearly"],
-        timeline_path,
-        "Documents per Year"
-    )
     classification_exists = plot_pie_chart(
         results["classification_count"],
         classification_path,
@@ -1163,15 +1313,14 @@ def generate_full_html_report(
 
     # Convert images to base64 if standalone mode
     if standalone:
-        timeline_src = image_to_base64(timeline_path) if timeline_exists else ""
         classification_src = image_to_base64(classification_path) if classification_exists else ""
         doc_types_src = image_to_base64(doc_types_path) if doc_type_exists else ""
         confidence_src = image_to_base64(confidence_path) if confidence_exists else ""
-        for path in [timeline_path, classification_path, doc_types_path, confidence_path]:
+        for path in [classification_path, doc_types_path, confidence_path]:
             if os.path.exists(path):
                 os.remove(path)
     else:
-        timeline_src = "timeline_yearly.png"
+        # Non-standalone mode: use file paths for images
         classification_src = "classification.png"
         doc_types_src = "doc_types.png"
         confidence_src = "confidence.png"
@@ -1561,6 +1710,21 @@ def generate_full_html_report(
             </ul>
 
             <div class="nav-section">
+                <div class="nav-section-title">Network Analysis</div>
+                <ul>
+                    <li><a href="#people-network">People Network</a></li>
+                    <li><a href="#org-network">Organization Network</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Geographic</div>
+                <ul>
+                    <li><a href="#geographic-map">Geographic Map</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
                 <div class="nav-section-title">Entities</div>
                 <ul>
                     <li><a href="#people">People Mentioned</a></li>
@@ -1572,6 +1736,7 @@ def generate_full_html_report(
             <div class="nav-section">
                 <div class="nav-section-title">Sensitive Content</div>
                 <ul>
+                    <li><a href="#sensitive-dashboard">Dashboard</a></li>
                     <li><a href="#violence">Violence</a></li>
                     <li><a href="#torture">Torture</a></li>
                     <li><a href="#disappearances">Disappearances</a></li>
@@ -1640,7 +1805,11 @@ def generate_full_html_report(
 
             <section id="timeline">
                 <h2>Timeline</h2>
-                {f"<div class='chart-container'><img src='{timeline_src}' alt='Timeline'></div>" if timeline_exists else "<p><em>No valid dates for timeline</em></p>"}
+                <p>Interactive timeline showing document distribution over time with historical event annotations.
+                Use the controls to zoom, pan, and switch between yearly/monthly views.</p>
+                <div class="chart-container">
+                    {interactive_timeline_html}
+                </div>
             </section>
 
             <section id="classification">
@@ -1648,6 +1817,35 @@ def generate_full_html_report(
                 <div class="two-col">
                     {f"<div class='chart-container'><img src='{classification_src}' alt='Classification'></div>" if classification_exists else ""}
                     {f"<div class='chart-container'><img src='{doc_types_src}' alt='Document Types'></div>" if doc_type_exists else ""}
+                </div>
+            </section>
+
+            <section id="people-network">
+                <h2>People Network</h2>
+                <p>Interactive network showing relationships between people mentioned in documents.
+                People who frequently appear together in documents are connected by edges.
+                Node size reflects mention frequency. Drag nodes to explore, scroll to zoom.</p>
+                <div class="chart-container">
+                    {people_network_html}
+                </div>
+            </section>
+
+            <section id="org-network">
+                <h2>Organization Network</h2>
+                <p>Interactive network showing relationships between organizations mentioned in documents.
+                Organizations that frequently appear together are connected by edges.</p>
+                <div class="chart-container">
+                    {org_network_html}
+                </div>
+            </section>
+
+            <section id="geographic-map">
+                <h2>Geographic Map</h2>
+                <p>Interactive map showing locations mentioned in documents. Blue markers show document mentions
+                (larger = more frequent). Red markers indicate known detention and torture centers.
+                Dashed rectangles highlight Operation Condor member countries. Toggle layers using the checkboxes.</p>
+                <div class="chart-container">
+                    {geographic_map_html}
                 </div>
             </section>
 
@@ -1665,8 +1863,45 @@ def generate_full_html_report(
 
             <section id="keywords">
                 <h2>Keywords</h2>
+                <p>Visual representation of keyword frequency. Larger words appear more often in documents.</p>
+                <div class="chart-container">
+                    {keyword_cloud_html}
+                </div>
+                <h3>Keyword Details</h3>
                 <p>Click on the document count to see source documents for each keyword.</p>
                 {create_table_with_docs(results['keywords_count'], results.get('keyword_docs', {}), limit=100, id_prefix='keywords')}
+            </section>
+
+            <section id="sensitive-dashboard">
+                <h2>Sensitive Content Dashboard</h2>
+
+                <div class="sensitive-warning">
+                    <h4>Content Warning</h4>
+                    <p>This section contains analysis of violence, torture, and forced disappearances documented in declassified materials.
+                    These visualizations are provided for historical research purposes.</p>
+                </div>
+
+                {sensitive_summary_html}
+
+                <h3>Sensitive Content Over Time</h3>
+                <p>Timeline showing how documentation of violence, torture, and disappearances changed over the years.
+                Major historical events are marked with vertical lines.</p>
+                <div class="chart-container">
+                    {sensitive_timeline_html}
+                </div>
+
+                <h3>Perpetrator-Victim Network</h3>
+                <p>Network graph connecting perpetrators (red) to victims (blue) who appear in the same documents.
+                Amber nodes indicate individuals named as both perpetrators and victims. Arrows point from perpetrator to victim.</p>
+                <div class="chart-container">
+                    {perp_victim_network_html}
+                </div>
+
+                <h3>Incident Types & Methods</h3>
+                <p>Breakdown of violence incident types and torture methods mentioned in documents.</p>
+                <div class="chart-container">
+                    {incident_types_html}
+                </div>
             </section>
 
             <section id="violence">
