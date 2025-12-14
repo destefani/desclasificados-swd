@@ -467,3 +467,229 @@ def generate_pdf_link_interceptor() -> str:
 </script>
 '''
     return js
+
+
+def generate_external_viewer_modal() -> str:
+    """
+    Generate HTML/CSS/JS for an iframe-based external PDF viewer modal.
+
+    This modal embeds the external viewer (e.g., declasseuucl.vercel.app)
+    in an iframe, allowing users to view PDFs without leaving the page.
+
+    Returns:
+        HTML string with embedded CSS and JavaScript
+    """
+    html = '''
+<!-- External PDF Viewer Modal -->
+<div id="external-viewer-modal" class="external-modal" style="display: none;">
+    <div class="external-modal-backdrop" onclick="closeExternalViewer()"></div>
+    <div class="external-modal-content">
+        <div class="external-modal-header">
+            <div class="external-modal-title">
+                <span id="external-viewer-title">Document Viewer</span>
+            </div>
+            <div class="external-modal-controls">
+                <a id="external-viewer-newwindow" href="#" target="_blank" class="external-btn" title="Open in new window">↗ New Window</a>
+                <button onclick="closeExternalViewer()" class="external-btn external-btn-close" title="Close (ESC)">✕ Close</button>
+            </div>
+        </div>
+        <div class="external-modal-body">
+            <div id="external-loading" class="external-loading">
+                <div class="external-spinner"></div>
+                <p>Loading viewer...</p>
+            </div>
+            <iframe id="external-viewer-iframe" src="" frameborder="0" allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
+
+<style>
+/* External Viewer Modal Styles */
+.external-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.external-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.external-modal-content {
+    position: relative;
+    width: 95%;
+    max-width: 1400px;
+    height: 95%;
+    max-height: 95vh;
+    background: #1f2937;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.external-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #111827;
+    border-bottom: 1px solid #374151;
+    flex-shrink: 0;
+}
+
+.external-modal-title {
+    color: #f3f4f6;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.external-modal-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.external-btn {
+    background: #374151;
+    color: #f3f4f6;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.external-btn:hover {
+    background: #4b5563;
+}
+
+.external-btn-close {
+    background: #dc2626;
+}
+
+.external-btn-close:hover {
+    background: #b91c1c;
+}
+
+.external-modal-body {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+#external-viewer-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+}
+
+.external-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #9ca3af;
+}
+
+.external-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #374151;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: external-spin 1s linear infinite;
+    margin: 0 auto 12px;
+}
+
+@keyframes external-spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+(function() {
+    const modal = document.getElementById('external-viewer-modal');
+    const iframe = document.getElementById('external-viewer-iframe');
+    const loading = document.getElementById('external-loading');
+    const titleEl = document.getElementById('external-viewer-title');
+    const newWindowLink = document.getElementById('external-viewer-newwindow');
+
+    // Open external viewer in modal
+    window.openExternalViewer = function(url, title) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        loading.style.display = 'block';
+        iframe.style.opacity = '0';
+
+        titleEl.textContent = title || 'Document Viewer';
+        newWindowLink.href = url;
+        iframe.src = url;
+
+        iframe.onload = function() {
+            loading.style.display = 'none';
+            iframe.style.opacity = '1';
+        };
+    };
+
+    // Close the modal
+    window.closeExternalViewer = function() {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        iframe.src = '';
+    };
+
+    // ESC key to close
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'flex') {
+            closeExternalViewer();
+        }
+    });
+})();
+</script>
+'''
+    return html
+
+
+def generate_external_link_interceptor() -> str:
+    """
+    Generate JavaScript that intercepts clicks on external PDF links
+    and opens them in the iframe modal instead of a new tab.
+
+    Returns:
+        JavaScript code as a string
+    """
+    js = '''
+<script>
+(function() {
+    // Intercept clicks on external PDF links
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a.pdf-link.external');
+        if (link) {
+            e.preventDefault();
+            // Extract document ID from URL for title
+            const url = new URL(link.href);
+            const docId = url.searchParams.get('documentId') || 'Document';
+            openExternalViewer(link.href, 'Document ' + docId);
+        }
+    });
+})();
+</script>
+'''
+    return js

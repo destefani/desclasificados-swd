@@ -41,6 +41,8 @@ from app.visualizations.keyword_cloud import generate_keyword_cloud
 from app.visualizations.pdf_viewer import (
     generate_pdf_viewer_modal,
     generate_pdf_link_interceptor,
+    generate_external_viewer_modal,
+    generate_external_link_interceptor,
 )
 
 
@@ -2028,13 +2030,15 @@ def generate_full_html_report(
 
             <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--gray-200); color: var(--gray-600); font-size: 0.85rem;">
                 <p>This report analyzes declassified CIA documents related to the Chilean dictatorship (1973-1990).</p>
-                <p><strong>{"Online Report:" if github_pages_mode else "Full Report Mode:"}</strong> {"This is an online version. Source PDFs are not available for download." if github_pages_mode else ("Click PDF links to view documents in the embedded viewer." if serve_mode else "PDF links are local file:// URLs and will only work on the machine where the PDFs are stored.")}</p>
+                <p><strong>{"Online Report:" if github_pages_mode else "Full Report Mode:"}</strong> {"Click PDF links to view documents in the embedded viewer." if external_pdf_viewer else ("This is an online version. Source PDFs are not available for download." if github_pages_mode else ("Click PDF links to view documents in the embedded viewer." if serve_mode else "PDF links are local file:// URLs and will only work on the machine where the PDFs are stored."))}</p>
                 {"<p>Source code and data processing pipeline available on <a href='https://github.com/destefani/desclasificados-swd'>GitHub</a>.</p>" if github_pages_mode else ""}
             </footer>
         </main>
     </div>
     {generate_pdf_viewer_modal() if serve_mode else ""}
     {generate_pdf_link_interceptor() if serve_mode else ""}
+    {generate_external_viewer_modal() if external_pdf_viewer else ""}
+    {generate_external_link_interceptor() if external_pdf_viewer else ""}
 </body>
 </html>
 """
