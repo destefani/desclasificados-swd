@@ -148,6 +148,13 @@ analyze:
 analyze-full:
 	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --full --pdf-dir data/original_pdfs
 
+# Serve the report with embedded PDF viewer
+serve:
+	@echo "Generating server-compatible report..."
+	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --serve --pdf-dir data/original_pdfs
+	@echo ""
+	uv run python -m app.serve_report --report reports/report_full.html --pdf-dir data/original_pdfs
+
 visualize:
 	uv run python -m app.visualize_transcripts
 
@@ -239,6 +246,8 @@ help:
 	@echo ""
 	@echo "Analysis:"
 	@echo "  analyze          Generate HTML report"
+	@echo "  analyze-full     Generate full report with PDF links"
+	@echo "  serve            Start report server with PDF viewer"
 	@echo "  visualize        Create visualizations"
 	@echo ""
 	@echo "Testing:"
@@ -260,5 +269,5 @@ help:
         batch-run batch-prepare batch-pending batch-jobs \
         rag-build rag-rebuild rag-stats rag-interactive rag-query \
         eval-stats eval-validate eval-sample eval-report progress \
-        analyze visualize test test-unit lint format typecheck \
+        analyze analyze-full serve visualize test test-unit lint format typecheck \
         clean update lock run shell help

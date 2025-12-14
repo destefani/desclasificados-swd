@@ -1509,3 +1509,247 @@ class TestKeywordCloudIntegration:
             # Check for keyword cloud elements
             assert "keyword-cloud-full" in content
             assert "wordcloud" in content.lower()
+
+
+# =============================================================================
+# PDF Viewer Tests
+# =============================================================================
+
+from app.visualizations.pdf_viewer import (
+    generate_pdf_viewer_modal,
+    generate_pdf_link_interceptor,
+    PDFJS_CDN,
+    PDFJS_WORKER_CDN,
+)
+
+
+class TestPdfJsCdnUrls:
+    """Tests for PDF.js CDN URLs."""
+
+    def test_pdfjs_cdn_url_format(self):
+        """Test PDF.js CDN URL is valid."""
+        assert PDFJS_CDN.startswith("https://")
+        assert "pdf.js" in PDFJS_CDN.lower() or "pdf" in PDFJS_CDN.lower()
+
+    def test_pdfjs_worker_cdn_url_format(self):
+        """Test PDF.js worker CDN URL is valid."""
+        assert PDFJS_WORKER_CDN.startswith("https://")
+        assert "worker" in PDFJS_WORKER_CDN.lower()
+
+
+class TestGeneratePdfViewerModal:
+    """Tests for generate_pdf_viewer_modal function."""
+
+    def test_returns_html_string(self):
+        """Test function returns non-empty HTML string."""
+        html = generate_pdf_viewer_modal()
+        assert isinstance(html, str)
+        assert len(html) > 0
+
+    def test_contains_modal_element(self):
+        """Test HTML contains modal container."""
+        html = generate_pdf_viewer_modal()
+        assert 'id="pdf-viewer-modal"' in html
+        assert 'class="pdf-modal"' in html
+
+    def test_contains_canvas(self):
+        """Test HTML contains PDF canvas element."""
+        html = generate_pdf_viewer_modal()
+        assert 'id="pdf-canvas"' in html
+        assert "<canvas" in html
+
+    def test_contains_pdfjs_script(self):
+        """Test HTML includes PDF.js library."""
+        html = generate_pdf_viewer_modal()
+        assert PDFJS_CDN in html
+        assert PDFJS_WORKER_CDN in html
+
+    def test_contains_navigation_controls(self):
+        """Test HTML contains page navigation controls."""
+        html = generate_pdf_viewer_modal()
+        assert "pdfPrevPage" in html
+        assert "pdfNextPage" in html
+        assert 'id="pdf-page-input"' in html
+        assert 'id="pdf-total-pages"' in html
+
+    def test_contains_zoom_controls(self):
+        """Test HTML contains zoom controls."""
+        html = generate_pdf_viewer_modal()
+        assert "pdfZoomIn" in html
+        assert "pdfZoomOut" in html
+        assert "pdfFitWidth" in html
+        assert 'id="pdf-zoom-level"' in html
+
+    def test_contains_close_functionality(self):
+        """Test HTML contains close button and escape handler."""
+        html = generate_pdf_viewer_modal()
+        assert "closePdfViewer" in html
+        assert "Escape" in html
+
+    def test_contains_open_function(self):
+        """Test HTML exports openPdfViewer function."""
+        html = generate_pdf_viewer_modal()
+        assert "window.openPdfViewer" in html
+
+    def test_contains_loading_state(self):
+        """Test HTML contains loading indicator."""
+        html = generate_pdf_viewer_modal()
+        assert 'id="pdf-loading"' in html
+        assert "Loading PDF" in html
+
+    def test_contains_error_state(self):
+        """Test HTML contains error state."""
+        html = generate_pdf_viewer_modal()
+        assert 'id="pdf-error"' in html
+        assert "Failed to load PDF" in html
+
+    def test_contains_styles(self):
+        """Test HTML includes CSS styles."""
+        html = generate_pdf_viewer_modal()
+        assert "<style>" in html
+        assert ".pdf-modal" in html
+        assert ".pdf-btn" in html
+
+
+class TestGeneratePdfLinkInterceptor:
+    """Tests for generate_pdf_link_interceptor function."""
+
+    def test_returns_script_string(self):
+        """Test function returns JavaScript script."""
+        js = generate_pdf_link_interceptor()
+        assert isinstance(js, str)
+        assert "<script>" in js
+        assert "</script>" in js
+
+    def test_intercepts_pdf_links(self):
+        """Test script intercepts PDF links."""
+        js = generate_pdf_link_interceptor()
+        assert 'href$=".pdf"' in js
+        assert "openPdfViewer" in js
+
+    def test_prevents_default(self):
+        """Test script prevents default link behavior."""
+        js = generate_pdf_link_interceptor()
+        assert "preventDefault" in js
+
+    def test_checks_same_origin(self):
+        """Test script only intercepts same-origin links."""
+        js = generate_pdf_link_interceptor()
+        assert "window.location.origin" in js
+
+
+class TestPdfViewerIntegration:
+    """Integration tests for PDF viewer in reports."""
+
+    def test_serve_mode_includes_pdf_viewer(self):
+        """Test that serve mode includes PDF viewer modal."""
+        import tempfile
+        import os
+        from app.analyze_documents import process_documents, generate_full_html_report
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            transcripts_dir = os.path.join(tmpdir, "transcripts")
+            pdfs_dir = os.path.join(tmpdir, "pdfs")
+            os.makedirs(transcripts_dir)
+            os.makedirs(pdfs_dir)
+
+            # Create a sample document
+            sample_doc = {
+                "metadata": {
+                    "document_id": "TEST001",
+                    "document_date": "1976-09-21",
+                    "classification_level": "SECRET",
+                    "document_type": "TELEGRAM",
+                    "page_count": 1,
+                },
+                "confidence": {"overall": 0.9, "concerns": []},
+            }
+            with open(os.path.join(transcripts_dir, "test.json"), "w") as f:
+                json.dump(sample_doc, f)
+
+            results = process_documents(transcripts_dir, full_mode=True, pdf_dir=pdfs_dir)
+            generate_full_html_report(results, tmpdir, serve_mode=True)
+
+            report_path = os.path.join(tmpdir, "report_full.html")
+            with open(report_path, "r") as f:
+                content = f.read()
+
+            # Check for PDF viewer elements
+            assert 'id="pdf-viewer-modal"' in content
+            assert PDFJS_CDN in content
+            assert "openPdfViewer" in content
+
+    def test_serve_mode_uses_server_urls(self):
+        """Test that serve mode generates /pdf/ URLs."""
+        import tempfile
+        import os
+        from app.analyze_documents import process_documents, generate_full_html_report
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            transcripts_dir = os.path.join(tmpdir, "transcripts")
+            pdfs_dir = os.path.join(tmpdir, "pdfs")
+            os.makedirs(transcripts_dir)
+            os.makedirs(pdfs_dir)
+
+            # Create a sample document
+            sample_doc = {
+                "metadata": {
+                    "document_id": "TEST001",
+                    "document_date": "1976-09-21",
+                    "classification_level": "SECRET",
+                    "document_type": "TELEGRAM",
+                    "page_count": 1,
+                },
+                "confidence": {"overall": 0.9, "concerns": []},
+            }
+            with open(os.path.join(transcripts_dir, "test.json"), "w") as f:
+                json.dump(sample_doc, f)
+
+            results = process_documents(transcripts_dir, full_mode=True, pdf_dir=pdfs_dir)
+            generate_full_html_report(results, tmpdir, serve_mode=True)
+
+            report_path = os.path.join(tmpdir, "report_full.html")
+            with open(report_path, "r") as f:
+                content = f.read()
+
+            # Check for server URLs (not file://)
+            assert 'href="/pdf/' in content
+            assert 'file://' not in content
+
+    def test_non_serve_mode_uses_file_urls(self):
+        """Test that non-serve mode generates file:// URLs."""
+        import tempfile
+        import os
+        from app.analyze_documents import process_documents, generate_full_html_report
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            transcripts_dir = os.path.join(tmpdir, "transcripts")
+            pdfs_dir = os.path.join(tmpdir, "pdfs")
+            os.makedirs(transcripts_dir)
+            os.makedirs(pdfs_dir)
+
+            # Create a sample document
+            sample_doc = {
+                "metadata": {
+                    "document_id": "TEST001",
+                    "document_date": "1976-09-21",
+                    "classification_level": "SECRET",
+                    "document_type": "TELEGRAM",
+                    "page_count": 1,
+                },
+                "confidence": {"overall": 0.9, "concerns": []},
+            }
+            with open(os.path.join(transcripts_dir, "test.json"), "w") as f:
+                json.dump(sample_doc, f)
+
+            results = process_documents(transcripts_dir, full_mode=True, pdf_dir=pdfs_dir)
+            generate_full_html_report(results, tmpdir, serve_mode=False)
+
+            report_path = os.path.join(tmpdir, "report_full.html")
+            with open(report_path, "r") as f:
+                content = f.read()
+
+            # Check for file:// URLs (not server URLs)
+            assert 'file://' in content
+            # PDF viewer should NOT be included
+            assert 'id="pdf-viewer-modal"' not in content

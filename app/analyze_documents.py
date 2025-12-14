@@ -38,6 +38,10 @@ from app.visualizations.sensitive_content import (
     generate_sensitive_summary_cards,
 )
 from app.visualizations.keyword_cloud import generate_keyword_cloud
+from app.visualizations.pdf_viewer import (
+    generate_pdf_viewer_modal,
+    generate_pdf_link_interceptor,
+)
 
 
 def image_to_base64(image_path: str) -> str:
@@ -1156,7 +1160,8 @@ def generate_full_html_report(
     results: dict,
     output_dir: str,
     output_file: str = "report_full.html",
-    standalone: bool = True
+    standalone: bool = True,
+    serve_mode: bool = False,
 ):
     """Generate a full HTML report with PDF links for local investigation.
 
@@ -1170,6 +1175,7 @@ def generate_full_html_report(
         output_dir: Directory to save the report
         output_file: Name of the HTML file
         standalone: If True (default), embed images as base64 for a self-contained file.
+        serve_mode: If True, generate server-compatible URLs (/pdf/) and include PDF viewer.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -1328,7 +1334,13 @@ def generate_full_html_report(
     def create_pdf_link(pdf_path: str, label: str) -> str:
         """Create an HTML link to a PDF file."""
         if pdf_path:
-            return f'<a href="file://{os.path.abspath(pdf_path)}" target="_blank">{label}</a>'
+            if serve_mode:
+                # Use server URL for PDF viewer modal
+                filename = os.path.basename(pdf_path)
+                return f'<a href="/pdf/{filename}" class="pdf-link">{label}</a>'
+            else:
+                # Use file:// URL for direct opening
+                return f'<a href="file://{os.path.abspath(pdf_path)}" target="_blank">{label}</a>'
         return label
 
     def create_table_with_docs(
@@ -1985,10 +1997,12 @@ def generate_full_html_report(
 
             <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--gray-200); color: var(--gray-600); font-size: 0.85rem;">
                 <p>This report analyzes declassified CIA documents related to the Chilean dictatorship (1973-1990).</p>
-                <p><strong>Full Report Mode:</strong> PDF links are local file:// URLs and will only work on the machine where the PDFs are stored.</p>
+                <p><strong>Full Report Mode:</strong> {"Click PDF links to view documents in the embedded viewer." if serve_mode else "PDF links are local file:// URLs and will only work on the machine where the PDFs are stored."}</p>
             </footer>
         </main>
     </div>
+    {generate_pdf_viewer_modal() if serve_mode else ""}
+    {generate_pdf_link_interceptor() if serve_mode else ""}
 </body>
 </html>
 """
@@ -2029,12 +2043,19 @@ def main():
         default="data/original_pdfs",
         help="Directory containing source PDFs (default: data/original_pdfs)"
     )
+    parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="Generate server-compatible report with embedded PDF viewer (use with app.serve_report)"
+    )
     args = parser.parse_args()
 
     print(f"Processing documents from: {args.directory}")
 
-    if args.full:
+    if args.full or args.serve:
         print(f"Full mode enabled - PDFs from: {args.pdf_dir}")
+        if args.serve:
+            print("Serve mode enabled - generating server-compatible report with PDF viewer")
         results = process_documents(args.directory, full_mode=True, pdf_dir=args.pdf_dir)
         print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")
 
@@ -2044,8 +2065,12 @@ def main():
             results,
             output_dir=args.output_dir,
             output_file=output_file,
-            standalone=standalone
+            standalone=standalone,
+            serve_mode=args.serve,
         )
+        if args.serve:
+            print(f"\nTo view the report with PDF viewer, run:")
+            print(f"  uv run python -m app.serve_report --report {args.output_dir}/{output_file}")
     else:
         results = process_documents(args.directory)
         print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")
