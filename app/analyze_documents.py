@@ -5,6 +5,8 @@ Analyze declassified CIA documents and generate an HTML report.
 This module processes JSON transcript files and generates a comprehensive
 HTML report with statistics, visualizations, and sensitive content analysis.
 """
+import base64
+import io
 import os
 import json
 import glob
@@ -17,6 +19,13 @@ from dateutil import parser as date_parser
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
+
+
+def image_to_base64(image_path: str) -> str:
+    """Convert an image file to a base64 data URI."""
+    with open(image_path, "rb") as f:
+        data = base64.b64encode(f.read()).decode("utf-8")
+    return f"data:image/png;base64,{data}"
 
 
 def process_documents(directory: str) -> dict[str, Any]:
@@ -358,31 +367,64 @@ def plot_confidence_histogram(scores: list[float], output_image: str) -> bool:
     return True
 
 
-def generate_html_report(results: dict, output_dir: str, output_file: str = "report.html"):
-    """Generate a comprehensive HTML report with all statistics and visualizations."""
+def generate_html_report(
+    results: dict,
+    output_dir: str,
+    output_file: str = "report.html",
+    standalone: bool = True
+):
+    """Generate a comprehensive HTML report with all statistics and visualizations.
 
+    Args:
+        results: Dictionary with aggregated statistics from process_documents()
+        output_dir: Directory to save the report
+        output_file: Name of the HTML file
+        standalone: If True (default), embed images as base64 for a self-contained file.
+                   If False, save images as separate PNG files.
+    """
     os.makedirs(output_dir, exist_ok=True)
 
     # Generate plots
+    timeline_path = os.path.join(output_dir, "timeline_yearly.png")
+    classification_path = os.path.join(output_dir, "classification.png")
+    doc_types_path = os.path.join(output_dir, "doc_types.png")
+    confidence_path = os.path.join(output_dir, "confidence.png")
+
     timeline_exists = plot_timeline(
         results["timeline_yearly"],
-        os.path.join(output_dir, "timeline_yearly.png"),
+        timeline_path,
         "Documents per Year"
     )
     classification_exists = plot_pie_chart(
         results["classification_count"],
-        os.path.join(output_dir, "classification.png"),
+        classification_path,
         "Classification Levels"
     )
     doc_type_exists = plot_pie_chart(
         results["doc_type_count"],
-        os.path.join(output_dir, "doc_types.png"),
+        doc_types_path,
         "Document Types"
     )
     confidence_exists = plot_confidence_histogram(
         results["confidence_scores"],
-        os.path.join(output_dir, "confidence.png")
+        confidence_path
     )
+
+    # Convert images to base64 if standalone mode
+    if standalone:
+        timeline_src = image_to_base64(timeline_path) if timeline_exists else ""
+        classification_src = image_to_base64(classification_path) if classification_exists else ""
+        doc_types_src = image_to_base64(doc_types_path) if doc_type_exists else ""
+        confidence_src = image_to_base64(confidence_path) if confidence_exists else ""
+        # Clean up PNG files after embedding
+        for path in [timeline_path, classification_path, doc_types_path, confidence_path]:
+            if os.path.exists(path):
+                os.remove(path)
+    else:
+        timeline_src = "timeline_yearly.png"
+        classification_src = "classification.png"
+        doc_types_src = "doc_types.png"
+        confidence_src = "confidence.png"
 
     def create_table(counter: dict, limit: int = 50, id_prefix: str = "") -> str:
         """Create an HTML table from a Counter, with optional collapsible rows."""
@@ -777,7 +819,7 @@ def generate_html_report(results: dict, output_dir: str, output_file: str = "rep
 
             <section id="timeline">
                 <h2>Timeline</h2>
-                {"<div class='chart-container'><img src='timeline_yearly.png' alt='Timeline'></div>" if timeline_exists else "<p><em>No valid dates for timeline</em></p>"}
+                {f"<div class='chart-container'><img src='{timeline_src}' alt='Timeline'></div>" if timeline_exists else "<p><em>No valid dates for timeline</em></p>"}
 
                 <h3>Documents by Year</h3>
                 {create_table(results['timeline_yearly'], limit=50, id_prefix='timeline_yearly')}
@@ -786,7 +828,7 @@ def generate_html_report(results: dict, output_dir: str, output_file: str = "rep
             <section id="classification">
                 <h2>Classification Levels</h2>
                 <div class="two-col">
-                    {"<div class='chart-container'><img src='classification.png' alt='Classification'></div>" if classification_exists else ""}
+                    {f"<div class='chart-container'><img src='{classification_src}' alt='Classification'></div>" if classification_exists else ""}
                     <div>
                         {create_table(results['classification_count'], limit=10, id_prefix='classification')}
                     </div>
@@ -796,7 +838,7 @@ def generate_html_report(results: dict, output_dir: str, output_file: str = "rep
             <section id="document-types">
                 <h2>Document Types</h2>
                 <div class="two-col">
-                    {"<div class='chart-container'><img src='doc_types.png' alt='Document Types'></div>" if doc_type_exists else ""}
+                    {f"<div class='chart-container'><img src='{doc_types_src}' alt='Document Types'></div>" if doc_type_exists else ""}
                     <div>
                         {create_table(results['doc_type_count'], limit=10, id_prefix='doc_types')}
                     </div>
@@ -949,7 +991,7 @@ def generate_html_report(results: dict, output_dir: str, output_file: str = "rep
             <section id="confidence">
                 <h2>Confidence Scores</h2>
 
-                {"<div class='chart-container'><img src='confidence.png' alt='Confidence Distribution'></div>" if confidence_exists else "<p><em>No confidence data available</em></p>"}
+                {f"<div class='chart-container'><img src='{confidence_src}' alt='Confidence Distribution'></div>" if confidence_exists else "<p><em>No confidence data available</em></p>"}
 
                 <h3>Common Concerns</h3>
                 <p>Issues flagged during transcription that may require human review.</p>
@@ -1006,13 +1048,26 @@ def main():
         default="report.html",
         help="Output HTML filename (default: report.html)"
     )
+    parser.add_argument(
+        "--separate-images",
+        action="store_true",
+        help="Save chart images as separate PNG files instead of embedding them"
+    )
     args = parser.parse_args()
 
     print(f"Processing documents from: {args.directory}")
     results = process_documents(args.directory)
     print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")
 
-    generate_html_report(results, output_dir=args.output_dir, output_file=args.output)
+    standalone = not args.separate_images
+    generate_html_report(
+        results,
+        output_dir=args.output_dir,
+        output_file=args.output,
+        standalone=standalone
+    )
+    if standalone:
+        print("Report is standalone (images embedded as base64)")
 
 
 if __name__ == "__main__":

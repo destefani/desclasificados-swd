@@ -380,20 +380,33 @@ class TestGenerateHtmlReport:
             assert "Torture Content" in content
             assert "Disappearances" in content
 
-    def test_generates_charts(self, temp_transcripts_dir):
-        """Should generate chart images."""
+    def test_generates_charts_standalone(self, temp_transcripts_dir):
+        """Should embed charts as base64 in standalone mode (default)."""
         results = process_documents(temp_transcripts_dir)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            generate_html_report(results, output_dir=tmpdir)
+            generate_html_report(results, output_dir=tmpdir, standalone=True)
 
-            # Timeline chart
+            # PNG files should be cleaned up
+            assert not os.path.exists(os.path.join(tmpdir, "timeline_yearly.png"))
+            assert not os.path.exists(os.path.join(tmpdir, "classification.png"))
+
+            # Images should be embedded as base64 in HTML
+            with open(os.path.join(tmpdir, "report.html"), "r") as f:
+                content = f.read()
+            assert "data:image/png;base64," in content
+
+    def test_generates_charts_separate(self, temp_transcripts_dir):
+        """Should save chart images as separate files when standalone=False."""
+        results = process_documents(temp_transcripts_dir)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            generate_html_report(results, output_dir=tmpdir, standalone=False)
+
+            # PNG files should exist
             assert os.path.exists(os.path.join(tmpdir, "timeline_yearly.png"))
-            # Classification pie chart
             assert os.path.exists(os.path.join(tmpdir, "classification.png"))
-            # Document types pie chart
             assert os.path.exists(os.path.join(tmpdir, "doc_types.png"))
-            # Confidence histogram
             assert os.path.exists(os.path.join(tmpdir, "confidence.png"))
 
     def test_includes_sensitive_content_sections(self, temp_transcripts_dir):
