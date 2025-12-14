@@ -19,8 +19,11 @@ def process_documents(directory):
       - recipients_count: frequency of each recipient
       - doc_type_count: frequency of each document type
     """
-    files = glob.glob(os.path.join(directory, "*.json"))
-    
+    all_files = glob.glob(os.path.join(directory, "*.json"))
+    # Skip non-transcript files (tracking files, failed documents, etc.)
+    skip_prefixes = ('failed_', 'incomplete_', 'processing_')
+    files = [f for f in all_files if not os.path.basename(f).startswith(skip_prefixes)]
+
     timeline = collections.Counter()
     people_count = collections.Counter()
     places_count = collections.Counter()
