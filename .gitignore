@@ -22,6 +22,7 @@ app/__pycache__/
 timeline.png
 output_images/
 final_report.html
+reports/*.png
 
 # Large data files
 data.zip
