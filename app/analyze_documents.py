@@ -15,10 +15,29 @@ import collections
 from datetime import datetime
 from typing import Any
 
+from collections import Counter
+
 from dateutil import parser as date_parser
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
+
+from app.visualizations.interactive_timeline import (
+    generate_interactive_timeline,
+    generate_timeline_with_monthly_detail,
+)
+from app.visualizations.network_graph import (
+    generate_people_network,
+    generate_organization_network,
+)
+from app.visualizations.geographic_map import generate_geographic_map
+from app.visualizations.sensitive_content import (
+    generate_sensitive_timeline,
+    generate_perpetrator_victim_network,
+    generate_incident_types_chart,
+    generate_sensitive_summary_cards,
+)
+from app.visualizations.keyword_cloud import generate_keyword_cloud
 
 
 def image_to_base64(image_path: str) -> str:
@@ -28,11 +47,20 @@ def image_to_base64(image_path: str) -> str:
     return f"data:image/png;base64,{data}"
 
 
-def process_documents(directory: str) -> dict[str, Any]:
+def process_documents(
+    directory: str,
+    full_mode: bool = False,
+    pdf_dir: str | None = None
+) -> dict[str, Any]:
     """
     Process all JSON transcript files in the given directory.
 
     Skips non-transcript files (failed_*, incomplete_*, processing_*).
+
+    Args:
+        directory: Directory containing JSON transcript files
+        full_mode: If True, collect document-level data for detailed linking
+        pdf_dir: Directory containing source PDFs (used in full_mode)
 
     Returns a dictionary with aggregated statistics.
     """
@@ -89,8 +117,31 @@ def process_documents(directory: str) -> dict[str, Any]:
     confidence_scores: list[float] = []
     confidence_concerns = collections.Counter()
 
+    # Classification by year for stacked timeline chart
+    classification_by_year: dict[str, Counter] = collections.defaultdict(collections.Counter)
+
+    # Sensitive content by year for timeline visualization
+    sensitive_content_by_year: dict[str, dict[str, int]] = collections.defaultdict(
+        lambda: {"violence": 0, "torture": 0, "disappearance": 0}
+    )
+
     total_docs = 0
     total_pages = 0
+
+    # Full mode: track which documents contain each entity
+    # Maps entity -> list of (doc_id, pdf_path)
+    if full_mode:
+        people_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        keyword_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        org_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        violence_victim_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        violence_perp_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        torture_victim_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        torture_perp_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        torture_center_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        disappearance_victim_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        disappearance_perp_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        all_documents: list[dict[str, Any]] = []
 
     for file in files:
         try:
@@ -107,6 +158,16 @@ def process_documents(directory: str) -> dict[str, Any]:
         total_docs += 1
         metadata = data.get("metadata", {})
 
+        # Full mode: compute document ID and PDF path
+        if full_mode:
+            doc_basename = os.path.splitext(os.path.basename(file))[0]
+            doc_id = metadata.get("document_id", doc_basename) or doc_basename
+            if pdf_dir:
+                pdf_path = os.path.join(pdf_dir, f"{doc_basename}.pdf")
+            else:
+                pdf_path = ""
+            doc_ref = (doc_id, pdf_path, doc_basename)
+
         # Page count
         page_count = metadata.get("page_count", 0)
         if isinstance(page_count, int):
@@ -114,6 +175,7 @@ def process_documents(directory: str) -> dict[str, Any]:
 
         # Process document date
         doc_date_str = metadata.get("document_date", "")
+        doc_year = "Unknown"  # Track year for classification_by_year
         if doc_date_str:
             timeline_daily[doc_date_str] += 1
             # Extract year and month for aggregated views
@@ -125,6 +187,7 @@ def process_documents(directory: str) -> dict[str, Any]:
                     parts = doc_date_str.split("-")
                     year = parts[0] if parts[0] != "0000" else "Unknown"
                     month = f"{parts[0]}-{parts[1]}" if len(parts) >= 2 and parts[1] != "00" else "Unknown"
+                doc_year = year
                 timeline_yearly[year] += 1
                 if month != "Unknown":
                     timeline_monthly[month] += 1
@@ -136,6 +199,7 @@ def process_documents(directory: str) -> dict[str, Any]:
         # Classification level
         classification = metadata.get("classification_level", "Unknown") or "Unknown"
         classification_count[classification] += 1
+        classification_by_year[doc_year][classification] += 1
 
         # Language
         language = metadata.get("language", "Unknown") or "Unknown"
@@ -149,6 +213,8 @@ def process_documents(directory: str) -> dict[str, Any]:
         for person in metadata.get("people_mentioned", []):
             if person:
                 people_count[person] += 1
+                if full_mode:
+                    people_docs[person].append(doc_ref)
 
         # Recipients
         for recipient in metadata.get("recipients", []):
@@ -159,6 +225,8 @@ def process_documents(directory: str) -> dict[str, Any]:
         for keyword in metadata.get("keywords", []):
             if keyword:
                 keywords_count[keyword] += 1
+                if full_mode:
+                    keyword_docs[keyword].append(doc_ref)
 
         # Locations (new granular fields)
         for country in metadata.get("country", []):
@@ -179,6 +247,8 @@ def process_documents(directory: str) -> dict[str, Any]:
                 org_country = org.get("country", "")
                 if name:
                     org_count[name] += 1
+                    if full_mode:
+                        org_docs[name].append(doc_ref)
                 if org_type:
                     org_type_count[org_type] += 1
                 if org_country:
@@ -202,43 +272,60 @@ def process_documents(directory: str) -> dict[str, Any]:
         vio_refs = metadata.get("violence_references", {})
         if isinstance(vio_refs, dict) and vio_refs.get("has_violence_content"):
             docs_with_violence += 1
+            sensitive_content_by_year[doc_year]["violence"] += 1
             for incident in vio_refs.get("incident_types", []):
                 if incident:
                     violence_incident_types[incident] += 1
             for victim in vio_refs.get("victims", []):
                 if victim:
                     violence_victims[victim] += 1
+                    if full_mode:
+                        violence_victim_docs[victim].append(doc_ref)
             for perp in vio_refs.get("perpetrators", []):
                 if perp:
                     violence_perpetrators[perp] += 1
+                    if full_mode:
+                        violence_perp_docs[perp].append(doc_ref)
 
         # Torture references
         tor_refs = metadata.get("torture_references", {})
         if isinstance(tor_refs, dict) and tor_refs.get("has_torture_content"):
             docs_with_torture += 1
+            sensitive_content_by_year[doc_year]["torture"] += 1
             for center in tor_refs.get("detention_centers", []):
                 if center:
                     torture_detention_centers[center] += 1
+                    if full_mode:
+                        torture_center_docs[center].append(doc_ref)
             for method in tor_refs.get("methods_mentioned", []):
                 if method:
                     torture_methods[method] += 1
             for victim in tor_refs.get("victims", []):
                 if victim:
                     torture_victims[victim] += 1
+                    if full_mode:
+                        torture_victim_docs[victim].append(doc_ref)
             for perp in tor_refs.get("perpetrators", []):
                 if perp:
                     torture_perpetrators[perp] += 1
+                    if full_mode:
+                        torture_perp_docs[perp].append(doc_ref)
 
         # Disappearance references
         dis_refs = metadata.get("disappearance_references", {})
         if isinstance(dis_refs, dict) and dis_refs.get("has_disappearance_content"):
             docs_with_disappearance += 1
+            sensitive_content_by_year[doc_year]["disappearance"] += 1
             for victim in dis_refs.get("victims", []):
                 if victim:
                     disappearance_victims[victim] += 1
+                    if full_mode:
+                        disappearance_victim_docs[victim].append(doc_ref)
             for perp in dis_refs.get("perpetrators", []):
                 if perp:
                     disappearance_perpetrators[perp] += 1
+                    if full_mode:
+                        disappearance_perp_docs[perp].append(doc_ref)
             for loc in dis_refs.get("locations", []):
                 if loc:
                     disappearance_locations[loc] += 1
@@ -253,6 +340,23 @@ def process_documents(directory: str) -> dict[str, Any]:
                 if concern:
                     confidence_concerns[concern] += 1
 
+        # Full mode: collect document info for the document index
+        if full_mode:
+            all_documents.append({
+                "basename": doc_basename,
+                "doc_id": doc_id,
+                "pdf_path": pdf_path,
+                "date": metadata.get("document_date", ""),
+                "classification": classification,
+                "doc_type": doc_type,
+                "title": metadata.get("document_title", ""),
+                "summary": metadata.get("document_summary", ""),
+                "page_count": page_count if isinstance(page_count, int) else 0,
+                # Include entity data for network visualization
+                "people": metadata.get("people_mentioned", []),
+                "organizations": metadata.get("organizations_mentioned", []),
+            })
+
     return {
         "total_docs": total_docs,
         "total_pages": total_pages,
@@ -265,6 +369,8 @@ def process_documents(directory: str) -> dict[str, Any]:
         "recipients_count": recipients_count,
         "doc_type_count": doc_type_count,
         "classification_count": classification_count,
+        "classification_by_year": dict(classification_by_year),
+        "sensitive_content_by_year": dict(sensitive_content_by_year),
         "language_count": language_count,
         "country_count": country_count,
         "city_count": city_count,
@@ -291,6 +397,19 @@ def process_documents(directory: str) -> dict[str, Any]:
         "docs_with_disappearance": docs_with_disappearance,
         "confidence_scores": confidence_scores,
         "confidence_concerns": confidence_concerns,
+        # Full mode data (empty if not in full mode)
+        "full_mode": full_mode,
+        "all_documents": all_documents if full_mode else [],
+        "people_docs": dict(people_docs) if full_mode else {},
+        "keyword_docs": dict(keyword_docs) if full_mode else {},
+        "org_docs": dict(org_docs) if full_mode else {},
+        "violence_victim_docs": dict(violence_victim_docs) if full_mode else {},
+        "violence_perp_docs": dict(violence_perp_docs) if full_mode else {},
+        "torture_victim_docs": dict(torture_victim_docs) if full_mode else {},
+        "torture_perp_docs": dict(torture_perp_docs) if full_mode else {},
+        "torture_center_docs": dict(torture_center_docs) if full_mode else {},
+        "disappearance_victim_docs": dict(disappearance_victim_docs) if full_mode else {},
+        "disappearance_perp_docs": dict(disappearance_perp_docs) if full_mode else {},
     }
 
 
@@ -1033,6 +1152,853 @@ def generate_html_report(
     print(f"Report saved to {output_path}")
 
 
+def generate_full_html_report(
+    results: dict,
+    output_dir: str,
+    output_file: str = "report_full.html",
+    standalone: bool = True
+):
+    """Generate a full HTML report with PDF links for local investigation.
+
+    This report includes all the standard statistics plus:
+    - Document index with links to source PDFs
+    - Entity tables with expandable document lists
+    - Direct links to PDFs from sensitive content sections
+
+    Args:
+        results: Dictionary with aggregated statistics from process_documents(full_mode=True)
+        output_dir: Directory to save the report
+        output_file: Name of the HTML file
+        standalone: If True (default), embed images as base64 for a self-contained file.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Generate interactive timeline (full report uses JavaScript-based visualization)
+    interactive_timeline_html = generate_timeline_with_monthly_detail(
+        timeline_yearly=results["timeline_yearly"],
+        timeline_monthly=results["timeline_monthly"],
+        classification_by_year=results.get("classification_by_year"),
+        container_id="timeline-chart-full",
+        height="550px",
+    )
+
+    # Generate network graphs (requires all_documents from full_mode)
+    all_documents = results.get("all_documents", [])
+    if all_documents:
+        # Convert all_documents to the format expected by network functions
+        docs_for_network = []
+        for doc in all_documents:
+            docs_for_network.append({
+                "metadata": {
+                    "document_id": doc.get("doc_id", ""),
+                    "people_mentioned": doc.get("people", []),
+                    "organizations_mentioned": doc.get("organizations", []),
+                }
+            })
+
+        people_network_html = generate_people_network(
+            docs_for_network,
+            container_id="people-network-full",
+            height="600px",
+            max_nodes=75,
+            min_occurrences=3,
+            min_edge_weight=2,
+        )
+
+        org_network_html = generate_organization_network(
+            docs_for_network,
+            container_id="org-network-full",
+            height="500px",
+            max_nodes=50,
+            min_occurrences=3,
+            min_edge_weight=2,
+        )
+    else:
+        people_network_html = "<p><em>Network visualization requires full mode data</em></p>"
+        org_network_html = "<p><em>Network visualization requires full mode data</em></p>"
+
+    # Generate geographic map
+    geographic_map_html = generate_geographic_map(
+        city_count=results.get("city_count", Counter()),
+        country_count=results.get("country_count", Counter()),
+        other_place_count=results.get("other_place_count", Counter()),
+        torture_detention_centers=results.get("torture_detention_centers", Counter()),
+        container_id="geographic-map-full",
+        height="600px",
+        show_detention_centers=True,
+        show_condor_countries=True,
+    )
+
+    # Generate sensitive content dashboard
+    sensitive_summary_html = generate_sensitive_summary_cards(
+        docs_with_violence=results.get("docs_with_violence", 0),
+        docs_with_torture=results.get("docs_with_torture", 0),
+        docs_with_disappearance=results.get("docs_with_disappearance", 0),
+        total_docs=results.get("total_docs", 0),
+        violence_victims=results.get("violence_victims", Counter()),
+        torture_victims=results.get("torture_victims", Counter()),
+        disappearance_victims=results.get("disappearance_victims", Counter()),
+        violence_perpetrators=results.get("violence_perpetrators", Counter()),
+        torture_perpetrators=results.get("torture_perpetrators", Counter()),
+        disappearance_perpetrators=results.get("disappearance_perpetrators", Counter()),
+    )
+
+    sensitive_timeline_html = generate_sensitive_timeline(
+        sensitive_content_by_year=results.get("sensitive_content_by_year", {}),
+        container_id="sensitive-timeline-full",
+        height="400px",
+        include_events=True,
+    )
+
+    # Generate perpetrator-victim network (only in full mode with doc mappings)
+    if results.get("full_mode"):
+        perp_victim_network_html = generate_perpetrator_victim_network(
+            violence_victims=results.get("violence_victims", Counter()),
+            violence_perpetrators=results.get("violence_perpetrators", Counter()),
+            torture_victims=results.get("torture_victims", Counter()),
+            torture_perpetrators=results.get("torture_perpetrators", Counter()),
+            disappearance_victims=results.get("disappearance_victims", Counter()),
+            disappearance_perpetrators=results.get("disappearance_perpetrators", Counter()),
+            violence_victim_docs=results.get("violence_victim_docs"),
+            violence_perp_docs=results.get("violence_perp_docs"),
+            torture_victim_docs=results.get("torture_victim_docs"),
+            torture_perp_docs=results.get("torture_perp_docs"),
+            disappearance_victim_docs=results.get("disappearance_victim_docs"),
+            disappearance_perp_docs=results.get("disappearance_perp_docs"),
+            container_id="perp-victim-network-full",
+            height="600px",
+            max_nodes=75,
+            min_mentions=2,
+        )
+    else:
+        perp_victim_network_html = "<p><em>Perpetrator-victim network requires full mode</em></p>"
+
+    incident_types_html = generate_incident_types_chart(
+        violence_incident_types=results.get("violence_incident_types", Counter()),
+        torture_methods=results.get("torture_methods", Counter()),
+        container_id="incident-types-full",
+        height="350px",
+        max_items=12,
+    )
+
+    # Generate keyword word cloud
+    keyword_cloud_html = generate_keyword_cloud(
+        keyword_count=results.get("keywords_count", Counter()),
+        container_id="keyword-cloud-full",
+        width=800,
+        height=400,
+        max_words=80,
+        min_count=2,
+    )
+
+    # Generate static plots for other charts
+    classification_path = os.path.join(output_dir, "classification.png")
+    doc_types_path = os.path.join(output_dir, "doc_types.png")
+    confidence_path = os.path.join(output_dir, "confidence.png")
+
+    classification_exists = plot_pie_chart(
+        results["classification_count"],
+        classification_path,
+        "Classification Levels"
+    )
+    doc_type_exists = plot_pie_chart(
+        results["doc_type_count"],
+        doc_types_path,
+        "Document Types"
+    )
+    confidence_exists = plot_confidence_histogram(
+        results["confidence_scores"],
+        confidence_path
+    )
+
+    # Convert images to base64 if standalone mode
+    if standalone:
+        classification_src = image_to_base64(classification_path) if classification_exists else ""
+        doc_types_src = image_to_base64(doc_types_path) if doc_type_exists else ""
+        confidence_src = image_to_base64(confidence_path) if confidence_exists else ""
+        for path in [classification_path, doc_types_path, confidence_path]:
+            if os.path.exists(path):
+                os.remove(path)
+    else:
+        # Non-standalone mode: use file paths for images
+        classification_src = "classification.png"
+        doc_types_src = "doc_types.png"
+        confidence_src = "confidence.png"
+
+    def create_pdf_link(pdf_path: str, label: str) -> str:
+        """Create an HTML link to a PDF file."""
+        if pdf_path:
+            return f'<a href="file://{os.path.abspath(pdf_path)}" target="_blank">{label}</a>'
+        return label
+
+    def create_table_with_docs(
+        counter: dict,
+        docs_map: dict,
+        limit: int = 50,
+        id_prefix: str = ""
+    ) -> str:
+        """Create an HTML table with expandable document links using <details>."""
+        if not counter:
+            return "<p><em>No data available</em></p>"
+
+        sorted_items = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+        rows = []
+
+        for i, (name, count) in enumerate(sorted_items[:limit]):
+            doc_refs = docs_map.get(name, [])
+            if doc_refs:
+                # Create expandable document list
+                doc_links = []
+                for doc_id, pdf_path, basename in doc_refs[:20]:  # Limit to 20 docs
+                    link = create_pdf_link(pdf_path, f"{basename}")
+                    doc_links.append(f"<li>{link} <small>({doc_id})</small></li>")
+
+                more_text = ""
+                if len(doc_refs) > 20:
+                    more_text = f"<li><em>... and {len(doc_refs) - 20} more</em></li>"
+
+                details_html = f'''
+                <details>
+                    <summary>{count:,} documents</summary>
+                    <ul class="doc-list">{"".join(doc_links)}{more_text}</ul>
+                </details>
+                '''
+                rows.append(f"<tr><td>{name}</td><td>{details_html}</td></tr>")
+            else:
+                rows.append(f"<tr><td>{name}</td><td>{count:,}</td></tr>")
+
+        more_rows = ""
+        if len(sorted_items) > limit:
+            more_rows = f"<tr><td colspan='2'><em>... and {len(sorted_items) - limit} more items</em></td></tr>"
+
+        return f"""
+        <table class="data-table">
+            <thead><tr><th>Item</th><th>Documents</th></tr></thead>
+            <tbody>{"".join(rows)}{more_rows}</tbody>
+        </table>
+        """
+
+    def create_document_index(documents: list, limit: int = 500) -> str:
+        """Create a searchable document index table."""
+        if not documents:
+            return "<p><em>No documents available</em></p>"
+
+        # Sort by date (most recent first), then by basename
+        sorted_docs = sorted(
+            documents,
+            key=lambda d: (d.get("date", "") or "0000-00-00", d.get("basename", "")),
+            reverse=True
+        )
+
+        rows = []
+        for doc in sorted_docs[:limit]:
+            pdf_link = create_pdf_link(doc["pdf_path"], "View PDF")
+            title = doc.get("title", "") or doc.get("doc_id", doc["basename"])
+            if len(title) > 60:
+                title = title[:57] + "..."
+
+            rows.append(f"""
+            <tr>
+                <td>{doc.get('date', 'Unknown')}</td>
+                <td class="classification-{doc.get('classification', 'Unknown').lower().replace(' ', '-')}">{doc.get('classification', 'Unknown')}</td>
+                <td>{doc.get('doc_type', 'Unknown')}</td>
+                <td title="{doc.get('title', '')}">{title}</td>
+                <td>{doc.get('page_count', 0)}</td>
+                <td>{pdf_link}</td>
+            </tr>
+            """)
+
+        more_text = ""
+        if len(sorted_docs) > limit:
+            more_text = f"<p><em>Showing {limit} of {len(sorted_docs)} documents</em></p>"
+
+        return f"""
+        {more_text}
+        <table class="data-table doc-index">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Classification</th>
+                    <th>Type</th>
+                    <th>Title</th>
+                    <th>Pages</th>
+                    <th>PDF</th>
+                </tr>
+            </thead>
+            <tbody>{"".join(rows)}</tbody>
+        </table>
+        """
+
+    def format_number(n: int) -> str:
+        return f"{n:,}"
+
+    def pct(part: int, total: int) -> str:
+        if total == 0:
+            return "0%"
+        return f"{part/total*100:.1f}%"
+
+    # Calculate summary stats
+    total = results["total_docs"]
+    avg_confidence = sum(results["confidence_scores"]) / len(results["confidence_scores"]) if results["confidence_scores"] else 0
+
+    # Build HTML with full mode enhancements
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Declassified Documents Analysis - Full Report</title>
+    <style>
+        :root {{
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+        }}
+
+        * {{ box-sizing: border-box; }}
+
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }}
+
+        .container {{
+            display: flex;
+            min-height: 100vh;
+        }}
+
+        nav {{
+            width: 250px;
+            background: var(--gray-800);
+            color: white;
+            padding: 20px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }}
+
+        nav h2 {{
+            margin-top: 0;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray-200);
+        }}
+
+        nav ul {{ list-style: none; padding: 0; margin: 0; }}
+        nav li {{ margin: 8px 0; }}
+        nav a {{
+            color: var(--gray-200);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: block;
+            padding: 6px 10px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }}
+        nav a:hover {{ background: rgba(255,255,255,0.1); }}
+        nav .nav-section {{
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }}
+        nav .nav-section-title {{
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+        }}
+
+        main {{
+            flex: 1;
+            margin-left: 250px;
+            padding: 30px 40px;
+            max-width: 1400px;
+        }}
+
+        h1 {{
+            color: var(--gray-800);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }}
+
+        h2 {{
+            color: var(--gray-800);
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--gray-200);
+        }}
+
+        h3 {{ color: var(--gray-600); margin-top: 25px; }}
+
+        .full-mode-badge {{
+            background: var(--primary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+            vertical-align: middle;
+        }}
+
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+
+        .summary-card {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+
+        .summary-card.danger {{ border-left: 4px solid var(--danger); }}
+        .summary-card.warning {{ border-left: 4px solid var(--warning); }}
+
+        .summary-card h3 {{
+            margin: 0 0 5px 0;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: var(--gray-600);
+        }}
+
+        .summary-card .value {{
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--gray-800);
+        }}
+
+        .summary-card .subtext {{
+            font-size: 0.85rem;
+            color: var(--gray-600);
+        }}
+
+        .chart-container {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }}
+
+        .chart-container img {{ max-width: 100%; height: auto; }}
+
+        .data-table {{
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin: 15px 0;
+        }}
+
+        .data-table th {{
+            background: var(--gray-800);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+        }}
+
+        .data-table td {{
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--gray-200);
+            vertical-align: top;
+        }}
+
+        .data-table tr:hover {{ background: var(--gray-100); }}
+
+        .doc-index td {{ font-size: 0.9rem; }}
+
+        /* Classification colors */
+        .classification-top-secret {{ color: #dc2626; font-weight: bold; }}
+        .classification-secret {{ color: #ea580c; font-weight: bold; }}
+        .classification-confidential {{ color: #ca8a04; }}
+        .classification-unclassified {{ color: #16a34a; }}
+
+        details {{
+            cursor: pointer;
+        }}
+
+        details summary {{
+            color: var(--primary);
+            font-weight: 500;
+        }}
+
+        details summary:hover {{
+            text-decoration: underline;
+        }}
+
+        .doc-list {{
+            margin: 10px 0;
+            padding-left: 20px;
+            font-size: 0.9rem;
+        }}
+
+        .doc-list li {{
+            margin: 4px 0;
+        }}
+
+        .doc-list a {{
+            color: var(--primary);
+            text-decoration: none;
+        }}
+
+        .doc-list a:hover {{
+            text-decoration: underline;
+        }}
+
+        .sensitive-warning {{
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }}
+
+        .sensitive-warning h4 {{
+            color: var(--danger);
+            margin: 0 0 10px 0;
+        }}
+
+        .two-col {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }}
+
+        .meta-info {{
+            background: var(--gray-200);
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-bottom: 30px;
+        }}
+
+        @media (max-width: 900px) {{
+            nav {{ display: none; }}
+            main {{ margin-left: 0; }}
+            .two-col {{ grid-template-columns: 1fr; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <h2>Navigation</h2>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#documents">Document Index</a></li>
+                <li><a href="#timeline">Timeline</a></li>
+                <li><a href="#classification">Classification</a></li>
+            </ul>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Network Analysis</div>
+                <ul>
+                    <li><a href="#people-network">People Network</a></li>
+                    <li><a href="#org-network">Organization Network</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Geographic</div>
+                <ul>
+                    <li><a href="#geographic-map">Geographic Map</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Entities</div>
+                <ul>
+                    <li><a href="#people">People Mentioned</a></li>
+                    <li><a href="#organizations">Organizations</a></li>
+                    <li><a href="#keywords">Keywords</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Sensitive Content</div>
+                <ul>
+                    <li><a href="#sensitive-dashboard">Dashboard</a></li>
+                    <li><a href="#violence">Violence</a></li>
+                    <li><a href="#torture">Torture</a></li>
+                    <li><a href="#disappearances">Disappearances</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Other</div>
+                <ul>
+                    <li><a href="#financial">Financial</a></li>
+                    <li><a href="#confidence">Confidence</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main>
+            <h1>Declassified CIA Documents Analysis <span class="full-mode-badge">Full Report</span></h1>
+
+            <div class="meta-info">
+                Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} |
+                Source: {output_dir} |
+                <strong>Full mode with PDF links (for local use only)</strong>
+            </div>
+
+            <section id="overview">
+                <h2>Overview</h2>
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <h3>Total Documents</h3>
+                        <div class="value">{format_number(total)}</div>
+                        <div class="subtext">{format_number(results['total_pages'])} total pages</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Avg Confidence</h3>
+                        <div class="value">{avg_confidence:.1%}</div>
+                        <div class="subtext">{format_number(len(results['confidence_scores']))} scored</div>
+                    </div>
+                    <div class="summary-card danger">
+                        <h3>Violence Content</h3>
+                        <div class="value">{format_number(results['docs_with_violence'])}</div>
+                        <div class="subtext">{pct(results['docs_with_violence'], total)} of documents</div>
+                    </div>
+                    <div class="summary-card danger">
+                        <h3>Torture Content</h3>
+                        <div class="value">{format_number(results['docs_with_torture'])}</div>
+                        <div class="subtext">{pct(results['docs_with_torture'], total)} of documents</div>
+                    </div>
+                    <div class="summary-card danger">
+                        <h3>Disappearances</h3>
+                        <div class="value">{format_number(results['docs_with_disappearance'])}</div>
+                        <div class="subtext">{pct(results['docs_with_disappearance'], total)} of documents</div>
+                    </div>
+                    <div class="summary-card warning">
+                        <h3>Financial Content</h3>
+                        <div class="value">{format_number(results['docs_with_financial'])}</div>
+                        <div class="subtext">{pct(results['docs_with_financial'], total)} of documents</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="documents">
+                <h2>Document Index</h2>
+                <p>Browse all processed documents. Click "View PDF" to open the source document.</p>
+                {create_document_index(results.get('all_documents', []))}
+            </section>
+
+            <section id="timeline">
+                <h2>Timeline</h2>
+                <p>Interactive timeline showing document distribution over time with historical event annotations.
+                Use the controls to zoom, pan, and switch between yearly/monthly views.</p>
+                <div class="chart-container">
+                    {interactive_timeline_html}
+                </div>
+            </section>
+
+            <section id="classification">
+                <h2>Classification Levels</h2>
+                <div class="two-col">
+                    {f"<div class='chart-container'><img src='{classification_src}' alt='Classification'></div>" if classification_exists else ""}
+                    {f"<div class='chart-container'><img src='{doc_types_src}' alt='Document Types'></div>" if doc_type_exists else ""}
+                </div>
+            </section>
+
+            <section id="people-network">
+                <h2>People Network</h2>
+                <p>Interactive network showing relationships between people mentioned in documents.
+                People who frequently appear together in documents are connected by edges.
+                Node size reflects mention frequency. Drag nodes to explore, scroll to zoom.</p>
+                <div class="chart-container">
+                    {people_network_html}
+                </div>
+            </section>
+
+            <section id="org-network">
+                <h2>Organization Network</h2>
+                <p>Interactive network showing relationships between organizations mentioned in documents.
+                Organizations that frequently appear together are connected by edges.</p>
+                <div class="chart-container">
+                    {org_network_html}
+                </div>
+            </section>
+
+            <section id="geographic-map">
+                <h2>Geographic Map</h2>
+                <p>Interactive map showing locations mentioned in documents. Blue markers show document mentions
+                (larger = more frequent). Red markers indicate known detention and torture centers.
+                Dashed rectangles highlight Operation Condor member countries. Toggle layers using the checkboxes.</p>
+                <div class="chart-container">
+                    {geographic_map_html}
+                </div>
+            </section>
+
+            <section id="people">
+                <h2>People Mentioned</h2>
+                <p>Click on the document count to see source documents for each person.</p>
+                {create_table_with_docs(results['people_count'], results.get('people_docs', {}), limit=100, id_prefix='people')}
+            </section>
+
+            <section id="organizations">
+                <h2>Organizations</h2>
+                <p>Click on the document count to see source documents for each organization.</p>
+                {create_table_with_docs(results['org_count'], results.get('org_docs', {}), limit=100, id_prefix='orgs')}
+            </section>
+
+            <section id="keywords">
+                <h2>Keywords</h2>
+                <p>Visual representation of keyword frequency. Larger words appear more often in documents.</p>
+                <div class="chart-container">
+                    {keyword_cloud_html}
+                </div>
+                <h3>Keyword Details</h3>
+                <p>Click on the document count to see source documents for each keyword.</p>
+                {create_table_with_docs(results['keywords_count'], results.get('keyword_docs', {}), limit=100, id_prefix='keywords')}
+            </section>
+
+            <section id="sensitive-dashboard">
+                <h2>Sensitive Content Dashboard</h2>
+
+                <div class="sensitive-warning">
+                    <h4>Content Warning</h4>
+                    <p>This section contains analysis of violence, torture, and forced disappearances documented in declassified materials.
+                    These visualizations are provided for historical research purposes.</p>
+                </div>
+
+                {sensitive_summary_html}
+
+                <h3>Sensitive Content Over Time</h3>
+                <p>Timeline showing how documentation of violence, torture, and disappearances changed over the years.
+                Major historical events are marked with vertical lines.</p>
+                <div class="chart-container">
+                    {sensitive_timeline_html}
+                </div>
+
+                <h3>Perpetrator-Victim Network</h3>
+                <p>Network graph connecting perpetrators (red) to victims (blue) who appear in the same documents.
+                Amber nodes indicate individuals named as both perpetrators and victims. Arrows point from perpetrator to victim.</p>
+                <div class="chart-container">
+                    {perp_victim_network_html}
+                </div>
+
+                <h3>Incident Types & Methods</h3>
+                <p>Breakdown of violence incident types and torture methods mentioned in documents.</p>
+                <div class="chart-container">
+                    {incident_types_html}
+                </div>
+            </section>
+
+            <section id="violence">
+                <h2>Violence References</h2>
+
+                <div class="sensitive-warning">
+                    <h4>Content Warning</h4>
+                    <p>This section contains references to violence documented in declassified materials. Click document counts to access source PDFs.</p>
+                </div>
+
+                <p><strong>{format_number(results['docs_with_violence'])} documents</strong> ({pct(results['docs_with_violence'], total)}) contain violence-related content.</p>
+
+                <div class="two-col">
+                    <div>
+                        <h3>Victims</h3>
+                        {create_table_with_docs(results['violence_victims'], results.get('violence_victim_docs', {}), limit=50, id_prefix='violence_victims')}
+                    </div>
+                    <div>
+                        <h3>Perpetrators</h3>
+                        {create_table_with_docs(results['violence_perpetrators'], results.get('violence_perp_docs', {}), limit=50, id_prefix='violence_perps')}
+                    </div>
+                </div>
+            </section>
+
+            <section id="torture">
+                <h2>Torture References</h2>
+
+                <div class="sensitive-warning">
+                    <h4>Content Warning</h4>
+                    <p>This section contains references to torture and detention centers. Click document counts to access source PDFs.</p>
+                </div>
+
+                <p><strong>{format_number(results['docs_with_torture'])} documents</strong> ({pct(results['docs_with_torture'], total)}) contain torture-related content.</p>
+
+                <h3>Detention Centers</h3>
+                {create_table_with_docs(results['torture_detention_centers'], results.get('torture_center_docs', {}), limit=30, id_prefix='detention_centers')}
+
+                <div class="two-col">
+                    <div>
+                        <h3>Victims</h3>
+                        {create_table_with_docs(results['torture_victims'], results.get('torture_victim_docs', {}), limit=50, id_prefix='torture_victims')}
+                    </div>
+                    <div>
+                        <h3>Perpetrators</h3>
+                        {create_table_with_docs(results['torture_perpetrators'], results.get('torture_perp_docs', {}), limit=50, id_prefix='torture_perps')}
+                    </div>
+                </div>
+            </section>
+
+            <section id="disappearances">
+                <h2>Disappearance References</h2>
+
+                <div class="sensitive-warning">
+                    <h4>Content Warning</h4>
+                    <p>This section contains references to forced disappearances. Click document counts to access source PDFs.</p>
+                </div>
+
+                <p><strong>{format_number(results['docs_with_disappearance'])} documents</strong> ({pct(results['docs_with_disappearance'], total)}) contain disappearance-related content.</p>
+
+                <div class="two-col">
+                    <div>
+                        <h3>Victims</h3>
+                        {create_table_with_docs(results['disappearance_victims'], results.get('disappearance_victim_docs', {}), limit=50, id_prefix='disapp_victims')}
+                    </div>
+                    <div>
+                        <h3>Perpetrators</h3>
+                        {create_table_with_docs(results['disappearance_perpetrators'], results.get('disappearance_perp_docs', {}), limit=50, id_prefix='disapp_perps')}
+                    </div>
+                </div>
+            </section>
+
+            <section id="financial">
+                <h2>Financial References</h2>
+                <p><strong>{format_number(results['docs_with_financial'])} documents</strong> ({pct(results['docs_with_financial'], total)}) contain financial references.</p>
+            </section>
+
+            <section id="confidence">
+                <h2>Confidence Scores</h2>
+                {f"<div class='chart-container'><img src='{confidence_src}' alt='Confidence Distribution'></div>" if confidence_exists else "<p><em>No confidence data available</em></p>"}
+            </section>
+
+            <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--gray-200); color: var(--gray-600); font-size: 0.85rem;">
+                <p>This report analyzes declassified CIA documents related to the Chilean dictatorship (1973-1990).</p>
+                <p><strong>Full Report Mode:</strong> PDF links are local file:// URLs and will only work on the machine where the PDFs are stored.</p>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>
+"""
+
+    output_path = os.path.join(output_dir, output_file)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print(f"Full report saved to {output_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Analyze declassified CIA documents and generate an HTML report."
@@ -1053,21 +2019,46 @@ def main():
         action="store_true",
         help="Save chart images as separate PNG files instead of embedding them"
     )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Generate full report with PDF links for local investigation"
+    )
+    parser.add_argument(
+        "--pdf-dir",
+        default="data/original_pdfs",
+        help="Directory containing source PDFs (default: data/original_pdfs)"
+    )
     args = parser.parse_args()
 
     print(f"Processing documents from: {args.directory}")
-    results = process_documents(args.directory)
-    print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")
 
-    standalone = not args.separate_images
-    generate_html_report(
-        results,
-        output_dir=args.output_dir,
-        output_file=args.output,
-        standalone=standalone
-    )
-    if standalone:
-        print("Report is standalone (images embedded as base64)")
+    if args.full:
+        print(f"Full mode enabled - PDFs from: {args.pdf_dir}")
+        results = process_documents(args.directory, full_mode=True, pdf_dir=args.pdf_dir)
+        print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")
+
+        output_file = args.output if args.output != "report.html" else "report_full.html"
+        standalone = not args.separate_images
+        generate_full_html_report(
+            results,
+            output_dir=args.output_dir,
+            output_file=output_file,
+            standalone=standalone
+        )
+    else:
+        results = process_documents(args.directory)
+        print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")
+
+        standalone = not args.separate_images
+        generate_html_report(
+            results,
+            output_dir=args.output_dir,
+            output_file=args.output,
+            standalone=standalone
+        )
+        if standalone:
+            print("Report is standalone (images embedded as base64)")
 
 
 if __name__ == "__main__":

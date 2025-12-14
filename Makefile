@@ -145,6 +145,9 @@ progress:
 analyze:
 	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR)
 
+analyze-full:
+	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --full --pdf-dir data/original_pdfs
+
 visualize:
 	uv run python -m app.visualize_transcripts
 

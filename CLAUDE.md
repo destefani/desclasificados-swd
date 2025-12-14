@@ -70,7 +70,7 @@ data/
 ├── original_pdfs/              # ✅ SOURCE: Complete PDF files (21,512 files) - USE THIS
 ├── images/                     # ⚠️ DEPRECATED: First-page JPEGs only - DO NOT USE
 ├── generated_transcripts/      # Current JSON transcriptions (active work)
-│   └── gpt-4.1-mini/          # Model-specific output directory
+│   └── gpt-5-mini-v2.2.0/     # Model-specific output directory (MODEL-SCHEMA)
 ├── archive/                    # Historical transcription outputs (archived)
 │   ├── generated_transcripts_v1/  # Legacy JSON from JPEG processing (INCOMPLETE)
 │   └── ...
@@ -168,12 +168,19 @@ uv run python -m app.evaluate report gpt-5-mini --output quality_report.html
 ### Analysis & Visualization
 
 ```bash
-# Generate HTML report with timeline
+# Generate HTML report with timeline (shareable)
 make analyze
+
+# Generate full report with PDF links (local investigation)
+make analyze-full
 
 # Create matplotlib visualizations
 make visualize
 ```
+
+**Report Types:**
+- **Standard report** (`make analyze`): Shareable HTML with embedded charts, aggregated statistics
+- **Full report** (`make analyze-full`): Includes document index with clickable PDF links, entity tables with expandable source document lists. PDF links use `file://` URLs - only works locally where PDFs are stored
 
 ### Testing & Code Quality
 
