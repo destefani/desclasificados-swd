@@ -6,6 +6,7 @@ for the HTML reports, including:
 - Interactive timeline with historical event annotations
 - Network graphs for people/organization relationships
 - Geographic maps for location analysis
+- PDF viewer modal for in-page document viewing
 """
 
 from app.visualizations.interactive_timeline import (
@@ -41,6 +42,12 @@ from app.visualizations.keyword_cloud import (
     prepare_wordcloud_data,
     KEYWORD_COLORS,
 )
+from app.visualizations.pdf_viewer import (
+    generate_pdf_viewer_modal,
+    generate_pdf_link_interceptor,
+    PDFJS_CDN,
+    PDFJS_WORKER_CDN,
+)
 
 __all__ = [
     "generate_interactive_timeline",
@@ -66,4 +73,8 @@ __all__ = [
     "generate_keyword_bar_chart",
     "prepare_wordcloud_data",
     "KEYWORD_COLORS",
+    "generate_pdf_viewer_modal",
+    "generate_pdf_link_interceptor",
+    "PDFJS_CDN",
+    "PDFJS_WORKER_CDN",
 ]
