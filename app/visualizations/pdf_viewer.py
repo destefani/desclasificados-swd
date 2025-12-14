@@ -632,15 +632,18 @@ def generate_external_viewer_modal() -> str:
     const newWindowLink = document.getElementById('external-viewer-newwindow');
 
     // Open external viewer in modal
-    window.openExternalViewer = function(url, title) {
+    // viewerUrl: URL to load in iframe (e.g., Google Docs Viewer)
+    // title: Display title for the modal
+    // originalUrl: Original link URL for "New Window" button (optional, defaults to viewerUrl)
+    window.openExternalViewer = function(viewerUrl, title, originalUrl) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         loading.style.display = 'block';
         iframe.style.opacity = '0';
 
         titleEl.textContent = title || 'Document Viewer';
-        newWindowLink.href = url;
-        iframe.src = url;
+        newWindowLink.href = originalUrl || viewerUrl;
+        iframe.src = viewerUrl;
 
         iframe.onload = function() {
             loading.style.display = 'none';
@@ -672,6 +675,8 @@ def generate_external_link_interceptor() -> str:
     Generate JavaScript that intercepts clicks on external PDF links
     and opens them in the iframe modal instead of a new tab.
 
+    Uses Google Docs Viewer to embed the PDF directly.
+
     Returns:
         JavaScript code as a string
     """
@@ -683,10 +688,17 @@ def generate_external_link_interceptor() -> str:
         const link = e.target.closest('a.pdf-link.external');
         if (link) {
             e.preventDefault();
-            // Extract document ID from URL for title
+            // Extract document ID from URL
             const url = new URL(link.href);
             const docId = url.searchParams.get('documentId') || 'Document';
-            openExternalViewer(link.href, 'Document ' + docId);
+
+            // Construct direct PDF URL for embedding
+            const pdfUrl = url.origin + '/api/' + docId + '/download/pdf';
+
+            // Use Google Docs Viewer to embed the PDF
+            const viewerUrl = 'https://docs.google.com/viewer?url=' + encodeURIComponent(pdfUrl) + '&embedded=true';
+
+            openExternalViewer(viewerUrl, 'Document ' + docId, link.href);
         }
     });
 })();
