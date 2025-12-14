@@ -1362,6 +1362,45 @@ def generate_full_html_report(
                 return f'<a href="file://{os.path.abspath(pdf_path)}" target="_blank">{label}</a>'
         return label
 
+    def create_table(counter: dict, limit: int = 50, id_prefix: str = "") -> str:
+        """Create an HTML table from a Counter, with optional collapsible rows."""
+        if not counter:
+            return "<p><em>No data available</em></p>"
+
+        sorted_items = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+        total_items = len(sorted_items)
+
+        rows_visible = []
+        rows_hidden = []
+
+        for i, (k, v) in enumerate(sorted_items):
+            row = f"<tr><td>{k}</td><td>{v:,}</td></tr>"
+            if i < limit:
+                rows_visible.append(row)
+            else:
+                rows_hidden.append(row)
+
+        table_id = id_prefix or f"table_{hash(str(counter))}"
+
+        html = f"""
+        <table class="data-table">
+            <thead><tr><th>Item</th><th>Count</th></tr></thead>
+            <tbody id="{table_id}_visible">{''.join(rows_visible)}</tbody>
+        """
+
+        if rows_hidden:
+            html += f"""
+            <tbody id="{table_id}_hidden" class="hidden">{''.join(rows_hidden)}</tbody>
+            </table>
+            <button class="show-more-btn" onclick="toggleRows('{table_id}')">
+                Show all {total_items:,} items ({total_items - limit:,} more)
+            </button>
+            """
+        else:
+            html += "</table>"
+
+        return html
+
     def create_table_with_docs(
         counter: dict,
         docs_map: dict,
@@ -1753,6 +1792,7 @@ def generate_full_html_report(
                 <li><a href="#documents">Document Index</a></li>
                 <li><a href="#timeline">Timeline</a></li>
                 <li><a href="#classification">Classification</a></li>
+                <li><a href="#document-types">Document Types</a></li>
             </ul>
 
             <div class="nav-section">
@@ -1767,6 +1807,7 @@ def generate_full_html_report(
                 <div class="nav-section-title">Geographic</div>
                 <ul>
                     <li><a href="#geographic-map">Geographic Map</a></li>
+                    <li><a href="#locations">Locations</a></li>
                 </ul>
             </div>
 
@@ -1865,6 +1906,14 @@ def generate_full_html_report(
                 </div>
             </section>
 
+            <section id="document-types">
+                <h2>Document Types</h2>
+                {create_table(results['doc_type_count'], limit=15, id_prefix='doc_types')}
+
+                <h3>Languages</h3>
+                {create_table(results['language_count'], limit=10, id_prefix='languages')}
+            </section>
+
             <section id="people-network">
                 <h2>People Network</h2>
                 <p>Interactive network showing relationships between people mentioned in documents.
@@ -1894,10 +1943,31 @@ def generate_full_html_report(
                 </div>
             </section>
 
+            <section id="locations">
+                <h2>Locations</h2>
+                <div class="two-col">
+                    <div>
+                        <h3>Countries</h3>
+                        {create_table(results['country_count'], limit=30, id_prefix='countries')}
+                    </div>
+                    <div>
+                        <h3>Cities</h3>
+                        {create_table(results['city_count'], limit=30, id_prefix='cities')}
+                    </div>
+                </div>
+
+                <h3>Other Places</h3>
+                {create_table(results['other_place_count'], limit=30, id_prefix='other_places')}
+            </section>
+
             <section id="people">
                 <h2>People Mentioned</h2>
                 <p>Click on the document count to see source documents for each person.</p>
                 {create_table_with_docs(results['people_count'], results.get('people_docs', {}), limit=100, id_prefix='people')}
+
+                <h3>Recipients</h3>
+                <p>Document recipients (addressees).</p>
+                {create_table(results['recipients_count'], limit=50, id_prefix='recipients')}
             </section>
 
             <section id="organizations">
@@ -2021,11 +2091,21 @@ def generate_full_html_report(
             <section id="financial">
                 <h2>Financial References</h2>
                 <p><strong>{format_number(results['docs_with_financial'])} documents</strong> ({pct(results['docs_with_financial'], total)}) contain financial references.</p>
+
+                <h3>Purposes</h3>
+                {create_table(results['financial_purposes_count'], limit=20, id_prefix='financial_purposes')}
+
+                <h3>Financial Actors</h3>
+                {create_table(results['financial_actors_count'], limit=30, id_prefix='financial_actors')}
             </section>
 
             <section id="confidence">
                 <h2>Confidence Scores</h2>
                 {f"<div class='chart-container'><img src='{confidence_src}' alt='Confidence Distribution'></div>" if confidence_exists else "<p><em>No confidence data available</em></p>"}
+
+                <h3>Common Concerns</h3>
+                <p>Issues flagged during transcription that may require human review.</p>
+                {create_table(results['confidence_concerns'], limit=30, id_prefix='concerns')}
             </section>
 
             <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--gray-200); color: var(--gray-600); font-size: 0.85rem;">
