@@ -174,6 +174,9 @@ make analyze
 # Generate full report with PDF links (local investigation)
 make analyze-full
 
+# Generate GitHub Pages report with external PDF viewer
+make github-pages-external
+
 # Create matplotlib visualizations
 make visualize
 ```
@@ -181,6 +184,7 @@ make visualize
 **Report Types:**
 - **Standard report** (`make analyze`): Shareable HTML with embedded charts, aggregated statistics
 - **Full report** (`make analyze-full`): Includes document index with clickable PDF links, entity tables with expandable source document lists. PDF links use `file://` URLs - only works locally where PDFs are stored
+- **GitHub Pages report** (`make github-pages-external`): Outputs to `docs/index.html` with PDF links to the external viewer at `declasseuucl.vercel.app`. Deploy by enabling GitHub Pages on the `docs/` folder
 
 ### Testing & Code Quality
 

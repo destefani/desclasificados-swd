@@ -152,6 +152,11 @@ analyze-full:
 github-pages:
 	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --github-pages --pdf-dir data/original_pdfs
 
+# Generate GitHub Pages report with external PDF viewer links
+github-pages-external:
+	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --github-pages \
+		--external-pdf-viewer "https://declasseuucl.vercel.app" --pdf-dir data/original_pdfs
+
 # Serve the report with embedded PDF viewer
 serve:
 	@echo "Generating server-compatible report..."
@@ -251,7 +256,8 @@ help:
 	@echo "Analysis:"
 	@echo "  analyze          Generate HTML report"
 	@echo "  analyze-full     Generate full report with PDF links"
-	@echo "  github-pages     Generate GitHub Pages report (docs/index.html)"
+	@echo "  github-pages     Generate GitHub Pages report (no PDF links)"
+	@echo "  github-pages-external  GitHub Pages with external PDF viewer"
 	@echo "  serve            Start report server with PDF viewer"
 	@echo "  visualize        Create visualizations"
 	@echo ""
@@ -274,5 +280,6 @@ help:
         batch-run batch-prepare batch-pending batch-jobs \
         rag-build rag-rebuild rag-stats rag-interactive rag-query \
         eval-stats eval-validate eval-sample eval-report progress \
-        analyze analyze-full github-pages serve visualize test test-unit lint format typecheck \
+        analyze analyze-full github-pages github-pages-external serve visualize \
+        test test-unit lint format typecheck \
         clean update lock run shell help

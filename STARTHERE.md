@@ -289,9 +289,14 @@ See `docs/QUALITY_TESTING_METHODS.md` for comprehensive quality testing document
 # Generate HTML report with timeline
 make analyze
 
+# Generate GitHub Pages report with external PDF viewer
+make github-pages-external
+
 # Create matplotlib visualizations
 make visualize
 ```
+
+**GitHub Pages report** outputs to `docs/index.html` with clickable PDF links to the external viewer at `declasseuucl.vercel.app`. After generation, push to GitHub and enable Pages from the `docs/` folder.
 
 ### Testing
 
