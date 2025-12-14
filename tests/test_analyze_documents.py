@@ -432,3 +432,229 @@ class TestGenerateHtmlReport:
             generate_html_report(results, output_dir=tmpdir, output_file="custom_report.html")
 
             assert os.path.exists(os.path.join(tmpdir, "custom_report.html"))
+
+
+class TestFullMode:
+    """Tests for the full mode functionality with PDF links."""
+
+    @pytest.fixture
+    def temp_dir_with_pdfs(self, sample_transcript, sample_transcript_no_sensitive):
+        """Create a temporary directory with sample transcripts and mock PDF directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create transcripts directory
+            transcripts_dir = os.path.join(tmpdir, "transcripts")
+            os.makedirs(transcripts_dir)
+
+            # Create PDFs directory (just empty placeholder files for testing)
+            pdfs_dir = os.path.join(tmpdir, "pdfs")
+            os.makedirs(pdfs_dir)
+
+            # Write sample transcripts
+            with open(os.path.join(transcripts_dir, "doc_001.json"), "w") as f:
+                json.dump(sample_transcript, f)
+            with open(os.path.join(transcripts_dir, "doc_002.json"), "w") as f:
+                json.dump(sample_transcript_no_sensitive, f)
+
+            # Create placeholder PDF files
+            open(os.path.join(pdfs_dir, "doc_001.pdf"), "w").close()
+            open(os.path.join(pdfs_dir, "doc_002.pdf"), "w").close()
+
+            yield {"transcripts": transcripts_dir, "pdfs": pdfs_dir, "root": tmpdir}
+
+    def test_full_mode_returns_document_list(self, temp_dir_with_pdfs):
+        """Should return list of all documents in full mode."""
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        assert results["full_mode"] is True
+        assert len(results["all_documents"]) == 2
+
+        # Check document structure
+        doc = results["all_documents"][0]
+        assert "basename" in doc
+        assert "doc_id" in doc
+        assert "pdf_path" in doc
+        assert "date" in doc
+        assert "classification" in doc
+
+    def test_full_mode_returns_entity_doc_mappings(self, temp_dir_with_pdfs):
+        """Should return entity-to-document mappings in full mode."""
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        # Check people_docs mapping
+        assert "PINOCHET, AUGUSTO" in results["people_docs"]
+        assert len(results["people_docs"]["PINOCHET, AUGUSTO"]) == 1
+
+        # Check keyword_docs mapping
+        assert "MILITARY COUP" in results["keyword_docs"]
+        assert len(results["keyword_docs"]["MILITARY COUP"]) == 1
+
+        # Check org_docs mapping
+        assert "DINA" in results["org_docs"]
+
+    def test_full_mode_returns_sensitive_content_doc_mappings(self, temp_dir_with_pdfs):
+        """Should return sensitive content entity-to-document mappings."""
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        # Violence references
+        assert "DINA" in results["violence_perp_docs"]
+
+        # Torture references
+        assert "VILLA GRIMALDI" in results["torture_center_docs"]
+
+        # Disappearance references
+        assert "UNKNOWN DETAINEE" in results["disappearance_victim_docs"]
+
+    def test_full_mode_pdf_paths_are_correct(self, temp_dir_with_pdfs):
+        """Should construct correct PDF paths."""
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        # Check that PDF paths are correctly formed
+        for doc in results["all_documents"]:
+            expected_pdf = os.path.join(temp_dir_with_pdfs["pdfs"], f"{doc['basename']}.pdf")
+            assert doc["pdf_path"] == expected_pdf
+
+    def test_non_full_mode_returns_empty_collections(self, temp_dir_with_pdfs):
+        """Should return empty document collections when not in full mode."""
+        results = process_documents(temp_dir_with_pdfs["transcripts"])
+
+        assert results["full_mode"] is False
+        assert results["all_documents"] == []
+        assert results["people_docs"] == {}
+        assert results["keyword_docs"] == {}
+
+
+class TestGenerateFullHtmlReport:
+    """Tests for the generate_full_html_report function."""
+
+    @pytest.fixture
+    def temp_dir_with_pdfs(self, sample_transcript, sample_transcript_no_sensitive):
+        """Create a temporary directory with sample transcripts and mock PDFs."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            transcripts_dir = os.path.join(tmpdir, "transcripts")
+            os.makedirs(transcripts_dir)
+
+            pdfs_dir = os.path.join(tmpdir, "pdfs")
+            os.makedirs(pdfs_dir)
+
+            with open(os.path.join(transcripts_dir, "doc_001.json"), "w") as f:
+                json.dump(sample_transcript, f)
+            with open(os.path.join(transcripts_dir, "doc_002.json"), "w") as f:
+                json.dump(sample_transcript_no_sensitive, f)
+
+            open(os.path.join(pdfs_dir, "doc_001.pdf"), "w").close()
+            open(os.path.join(pdfs_dir, "doc_002.pdf"), "w").close()
+
+            yield {"transcripts": transcripts_dir, "pdfs": pdfs_dir, "root": tmpdir}
+
+    def test_generates_full_report_file(self, temp_dir_with_pdfs):
+        """Should generate full report HTML file."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(results, output_dir=output_dir)
+
+        assert os.path.exists(os.path.join(output_dir, "report_full.html"))
+
+    def test_full_report_contains_document_index(self, temp_dir_with_pdfs):
+        """Should include document index section with PDF links."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(results, output_dir=output_dir)
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        assert "Document Index" in content
+        assert "View PDF" in content
+        assert "file://" in content
+
+    def test_full_report_contains_expandable_entity_lists(self, temp_dir_with_pdfs):
+        """Should include expandable entity lists using details element."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(results, output_dir=output_dir)
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        # Check for details/summary HTML elements
+        assert "<details>" in content
+        assert "<summary>" in content
+        assert "documents</summary>" in content
+
+    def test_full_report_has_full_mode_badge(self, temp_dir_with_pdfs):
+        """Should display full mode badge in header."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(results, output_dir=output_dir)
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        assert "Full Report" in content
+        assert "full-mode-badge" in content
+
+    def test_full_report_embeds_images_by_default(self, temp_dir_with_pdfs):
+        """Should embed chart images as base64 by default."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(results, output_dir=output_dir, standalone=True)
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        # Check for base64 embedded images
+        assert "data:image/png;base64" in content
+
+        # PNG files should not exist (cleaned up)
+        assert not os.path.exists(os.path.join(output_dir, "timeline_yearly.png"))
