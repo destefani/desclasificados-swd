@@ -10,9 +10,11 @@
 # CONFIGURATION
 # =============================================================================
 
-# Default model for transcripts (override with: make analyze MODEL=gpt-4.1-mini)
+# Default model and schema version for transcripts
+# Override with: make analyze MODEL=gpt-4.1-mini SCHEMA=v2.0.0
 MODEL ?= gpt-5-mini
-TRANSCRIPTS_DIR = data/generated_transcripts/$(MODEL)
+SCHEMA ?= v2.2.0
+TRANSCRIPTS_DIR = data/generated_transcripts/$(MODEL)-$(SCHEMA)
 
 # =============================================================================
 # SETUP
