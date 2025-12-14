@@ -7,6 +7,14 @@
 #   make help           Show all commands
 
 # =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+# Default model for transcripts (override with: make analyze MODEL=gpt-4.1-mini)
+MODEL ?= gpt-5-mini
+TRANSCRIPTS_DIR = data/generated_transcripts/$(MODEL)
+
+# =============================================================================
 # SETUP
 # =============================================================================
 
@@ -121,19 +129,19 @@ eval-report:
 
 # Show dataset progress summary
 progress:
-	@echo "=== GPT-5-mini Dataset Progress ==="
+	@echo "=== $(MODEL) Dataset Progress ==="
 	@echo ""
 	@echo "Total PDFs: $$(find data/original_pdfs -name '*.pdf' 2>/dev/null | wc -l | tr -d ' ')"
-	@echo "Transcribed: $$(find data/generated_transcripts/gpt-5-mini -name '*.json' ! -name 'failed_*' ! -name 'incomplete_*' ! -name 'processing_*' 2>/dev/null | wc -l | tr -d ' ')"
+	@echo "Transcribed: $$(find $(TRANSCRIPTS_DIR) -name '*.json' ! -name 'failed_*' ! -name 'incomplete_*' ! -name 'processing_*' 2>/dev/null | wc -l | tr -d ' ')"
 	@echo ""
-	@echo "See data/generated_transcripts/gpt-5-mini/PROGRESS_LOG.md for full history"
+	@echo "See $(TRANSCRIPTS_DIR)/PROGRESS_LOG.md for full history"
 
 # =============================================================================
 # ANALYSIS
 # =============================================================================
 
 analyze:
-	uv run python -m app.analyze_documents
+	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR)
 
 visualize:
 	uv run python -m app.visualize_transcripts
