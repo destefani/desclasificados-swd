@@ -1345,7 +1345,7 @@ def generate_full_html_report(
         if external_pdf_viewer and (basename or doc_id):
             # Use external PDF viewer URL - prefer basename (numeric) over doc_id
             external_id = basename or doc_id
-            url = f"{external_pdf_viewer}/api/{external_id}/download/pdf"
+            url = f"{external_pdf_viewer}/?currentPage=1&documentId={external_id}"
             return f'<a href="{url}" target="_blank" class="pdf-link external">{label}</a>'
         if github_pages_mode and not external_pdf_viewer:
             # No PDF links in GitHub Pages mode without external viewer

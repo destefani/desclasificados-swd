@@ -680,8 +680,7 @@ class TestGenerateFullHtmlReport:
             content = f.read()
 
         # Check for external viewer URL pattern
-        assert "https://declasseuucl.vercel.app/api/" in content
-        assert "/download/pdf" in content
+        assert "https://declasseuucl.vercel.app/?currentPage=1&documentId=" in content
         assert 'class="pdf-link external"' in content
         # Should not have file:// URLs in href attributes (PDF links)
         assert 'href="file://' not in content
@@ -708,7 +707,7 @@ class TestGenerateFullHtmlReport:
             content = f.read()
 
         # Should have external viewer links, not "PDFs not available" spans
-        assert "https://declasseuucl.vercel.app/api/" in content
+        assert "https://declasseuucl.vercel.app/?currentPage=1&documentId=" in content
         assert 'class="pdf-link external"' in content
         # Check that no PDF links use the unavailable span (CSS class definition is ok)
         assert '<span class="pdf-unavailable"' not in content
