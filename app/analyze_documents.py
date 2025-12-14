@@ -38,6 +38,13 @@ from app.visualizations.sensitive_content import (
     generate_sensitive_summary_cards,
 )
 from app.visualizations.keyword_cloud import generate_keyword_cloud
+from app.visualizations.financial_dashboard import (
+    generate_financial_summary_cards,
+    generate_financial_timeline,
+    generate_financial_flow_network,
+    generate_financial_purposes_chart,
+    generate_financial_actors_chart,
+)
 from app.visualizations.pdf_viewer import (
     generate_pdf_viewer_modal,
     generate_pdf_link_interceptor,
@@ -1303,6 +1310,28 @@ def generate_full_html_report(
         min_count=2,
     )
 
+    # Generate financial dashboard visualizations
+    financial_summary_html = generate_financial_summary_cards(
+        docs_with_financial=results.get("docs_with_financial", 0),
+        total_docs=results.get("total_docs", 0),
+        financial_amounts=results.get("financial_amounts", []),
+        financial_actors_count=results.get("financial_actors_count", Counter()),
+        financial_purposes_count=results.get("financial_purposes_count", Counter()),
+    )
+
+    financial_purposes_chart_html = generate_financial_purposes_chart(
+        financial_purposes_count=results.get("financial_purposes_count", Counter()),
+        container_id="financial-purposes-chart",
+        height="350px",
+    )
+
+    financial_actors_chart_html = generate_financial_actors_chart(
+        financial_actors_count=results.get("financial_actors_count", Counter()),
+        container_id="financial-actors-chart",
+        height="400px",
+        max_items=15,
+    )
+
     # Generate static plots for other charts
     classification_path = os.path.join(output_dir, "classification.png")
     doc_types_path = os.path.join(output_dir, "doc_types.png")
@@ -2090,12 +2119,28 @@ def generate_full_html_report(
 
             <section id="financial">
                 <h2>Financial References</h2>
-                <p><strong>{format_number(results['docs_with_financial'])} documents</strong> ({pct(results['docs_with_financial'], total)}) contain financial references.</p>
 
-                <h3>Purposes</h3>
+                {financial_summary_html}
+
+                <div class="two-col">
+                    <div>
+                        <h3>Funding Purposes</h3>
+                        <div class="chart-container">
+                            {financial_purposes_chart_html}
+                        </div>
+                    </div>
+                    <div>
+                        <h3>Top Financial Actors</h3>
+                        <div class="chart-container">
+                            {financial_actors_chart_html}
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Funding Purposes Details</h3>
                 {create_table(results['financial_purposes_count'], limit=20, id_prefix='financial_purposes')}
 
-                <h3>Financial Actors</h3>
+                <h3>Financial Actors Details</h3>
                 {create_table(results['financial_actors_count'], limit=30, id_prefix='financial_actors')}
             </section>
 
