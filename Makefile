@@ -157,6 +157,19 @@ github-pages-external:
 	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --github-pages \
 		--external-pdf-viewer "https://declasseuucl.vercel.app" --pdf-dir data/original_pdfs
 
+# Update analysis and deploy to GitHub Pages (one command)
+deploy:
+	@echo "Generating GitHub Pages report..."
+	@uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --github-pages \
+		--external-pdf-viewer "https://declasseuucl.vercel.app" --pdf-dir data/original_pdfs
+	@echo ""
+	@echo "Committing and pushing to GitHub..."
+	@git add docs/
+	@git commit -m "Update analysis report" || echo "No changes to commit"
+	@git push
+	@echo ""
+	@echo "Done! GitHub Pages will update automatically."
+
 # Serve the report with embedded PDF viewer
 serve:
 	@echo "Generating server-compatible report..."
@@ -258,6 +271,7 @@ help:
 	@echo "  analyze-full     Generate full report with PDF links"
 	@echo "  github-pages     Generate GitHub Pages report (no PDF links)"
 	@echo "  github-pages-external  GitHub Pages with external PDF viewer"
+	@echo "  deploy           Update analysis and push to GitHub Pages"
 	@echo "  serve            Start report server with PDF viewer"
 	@echo "  visualize        Create visualizations"
 	@echo ""
@@ -280,6 +294,6 @@ help:
         batch-run batch-prepare batch-pending batch-jobs \
         rag-build rag-rebuild rag-stats rag-interactive rag-query \
         eval-stats eval-validate eval-sample eval-report progress \
-        analyze analyze-full github-pages github-pages-external serve visualize \
+        analyze analyze-full github-pages github-pages-external deploy serve visualize \
         test test-unit lint format typecheck \
         clean update lock run shell help
