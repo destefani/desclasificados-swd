@@ -1162,6 +1162,7 @@ def generate_full_html_report(
     output_file: str = "report_full.html",
     standalone: bool = True,
     serve_mode: bool = False,
+    github_pages_mode: bool = False,
 ):
     """Generate a full HTML report with PDF links for local investigation.
 
@@ -1176,6 +1177,7 @@ def generate_full_html_report(
         output_file: Name of the HTML file
         standalone: If True (default), embed images as base64 for a self-contained file.
         serve_mode: If True, generate server-compatible URLs (/pdf/) and include PDF viewer.
+        github_pages_mode: If True, disable PDF links for GitHub Pages deployment.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -1333,6 +1335,9 @@ def generate_full_html_report(
 
     def create_pdf_link(pdf_path: str, label: str) -> str:
         """Create an HTML link to a PDF file."""
+        if github_pages_mode:
+            # No PDF links in GitHub Pages mode
+            return f'<span class="pdf-unavailable" title="PDFs not available online">{label}</span>'
         if pdf_path:
             if serve_mode:
                 # Use server URL for PDF viewer modal
@@ -1675,6 +1680,12 @@ def generate_full_html_report(
             text-decoration: underline;
         }}
 
+        .pdf-unavailable {{
+            color: var(--gray-600);
+            font-style: italic;
+            cursor: not-allowed;
+        }}
+
         .sensitive-warning {{
             background: #fef2f2;
             border: 1px solid #fecaca;
@@ -1765,12 +1776,11 @@ def generate_full_html_report(
         </nav>
 
         <main>
-            <h1>Declassified CIA Documents Analysis <span class="full-mode-badge">Full Report</span></h1>
+            <h1>Declassified CIA Documents Analysis <span class="full-mode-badge">{"Online Report" if github_pages_mode else "Full Report"}</span></h1>
 
             <div class="meta-info">
                 Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} |
-                Source: {output_dir} |
-                <strong>Full mode with PDF links (for local use only)</strong>
+                {"<strong>Online version - PDFs not available</strong>" if github_pages_mode else f"Source: {output_dir} | <strong>Full mode with PDF links (for local use only)</strong>"}
             </div>
 
             <section id="overview">
@@ -1997,7 +2007,8 @@ def generate_full_html_report(
 
             <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--gray-200); color: var(--gray-600); font-size: 0.85rem;">
                 <p>This report analyzes declassified CIA documents related to the Chilean dictatorship (1973-1990).</p>
-                <p><strong>Full Report Mode:</strong> {"Click PDF links to view documents in the embedded viewer." if serve_mode else "PDF links are local file:// URLs and will only work on the machine where the PDFs are stored."}</p>
+                <p><strong>{"Online Report:" if github_pages_mode else "Full Report Mode:"}</strong> {"This is an online version. Source PDFs are not available for download." if github_pages_mode else ("Click PDF links to view documents in the embedded viewer." if serve_mode else "PDF links are local file:// URLs and will only work on the machine where the PDFs are stored.")}</p>
+                {"<p>Source code and data processing pipeline available on <a href='https://github.com/destefani/desclasificados-swd'>GitHub</a>.</p>" if github_pages_mode else ""}
             </footer>
         </main>
     </div>
@@ -2048,29 +2059,47 @@ def main():
         action="store_true",
         help="Generate server-compatible report with embedded PDF viewer (use with app.serve_report)"
     )
+    parser.add_argument(
+        "--github-pages",
+        action="store_true",
+        help="Generate GitHub Pages compatible report (no PDF links, outputs to docs/)"
+    )
     args = parser.parse_args()
 
     print(f"Processing documents from: {args.directory}")
 
-    if args.full or args.serve:
+    if args.full or args.serve or args.github_pages:
         print(f"Full mode enabled - PDFs from: {args.pdf_dir}")
         if args.serve:
             print("Serve mode enabled - generating server-compatible report with PDF viewer")
+        if args.github_pages:
+            print("GitHub Pages mode enabled - generating report without PDF links")
         results = process_documents(args.directory, full_mode=True, pdf_dir=args.pdf_dir)
         print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")
 
-        output_file = args.output if args.output != "report.html" else "report_full.html"
+        # GitHub Pages mode overrides output directory and filename
+        if args.github_pages:
+            output_dir = "docs"
+            output_file = "index.html"
+        else:
+            output_dir = args.output_dir
+            output_file = args.output if args.output != "report.html" else "report_full.html"
+
         standalone = not args.separate_images
         generate_full_html_report(
             results,
-            output_dir=args.output_dir,
+            output_dir=output_dir,
             output_file=output_file,
             standalone=standalone,
             serve_mode=args.serve,
+            github_pages_mode=args.github_pages,
         )
         if args.serve:
             print(f"\nTo view the report with PDF viewer, run:")
-            print(f"  uv run python -m app.serve_report --report {args.output_dir}/{output_file}")
+            print(f"  uv run python -m app.serve_report --report {output_dir}/{output_file}")
+        if args.github_pages:
+            print(f"\nGitHub Pages report generated at: {output_dir}/{output_file}")
+            print("Push to GitHub and enable Pages from the 'docs/' folder in repository settings.")
     else:
         results = process_documents(args.directory)
         print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")

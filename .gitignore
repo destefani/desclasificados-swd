@@ -19,6 +19,7 @@ app/__pycache__/
 
 # Generated outputs
 *.html
+!docs/*.html
 timeline.png
 output_images/
 final_report.html
