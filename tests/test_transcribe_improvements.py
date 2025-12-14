@@ -32,12 +32,20 @@ class TestValidateResponse:
                 "document_id": "CIA-001",
                 "case_number": "CASE123",
                 "document_date": "1976-09-21",
+                "date_range": {
+                    "start_date": "",
+                    "end_date": "",
+                    "is_approximate": False
+                },
                 "classification_level": "SECRET",
                 "declassification_date": "2000-01-01",
                 "document_type": "MEMORANDUM",
                 "author": "KISSINGER, HENRY",
                 "recipients": ["PINOCHET, AUGUSTO"],
                 "people_mentioned": ["ALLENDE, SALVADOR"],
+                "organizations_mentioned": [
+                    {"name": "CIA", "type": "INTELLIGENCE_AGENCY", "country": "UNITED STATES"}
+                ],
                 "country": ["CHILE"],
                 "city": ["SANTIAGO"],
                 "other_place": [],
@@ -49,6 +57,32 @@ class TestValidateResponse:
                 "keywords": ["OPERATION CONDOR"],
                 "page_count": 1,
                 "document_summary": "This is a test document about historical events in Chile during the 1970s.",
+                "financial_references": {
+                    "amounts": [],
+                    "financial_actors": [],
+                    "purposes": [],
+                    "has_financial_content": False
+                },
+                "violence_references": {
+                    "incident_types": [],
+                    "victims": [],
+                    "perpetrators": [],
+                    "has_violence_content": False
+                },
+                "torture_references": {
+                    "detention_centers": [],
+                    "victims": [],
+                    "perpetrators": [],
+                    "methods_mentioned": [],
+                    "has_torture_content": False
+                },
+                "disappearance_references": {
+                    "victims": [],
+                    "perpetrators": [],
+                    "locations": [],
+                    "dates_mentioned": [],
+                    "has_disappearance_content": False
+                }
             },
             "original_text": "Original text here",
             "reviewed_text": "Reviewed text here",
