@@ -148,6 +148,10 @@ analyze:
 analyze-full:
 	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --full --pdf-dir data/original_pdfs
 
+# Generate GitHub Pages compatible report (outputs to docs/index.html)
+github-pages:
+	uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --github-pages --pdf-dir data/original_pdfs
+
 # Serve the report with embedded PDF viewer
 serve:
 	@echo "Generating server-compatible report..."
@@ -247,6 +251,7 @@ help:
 	@echo "Analysis:"
 	@echo "  analyze          Generate HTML report"
 	@echo "  analyze-full     Generate full report with PDF links"
+	@echo "  github-pages     Generate GitHub Pages report (docs/index.html)"
 	@echo "  serve            Start report server with PDF viewer"
 	@echo "  visualize        Create visualizations"
 	@echo ""
@@ -269,5 +274,5 @@ help:
         batch-run batch-prepare batch-pending batch-jobs \
         rag-build rag-rebuild rag-stats rag-interactive rag-query \
         eval-stats eval-validate eval-sample eval-report progress \
-        analyze analyze-full serve visualize test test-unit lint format typecheck \
+        analyze analyze-full github-pages serve visualize test test-unit lint format typecheck \
         clean update lock run shell help
