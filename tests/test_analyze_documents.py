@@ -658,3 +658,105 @@ class TestGenerateFullHtmlReport:
 
         # PNG files should not exist (cleaned up)
         assert not os.path.exists(os.path.join(output_dir, "timeline_yearly.png"))
+
+    def test_external_pdf_viewer_generates_external_links(self, temp_dir_with_pdfs):
+        """Should generate external PDF viewer links when external_pdf_viewer is provided."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(
+            results,
+            output_dir=output_dir,
+            external_pdf_viewer="https://declasseuucl.vercel.app"
+        )
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        # Check for external viewer URL pattern
+        assert "https://declasseuucl.vercel.app/api/" in content
+        assert "/download/pdf" in content
+        assert 'class="pdf-link external"' in content
+        # Should not have file:// URLs in href attributes (PDF links)
+        assert 'href="file://' not in content
+
+    def test_external_pdf_viewer_with_github_pages_mode(self, temp_dir_with_pdfs):
+        """External PDF viewer should work with GitHub Pages mode."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(
+            results,
+            output_dir=output_dir,
+            github_pages_mode=True,
+            external_pdf_viewer="https://declasseuucl.vercel.app"
+        )
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        # Should have external viewer links, not "PDFs not available" spans
+        assert "https://declasseuucl.vercel.app/api/" in content
+        assert 'class="pdf-link external"' in content
+        # Check that no PDF links use the unavailable span (CSS class definition is ok)
+        assert '<span class="pdf-unavailable"' not in content
+
+    def test_github_pages_without_external_viewer_disables_links(self, temp_dir_with_pdfs):
+        """GitHub Pages mode without external viewer should disable PDF links."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(
+            results,
+            output_dir=output_dir,
+            github_pages_mode=True,
+            external_pdf_viewer=None
+        )
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        # Should have unavailable spans, not file:// links
+        assert '<span class="pdf-unavailable"' in content
+        assert 'href="file://' not in content
+
+    def test_external_link_css_class_present(self, temp_dir_with_pdfs):
+        """Should include CSS for external link indicator."""
+        from app.analyze_documents import generate_full_html_report
+
+        results = process_documents(
+            temp_dir_with_pdfs["transcripts"],
+            full_mode=True,
+            pdf_dir=temp_dir_with_pdfs["pdfs"]
+        )
+
+        output_dir = os.path.join(temp_dir_with_pdfs["root"], "reports")
+        generate_full_html_report(
+            results,
+            output_dir=output_dir,
+            external_pdf_viewer="https://declasseuucl.vercel.app"
+        )
+
+        with open(os.path.join(output_dir, "report_full.html"), "r") as f:
+            content = f.read()
+
+        # Check for CSS rule for external links
+        assert ".pdf-link.external::after" in content

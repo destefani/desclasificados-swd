@@ -1163,6 +1163,7 @@ def generate_full_html_report(
     standalone: bool = True,
     serve_mode: bool = False,
     github_pages_mode: bool = False,
+    external_pdf_viewer: str | None = None,
 ):
     """Generate a full HTML report with PDF links for local investigation.
 
@@ -1178,6 +1179,7 @@ def generate_full_html_report(
         standalone: If True (default), embed images as base64 for a self-contained file.
         serve_mode: If True, generate server-compatible URLs (/pdf/) and include PDF viewer.
         github_pages_mode: If True, disable PDF links for GitHub Pages deployment.
+        external_pdf_viewer: Base URL for external PDF viewer (e.g., https://declasseuucl.vercel.app)
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -1333,10 +1335,20 @@ def generate_full_html_report(
         doc_types_src = "doc_types.png"
         confidence_src = "confidence.png"
 
-    def create_pdf_link(pdf_path: str, label: str) -> str:
+    def create_pdf_link(
+        pdf_path: str,
+        label: str,
+        doc_id: str | None = None,
+        basename: str | None = None
+    ) -> str:
         """Create an HTML link to a PDF file."""
-        if github_pages_mode:
-            # No PDF links in GitHub Pages mode
+        if external_pdf_viewer and (basename or doc_id):
+            # Use external PDF viewer URL - prefer basename (numeric) over doc_id
+            external_id = basename or doc_id
+            url = f"{external_pdf_viewer}/api/{external_id}/download/pdf"
+            return f'<a href="{url}" target="_blank" class="pdf-link external">{label}</a>'
+        if github_pages_mode and not external_pdf_viewer:
+            # No PDF links in GitHub Pages mode without external viewer
             return f'<span class="pdf-unavailable" title="PDFs not available online">{label}</span>'
         if pdf_path:
             if serve_mode:
@@ -1366,8 +1378,8 @@ def generate_full_html_report(
             if doc_refs:
                 # Create expandable document list
                 doc_links = []
-                for doc_id, pdf_path, basename in doc_refs[:20]:  # Limit to 20 docs
-                    link = create_pdf_link(pdf_path, f"{basename}")
+                for doc_id, pdf_path, doc_basename in doc_refs[:20]:  # Limit to 20 docs
+                    link = create_pdf_link(pdf_path, f"{doc_basename}", doc_id=doc_id, basename=doc_basename)
                     doc_links.append(f"<li>{link} <small>({doc_id})</small></li>")
 
                 more_text = ""
@@ -1409,7 +1421,11 @@ def generate_full_html_report(
 
         rows = []
         for doc in sorted_docs[:limit]:
-            pdf_link = create_pdf_link(doc["pdf_path"], "View PDF")
+            pdf_link = create_pdf_link(
+                doc["pdf_path"], "View PDF",
+                doc_id=doc.get("doc_id"),
+                basename=doc.get("basename")
+            )
             title = doc.get("title", "") or doc.get("doc_id", doc["basename"])
             if len(title) > 60:
                 title = title[:57] + "..."
@@ -1684,6 +1700,11 @@ def generate_full_html_report(
             color: var(--gray-600);
             font-style: italic;
             cursor: not-allowed;
+        }}
+
+        .pdf-link.external::after {{
+            content: " ↗";
+            font-size: 0.8em;
         }}
 
         .sensitive-warning {{
@@ -2062,18 +2083,29 @@ def main():
     parser.add_argument(
         "--github-pages",
         action="store_true",
-        help="Generate GitHub Pages compatible report (no PDF links, outputs to docs/)"
+        help="Generate GitHub Pages compatible report (use with --external-pdf-viewer for PDF links)"
+    )
+    parser.add_argument(
+        "--external-pdf-viewer",
+        type=str,
+        metavar="BASE_URL",
+        help="Use external PDF viewer URL (e.g., https://declasseuucl.vercel.app)"
     )
     args = parser.parse_args()
 
     print(f"Processing documents from: {args.directory}")
 
-    if args.full or args.serve or args.github_pages:
+    if args.full or args.serve or args.github_pages or args.external_pdf_viewer:
         print(f"Full mode enabled - PDFs from: {args.pdf_dir}")
         if args.serve:
             print("Serve mode enabled - generating server-compatible report with PDF viewer")
         if args.github_pages:
-            print("GitHub Pages mode enabled - generating report without PDF links")
+            if args.external_pdf_viewer:
+                print(f"GitHub Pages mode enabled - using external PDF viewer: {args.external_pdf_viewer}")
+            else:
+                print("GitHub Pages mode enabled - generating report without PDF links")
+        elif args.external_pdf_viewer:
+            print(f"External PDF viewer enabled: {args.external_pdf_viewer}")
         results = process_documents(args.directory, full_mode=True, pdf_dir=args.pdf_dir)
         print(f"Processed {results['total_docs']:,} documents ({results['files_skipped']} files skipped)")
 
@@ -2093,6 +2125,7 @@ def main():
             standalone=standalone,
             serve_mode=args.serve,
             github_pages_mode=args.github_pages,
+            external_pdf_viewer=args.external_pdf_viewer,
         )
         if args.serve:
             print(f"\nTo view the report with PDF viewer, run:")
