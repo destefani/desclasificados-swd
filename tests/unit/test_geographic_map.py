@@ -12,7 +12,8 @@ from app.visualizations.geographic_map import (
     COUNTRY_COORDS,
     DETENTION_CENTERS,
     OPERATION_CONDOR_COUNTRIES,
-    CONDOR_COUNTRY_GEOJSON,
+    CONDOR_COUNTRY_CODES,
+    COUNTRIES_GEOJSON_URL,
 )
 
 
@@ -177,8 +178,8 @@ class TestGenerateGeographicMap:
         assert "Operation Condor" in html
         assert "condorLayer" in html
 
-    def test_uses_geojson_for_condor_countries(self):
-        """Should use L.geoJSON instead of L.rectangle for Condor countries."""
+    def test_uses_external_geojson_for_condor_countries(self):
+        """Should fetch GeoJSON from external CDN for Condor countries."""
         html = generate_geographic_map(
             city_count=Counter({"SANTIAGO": 100}),
             country_count=Counter(),
@@ -186,22 +187,20 @@ class TestGenerateGeographicMap:
         )
         assert "L.geoJSON" in html
         assert "L.rectangle" not in html
-        assert "condorGeoJSON" in html
+        assert "topojson" in html
+        assert COUNTRIES_GEOJSON_URL in html
 
-    def test_condor_geojson_has_all_countries(self):
-        """Generated HTML should contain GeoJSON for all 6 Condor countries."""
+    def test_condor_country_codes_in_html(self):
+        """Generated HTML should contain country codes for filtering."""
         html = generate_geographic_map(
             city_count=Counter(),
             country_count=Counter(),
             show_condor_countries=True,
         )
-        # Check that country names are in the GeoJSON data
-        assert '"Chile"' in html
-        assert '"Argentina"' in html
-        assert '"Uruguay"' in html
-        assert '"Paraguay"' in html
-        assert '"Bolivia"' in html
-        assert '"Brazil"' in html
+        # Check that country codes are in the JavaScript
+        assert "condorCountryCodes" in html
+        assert '"152"' in html  # Chile
+        assert '"032"' in html  # Argentina
 
 
 class TestCoordinateConstants:
@@ -249,73 +248,32 @@ class TestCoordinateConstants:
             assert -180 <= lon <= 180
 
 
-class TestCondorCountryGeoJSON:
-    """Tests for CONDOR_COUNTRY_GEOJSON constant."""
+class TestCondorCountryCodes:
+    """Tests for CONDOR_COUNTRY_CODES constant."""
+
+    def test_has_six_countries(self):
+        """Should have exactly 6 Operation Condor countries."""
+        assert len(CONDOR_COUNTRY_CODES) == 6
 
     def test_has_all_condor_countries(self):
-        """Should have GeoJSON for all Operation Condor countries."""
-        for country in OPERATION_CONDOR_COUNTRIES:
-            assert country in CONDOR_COUNTRY_GEOJSON, f"Missing GeoJSON for {country}"
+        """Should have codes for all Operation Condor countries."""
+        country_names = set(CONDOR_COUNTRY_CODES.values())
+        expected = {"Chile", "Argentina", "Uruguay", "Paraguay", "Bolivia", "Brazil"}
+        assert country_names == expected
 
-    def test_valid_geojson_structure(self):
-        """Each country should have valid GeoJSON Feature structure."""
-        for country, geojson in CONDOR_COUNTRY_GEOJSON.items():
-            assert geojson["type"] == "Feature", f"{country} should be a Feature"
-            assert "properties" in geojson, f"{country} missing properties"
-            assert "geometry" in geojson, f"{country} missing geometry"
-            assert "name" in geojson["properties"], f"{country} missing name property"
+    def test_codes_are_valid_iso3166(self):
+        """Country codes should be valid ISO 3166-1 numeric codes."""
+        expected_codes = {
+            "152": "Chile",
+            "032": "Argentina",
+            "858": "Uruguay",
+            "600": "Paraguay",
+            "068": "Bolivia",
+            "076": "Brazil",
+        }
+        assert CONDOR_COUNTRY_CODES == expected_codes
 
-    def test_valid_polygon_geometry(self):
-        """Each country should have valid Polygon geometry."""
-        for country, geojson in CONDOR_COUNTRY_GEOJSON.items():
-            geometry = geojson["geometry"]
-            assert geometry["type"] == "Polygon", f"{country} should be Polygon"
-            assert "coordinates" in geometry, f"{country} missing coordinates"
-            coords = geometry["coordinates"]
-            assert isinstance(coords, list), f"{country} coordinates should be list"
-            assert len(coords) >= 1, f"{country} should have at least 1 ring"
-            # First ring (exterior ring) should have points
-            ring = coords[0]
-            assert len(ring) >= 4, f"{country} polygon should have >= 4 points"
-
-    def test_polygon_coordinates_are_valid(self):
-        """All polygon coordinates should be valid [lon, lat] pairs."""
-        for country, geojson in CONDOR_COUNTRY_GEOJSON.items():
-            ring = geojson["geometry"]["coordinates"][0]
-            for point in ring:
-                assert len(point) == 2, f"{country} point should have 2 coords"
-                lon, lat = point
-                assert -180 <= lon <= 180, f"{country} lon {lon} out of range"
-                assert -90 <= lat <= 90, f"{country} lat {lat} out of range"
-
-    def test_polygon_is_closed(self):
-        """Polygon exterior rings should be closed (first == last point)."""
-        for country, geojson in CONDOR_COUNTRY_GEOJSON.items():
-            ring = geojson["geometry"]["coordinates"][0]
-            first = ring[0]
-            last = ring[-1]
-            assert first == last, f"{country} polygon should be closed"
-
-    def test_chile_extends_to_tierra_del_fuego(self):
-        """Chile polygon should extend to Tierra del Fuego (latitude ~-55)."""
-        chile = CONDOR_COUNTRY_GEOJSON["CHILE"]
-        ring = chile["geometry"]["coordinates"][0]
-        lats = [point[1] for point in ring]
-        min_lat = min(lats)
-        assert min_lat < -50, f"Chile should extend to ~-55 lat, got {min_lat}"
-
-    def test_argentina_extends_to_tierra_del_fuego(self):
-        """Argentina polygon should extend to Tierra del Fuego (latitude ~-55)."""
-        argentina = CONDOR_COUNTRY_GEOJSON["ARGENTINA"]
-        ring = argentina["geometry"]["coordinates"][0]
-        lats = [point[1] for point in ring]
-        min_lat = min(lats)
-        assert min_lat < -50, f"Argentina should extend to ~-55 lat, got {min_lat}"
-
-    def test_brazil_extends_to_amazon(self):
-        """Brazil polygon should extend to the Amazon (latitude ~5 north)."""
-        brazil = CONDOR_COUNTRY_GEOJSON["BRAZIL"]
-        ring = brazil["geometry"]["coordinates"][0]
-        lats = [point[1] for point in ring]
-        max_lat = max(lats)
-        assert max_lat > 0, f"Brazil should extend north of equator, got {max_lat}"
+    def test_geojson_url_is_valid(self):
+        """GeoJSON URL should be a valid HTTPS URL."""
+        assert COUNTRIES_GEOJSON_URL.startswith("https://")
+        assert "countries" in COUNTRIES_GEOJSON_URL.lower()
