@@ -16,6 +16,19 @@ from typing import Any
 LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 LEAFLET_JS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 
+# Natural Earth countries GeoJSON (110m resolution - good balance of detail and size)
+COUNTRIES_GEOJSON_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
+
+# ISO 3166-1 numeric codes for Operation Condor countries (used to filter GeoJSON)
+CONDOR_COUNTRY_CODES = {
+    "152": "Chile",
+    "032": "Argentina",
+    "858": "Uruguay",
+    "600": "Paraguay",
+    "068": "Bolivia",
+    "076": "Brazil",
+}
+
 # Pre-defined coordinates for known locations
 # Format: "LOCATION_NAME": (latitude, longitude)
 LOCATION_COORDS: dict[str, tuple[float, float]] = {
@@ -247,113 +260,6 @@ OPERATION_CONDOR_COUNTRIES = [
     "CHILE", "ARGENTINA", "URUGUAY", "PARAGUAY", "BOLIVIA", "BRAZIL"
 ]
 
-# Simplified GeoJSON polygons for Operation Condor countries
-# These are simplified boundaries for visualization purposes
-CONDOR_COUNTRY_GEOJSON: dict[str, dict] = {
-    "CHILE": {
-        "type": "Feature",
-        "properties": {"name": "Chile"},
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-                [-69.5, -17.5], [-70.4, -18.3], [-70.6, -22.0], [-70.2, -24.0],
-                [-70.5, -25.2], [-70.1, -27.1], [-71.2, -29.4], [-71.5, -30.0],
-                [-71.7, -33.0], [-71.4, -35.0], [-72.1, -37.1], [-73.0, -39.2],
-                [-73.2, -41.8], [-72.5, -42.0], [-72.1, -43.5], [-74.0, -43.0],
-                [-74.5, -45.0], [-75.0, -47.0], [-75.5, -49.0], [-74.0, -51.0],
-                [-73.0, -53.0], [-71.0, -52.5], [-69.0, -54.9], [-68.6, -54.9],
-                [-68.6, -52.6], [-70.0, -52.0], [-69.5, -50.5], [-69.3, -49.0],
-                [-68.0, -47.0], [-66.0, -45.0], [-67.0, -41.0], [-67.0, -38.0],
-                [-67.5, -33.0], [-68.4, -31.5], [-69.0, -29.0], [-68.3, -27.0],
-                [-68.6, -24.5], [-67.2, -22.9], [-67.0, -21.0], [-69.5, -17.5]
-            ]]
-        }
-    },
-    "ARGENTINA": {
-        "type": "Feature",
-        "properties": {"name": "Argentina"},
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-                [-66.0, -22.0], [-64.5, -22.5], [-63.0, -22.0], [-62.0, -22.5],
-                [-60.0, -24.0], [-58.0, -24.5], [-57.5, -25.5], [-58.0, -27.0],
-                [-56.0, -27.5], [-55.0, -28.0], [-54.5, -29.0], [-54.0, -30.0],
-                [-53.8, -31.5], [-54.5, -33.0], [-56.0, -34.0], [-57.5, -34.5],
-                [-58.5, -34.2], [-59.0, -35.5], [-60.5, -36.5], [-62.0, -38.5],
-                [-63.0, -39.0], [-64.0, -40.0], [-65.0, -41.0], [-65.0, -42.5],
-                [-66.0, -44.0], [-66.5, -45.5], [-67.0, -46.5], [-67.5, -49.0],
-                [-68.0, -50.5], [-68.5, -52.0], [-69.0, -54.9], [-68.6, -54.9],
-                [-68.6, -52.6], [-68.0, -51.0], [-67.5, -49.5], [-67.0, -46.5],
-                [-66.5, -45.0], [-66.0, -44.0], [-67.0, -41.0], [-67.0, -38.0],
-                [-67.5, -33.0], [-68.4, -31.5], [-69.0, -29.0], [-68.3, -27.0],
-                [-68.6, -24.5], [-67.2, -22.9], [-66.0, -22.0]
-            ]]
-        }
-    },
-    "URUGUAY": {
-        "type": "Feature",
-        "properties": {"name": "Uruguay"},
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-                [-58.4, -33.0], [-58.0, -33.5], [-58.0, -34.0], [-57.0, -34.5],
-                [-55.0, -34.0], [-54.0, -34.5], [-53.5, -33.7], [-53.4, -33.0],
-                [-54.0, -31.5], [-55.0, -31.0], [-56.0, -30.5], [-57.0, -30.2],
-                [-57.8, -30.5], [-58.0, -31.0], [-58.2, -32.0], [-58.4, -33.0]
-            ]]
-        }
-    },
-    "PARAGUAY": {
-        "type": "Feature",
-        "properties": {"name": "Paraguay"},
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-                [-62.5, -22.0], [-61.0, -19.3], [-59.0, -19.3], [-58.0, -20.0],
-                [-57.8, -22.0], [-56.0, -22.3], [-55.5, -24.0], [-55.8, -27.0],
-                [-58.0, -27.0], [-58.5, -26.5], [-59.0, -25.5], [-60.0, -24.0],
-                [-62.0, -22.5], [-62.5, -22.0]
-            ]]
-        }
-    },
-    "BOLIVIA": {
-        "type": "Feature",
-        "properties": {"name": "Bolivia"},
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-                [-69.5, -17.5], [-69.0, -18.0], [-68.5, -19.0], [-68.0, -20.0],
-                [-67.2, -22.9], [-65.0, -22.1], [-64.3, -22.5], [-63.0, -22.0],
-                [-62.5, -22.0], [-61.0, -19.3], [-59.0, -19.3], [-58.0, -18.0],
-                [-58.5, -16.3], [-60.0, -16.0], [-60.5, -14.0], [-61.0, -13.5],
-                [-64.0, -12.5], [-65.0, -11.0], [-67.0, -10.5], [-68.5, -11.0],
-                [-69.0, -14.0], [-69.5, -15.0], [-69.5, -17.5]
-            ]]
-        }
-    },
-    "BRAZIL": {
-        "type": "Feature",
-        "properties": {"name": "Brazil"},
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-                [-53.4, -33.0], [-53.5, -33.7], [-52.0, -32.0], [-50.0, -31.0],
-                [-49.0, -29.0], [-48.0, -26.0], [-48.5, -24.0], [-46.5, -24.0],
-                [-44.0, -23.0], [-41.0, -22.5], [-40.0, -20.0], [-38.5, -13.0],
-                [-35.0, -6.0], [-35.0, -5.0], [-37.0, -4.5], [-40.0, -2.5],
-                [-44.0, -1.5], [-47.0, -0.5], [-50.0, 0.0], [-51.0, 1.0],
-                [-52.0, 2.0], [-54.0, 2.5], [-56.0, 2.0], [-58.0, 1.5],
-                [-60.0, 1.0], [-62.0, 0.5], [-65.0, 1.0], [-67.0, 2.0],
-                [-68.0, 1.5], [-70.0, 0.5], [-70.0, -2.0], [-69.5, -4.0],
-                [-70.0, -8.0], [-72.0, -10.0], [-74.0, -11.0], [-73.0, -14.0],
-                [-69.5, -15.0], [-69.0, -14.0], [-68.5, -11.0], [-67.0, -10.5],
-                [-65.0, -11.0], [-64.0, -12.5], [-61.0, -13.5], [-60.5, -14.0],
-                [-60.0, -16.0], [-58.5, -16.3], [-58.0, -18.0], [-57.8, -22.0],
-                [-55.0, -23.5], [-54.5, -26.0], [-53.8, -27.2], [-53.4, -33.0]
-            ]]
-        }
-    }
-}
 
 
 def geocode_location(location: str) -> tuple[float, float] | None:
@@ -502,12 +408,7 @@ def generate_geographic_map(
     # Prepare data for JavaScript
     locations_json = json.dumps(locations)
     detention_centers_json = json.dumps(detention_centers)
-    # Create GeoJSON FeatureCollection for Operation Condor countries
-    condor_geojson = {
-        "type": "FeatureCollection",
-        "features": [CONDOR_COUNTRY_GEOJSON[country] for country in OPERATION_CONDOR_COUNTRIES]
-    }
-    condor_geojson_json = json.dumps(condor_geojson)
+    condor_country_codes_json = json.dumps(CONDOR_COUNTRY_CODES)
 
     html = f'''
 <div class="map-section">
@@ -540,7 +441,7 @@ def generate_geographic_map(
             Detention/Torture centers
         </span>
         <span style="display: flex; align-items: center; gap: 5px;">
-            <span style="width: 20px; height: 12px; background: rgba(239, 68, 68, 0.1); border: 2px solid #EF4444;"></span>
+            <span style="width: 20px; height: 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.5);"></span>
             Operation Condor countries
         </span>
     </div>
@@ -563,6 +464,7 @@ def generate_geographic_map(
 
 <link rel="stylesheet" href="{LEAFLET_CSS}" />
 <script src="{LEAFLET_JS}"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 
 <script>
 (function() {{
@@ -577,7 +479,7 @@ def generate_geographic_map(
 
     const locations = {locations_json};
     const detentionCenters = {detention_centers_json};
-    const condorGeoJSON = {condor_geojson_json};
+    const condorCountryCodes = {condor_country_codes_json};
     const maxCount = {max_count};
 
     // Layer groups
@@ -624,23 +526,43 @@ def generate_geographic_map(
         detentionLayer.addLayer(marker);
     }});
 
-    // Operation Condor country boundaries (GeoJSON polygons)
-    L.geoJSON(condorGeoJSON, {{
-        style: {{
-            color: '#EF4444',
-            weight: 2,
-            fillColor: '#EF4444',
-            fillOpacity: 0.1
-        }},
-        onEachFeature: function(feature, layer) {{
-            layer.bindPopup(`<strong>${{feature.properties.name}}</strong><br>Operation Condor member state`);
-        }}
-    }}).addTo(condorLayer);
+    // Fetch Operation Condor country boundaries from Natural Earth data
+    fetch('{COUNTRIES_GEOJSON_URL}')
+        .then(response => response.json())
+        .then(topology => {{
+            // Convert TopoJSON to GeoJSON
+            const countries = topojson.feature(topology, topology.objects.countries);
 
-    // Add layers to map
+            // Filter to only Operation Condor countries
+            const condorFeatures = {{
+                type: 'FeatureCollection',
+                features: countries.features.filter(f => {{
+                    const code = String(f.id).padStart(3, '0');
+                    return condorCountryCodes[code] !== undefined;
+                }})
+            }};
+
+            // Add to map with lighter styling
+            L.geoJSON(condorFeatures, {{
+                style: {{
+                    color: 'rgba(239, 68, 68, 0.5)',
+                    weight: 1,
+                    fillColor: '#EF4444',
+                    fillOpacity: 0.08
+                }},
+                onEachFeature: function(feature, layer) {{
+                    const code = String(feature.id).padStart(3, '0');
+                    const name = condorCountryCodes[code] || 'Unknown';
+                    layer.bindPopup(`<strong>${{name}}</strong><br>Operation Condor member state`);
+                }}
+            }}).addTo(condorLayer);
+        }})
+        .catch(err => console.warn('Could not load country boundaries:', err));
+
+    // Add layers to map (condor countries first so they're behind markers)
+    {'condorLayer.addTo(map_' + container_id.replace('-', '_') + ');' if show_condor_countries else ''}
     locationLayer.addTo(map_{container_id.replace('-', '_')});
     {'detentionLayer.addTo(map_' + container_id.replace('-', '_') + ');' if show_detention_centers else ''}
-    {'condorLayer.addTo(map_' + container_id.replace('-', '_') + ');' if show_condor_countries else ''}
 
     // Layer toggle functions
     window.toggleLayer_{container_id.replace('-', '_')} = function(layer) {{
