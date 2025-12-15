@@ -1966,7 +1966,7 @@ def generate_full_html_report(
                 <h2>Geographic Map</h2>
                 <p>Interactive map showing locations mentioned in documents. Blue markers show document mentions
                 (larger = more frequent). Red markers indicate known detention and torture centers.
-                Dashed rectangles highlight Operation Condor member countries. Toggle layers using the checkboxes.</p>
+                Country boundaries highlight Operation Condor member countries. Toggle layers using the checkboxes.</p>
                 <div class="chart-container">
                     {geographic_map_html}
                 </div>

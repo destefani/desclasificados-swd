@@ -7,12 +7,12 @@ from app.visualizations.geographic_map import (
     geocode_location,
     aggregate_locations,
     get_detention_centers_from_docs,
-    generate_geocoding_stats_card,
     generate_geographic_map,
     LOCATION_COORDS,
     COUNTRY_COORDS,
     DETENTION_CENTERS,
     OPERATION_CONDOR_COUNTRIES,
+    CONDOR_COUNTRY_GEOJSON,
 )
 
 
@@ -41,7 +41,6 @@ class TestGeocodeLocation:
 
     def test_partial_match(self):
         """Should find partial matches for cities."""
-        # "WASHINGTON" should match even if full name varies
         result = geocode_location("WASHINGTON")
         assert result is not None
 
@@ -59,60 +58,45 @@ class TestGeocodeLocation:
 class TestAggregateLocations:
     """Tests for aggregate_locations function."""
 
-    def test_returns_tuple(self):
-        """Should return tuple of (matched, unmatched)."""
+    def test_returns_list(self):
+        """Should return list of locations."""
         city_count = Counter({"SANTIAGO": 100})
         result = aggregate_locations(city_count, Counter(), Counter())
-        assert isinstance(result, tuple)
-        assert len(result) == 2
+        assert isinstance(result, list)
 
     def test_matched_locations_have_coords(self):
         """Matched locations should have lat/lon."""
         city_count = Counter({"SANTIAGO": 100, "BUENOS AIRES": 50})
-        matched, _ = aggregate_locations(city_count, Counter(), Counter())
-        assert len(matched) == 2
-        for loc in matched:
+        locations = aggregate_locations(city_count, Counter(), Counter())
+        assert len(locations) == 2
+        for loc in locations:
             assert "lat" in loc
             assert "lon" in loc
             assert "count" in loc
             assert "name" in loc
             assert "type" in loc
 
-    def test_unmatched_locations_tracked(self):
-        """Unmatched locations should be returned in second element."""
-        city_count = Counter({"UNKNOWNCITY": 50, "SANTIAGO": 100})
-        matched, unmatched = aggregate_locations(city_count, Counter(), Counter())
-
-        assert len(matched) == 1
-        assert matched[0]["name"] == "SANTIAGO"
-
-        assert len(unmatched) == 1
-        assert unmatched[0]["name"] == "UNKNOWNCITY"
-        assert unmatched[0]["count"] == 50
-
     def test_deduplicates_by_coordinates(self):
         """Should deduplicate locations with same coordinates."""
         # VALPARAISO and VALPARAÍSO have same coords
         city_count = Counter({"VALPARAISO": 100, "VALPARAÍSO": 50})
-        matched, _ = aggregate_locations(city_count, Counter(), Counter())
+        locations = aggregate_locations(city_count, Counter(), Counter())
         # Only one should be included (first one processed - highest count)
-        assert len(matched) == 1
+        assert len(locations) == 1
 
     def test_city_priority_over_country(self):
         """Cities should be processed before countries."""
         city_count = Counter({"SANTIAGO": 100})
         country_count = Counter({"CHILE": 200})
-        matched, _ = aggregate_locations(city_count, country_count, Counter())
+        locations = aggregate_locations(city_count, country_count, Counter())
 
-        # Santiago should be included, Chile should be skipped (different coords though)
-        names = [loc["name"] for loc in matched]
+        names = [loc["name"] for loc in locations]
         assert "SANTIAGO" in names
 
     def test_empty_input(self):
         """Should handle empty counters."""
-        matched, unmatched = aggregate_locations(Counter(), Counter(), Counter())
-        assert matched == []
-        assert unmatched == []
+        locations = aggregate_locations(Counter(), Counter(), Counter())
+        assert locations == []
 
 
 class TestGetDetentionCentersFromDocs:
@@ -141,61 +125,6 @@ class TestGetDetentionCentersFromDocs:
         assert estadio["doc_count"] == 5
 
 
-class TestGenerateGeocodingStatsCard:
-    """Tests for generate_geocoding_stats_card function."""
-
-    def test_returns_html(self):
-        """Should return HTML string."""
-        html = generate_geocoding_stats_card(
-            total_locations=100,
-            matched_count=80,
-            unmatched_locations=[],
-        )
-        assert "<div" in html
-        assert "80.0%" in html
-
-    def test_shows_percentage(self):
-        """Should display correct coverage percentage."""
-        html = generate_geocoding_stats_card(
-            total_locations=100,
-            matched_count=75,
-            unmatched_locations=[],
-        )
-        assert "75.0%" in html
-
-    def test_shows_unmatched_count(self):
-        """Should show number of unmatched locations."""
-        unmatched = [
-            {"name": "UNKNOWN1", "count": 10, "type": "city"},
-            {"name": "UNKNOWN2", "count": 5, "type": "city"},
-        ]
-        html = generate_geocoding_stats_card(
-            total_locations=100,
-            matched_count=98,
-            unmatched_locations=unmatched,
-        )
-        assert "2" in html  # 2 unmatched
-
-    def test_handles_zero_total(self):
-        """Should handle zero total locations without division error."""
-        html = generate_geocoding_stats_card(
-            total_locations=0,
-            matched_count=0,
-            unmatched_locations=[],
-        )
-        assert "0.0%" in html
-
-    def test_includes_container_id(self):
-        """Should use specified container ID."""
-        html = generate_geocoding_stats_card(
-            total_locations=100,
-            matched_count=80,
-            unmatched_locations=[],
-            container_id="test-stats",
-        )
-        assert 'id="test-stats"' in html
-
-
 class TestGenerateGeographicMap:
     """Tests for generate_geographic_map function."""
 
@@ -207,7 +136,7 @@ class TestGenerateGeographicMap:
         )
         assert "leaflet" in html.lower()
         assert "<script" in html
-        assert 'L.map' in html
+        assert "L.map" in html
 
     def test_empty_data_returns_valid_html(self):
         """Should return valid HTML even with empty data."""
@@ -226,78 +155,6 @@ class TestGenerateGeographicMap:
             container_id="test-map",
         )
         assert 'id="test-map"' in html
-
-    def test_includes_stats_when_enabled(self):
-        """Should include geocoding stats when show_stats=True."""
-        html = generate_geographic_map(
-            city_count=Counter({"SANTIAGO": 100}),
-            country_count=Counter(),
-            show_stats=True,
-        )
-        assert "geocoding-stats" in html.lower() or "Geocoding Coverage" in html
-
-    def test_excludes_stats_when_disabled(self):
-        """Should not include geocoding stats when show_stats=False."""
-        html = generate_geographic_map(
-            city_count=Counter({"SANTIAGO": 100}),
-            country_count=Counter(),
-            show_stats=False,
-        )
-        # Stats card should not be present
-        assert "Geocoding Coverage" not in html
-
-    def test_includes_heatmap_script_when_enabled(self):
-        """Should include Leaflet.heat script when show_heatmap=True."""
-        html = generate_geographic_map(
-            city_count=Counter({"SANTIAGO": 100}),
-            country_count=Counter(),
-            show_heatmap=True,
-        )
-        assert "leaflet-heat.js" in html
-        assert "heatLayer" in html
-
-    def test_excludes_heatmap_when_disabled(self):
-        """Should not include heatmap when show_heatmap=False."""
-        html = generate_geographic_map(
-            city_count=Counter({"SANTIAGO": 100}),
-            country_count=Counter(),
-            show_heatmap=False,
-        )
-        assert "leaflet-heat.js" not in html
-
-    def test_includes_time_slider_when_enabled(self):
-        """Should include time slider when show_time_slider=True and data available."""
-        location_by_year = {
-            "1973": {"SANTIAGO": 50},
-            "1974": {"SANTIAGO": 30},
-            "1975": {"SANTIAGO": 20},
-        }
-        html = generate_geographic_map(
-            city_count=Counter({"SANTIAGO": 100}),
-            country_count=Counter(),
-            location_by_year=location_by_year,
-            show_time_slider=True,
-        )
-        assert "year-start" in html
-        assert "year-end" in html
-        assert "Year Range" in html
-
-    def test_includes_document_links_in_full_mode(self):
-        """Should include document links in popups when full_mode=True."""
-        city_docs = {
-            "SANTIAGO": [
-                ("DOC1", "/path/to/doc1.pdf", "doc1"),
-                ("DOC2", "/path/to/doc2.pdf", "doc2"),
-            ]
-        }
-        html = generate_geographic_map(
-            city_count=Counter({"SANTIAGO": 100}),
-            country_count=Counter(),
-            city_docs=city_docs,
-            full_mode=True,
-        )
-        assert "fullMode = true" in html
-        assert "loc.docs" in html
 
     def test_includes_detention_centers(self):
         """Should include detention centers when show_detention_centers=True."""
@@ -320,6 +177,32 @@ class TestGenerateGeographicMap:
         assert "Operation Condor" in html
         assert "condorLayer" in html
 
+    def test_uses_geojson_for_condor_countries(self):
+        """Should use L.geoJSON instead of L.rectangle for Condor countries."""
+        html = generate_geographic_map(
+            city_count=Counter({"SANTIAGO": 100}),
+            country_count=Counter(),
+            show_condor_countries=True,
+        )
+        assert "L.geoJSON" in html
+        assert "L.rectangle" not in html
+        assert "condorGeoJSON" in html
+
+    def test_condor_geojson_has_all_countries(self):
+        """Generated HTML should contain GeoJSON for all 6 Condor countries."""
+        html = generate_geographic_map(
+            city_count=Counter(),
+            country_count=Counter(),
+            show_condor_countries=True,
+        )
+        # Check that country names are in the GeoJSON data
+        assert '"Chile"' in html
+        assert '"Argentina"' in html
+        assert '"Uruguay"' in html
+        assert '"Paraguay"' in html
+        assert '"Bolivia"' in html
+        assert '"Brazil"' in html
+
 
 class TestCoordinateConstants:
     """Tests for coordinate constants."""
@@ -339,24 +222,13 @@ class TestCoordinateConstants:
 
     def test_operation_condor_countries_list(self):
         """OPERATION_CONDOR_COUNTRIES should list all member states."""
-        country_names = [c["name"] for c in OPERATION_CONDOR_COUNTRIES]
-        assert "CHILE" in country_names
-        assert "ARGENTINA" in country_names
-        assert "URUGUAY" in country_names
-        assert "PARAGUAY" in country_names
-        assert "BOLIVIA" in country_names
-        assert "BRAZIL" in country_names
+        assert "CHILE" in OPERATION_CONDOR_COUNTRIES
+        assert "ARGENTINA" in OPERATION_CONDOR_COUNTRIES
+        assert "URUGUAY" in OPERATION_CONDOR_COUNTRIES
+        assert "PARAGUAY" in OPERATION_CONDOR_COUNTRIES
+        assert "BOLIVIA" in OPERATION_CONDOR_COUNTRIES
+        assert "BRAZIL" in OPERATION_CONDOR_COUNTRIES
         assert len(OPERATION_CONDOR_COUNTRIES) == 6
-
-    def test_operation_condor_countries_have_required_fields(self):
-        """Each Operation Condor country should have required fields."""
-        required_fields = ["name", "capital", "lat", "lon", "role", "joined"]
-        for country in OPERATION_CONDOR_COUNTRIES:
-            for field in required_fields:
-                assert field in country, f"Missing field {field} in {country.get('name', 'unknown')}"
-            # Validate coordinates
-            assert -90 <= country["lat"] <= 90, f"{country['name']} latitude out of range"
-            assert -180 <= country["lon"] <= 180, f"{country['name']} longitude out of range"
 
     def test_coordinates_are_valid_tuples(self):
         """All coordinates should be valid (lat, lon) tuples."""
@@ -375,3 +247,75 @@ class TestCoordinateConstants:
             lat, lon = coords
             assert -90 <= lat <= 90
             assert -180 <= lon <= 180
+
+
+class TestCondorCountryGeoJSON:
+    """Tests for CONDOR_COUNTRY_GEOJSON constant."""
+
+    def test_has_all_condor_countries(self):
+        """Should have GeoJSON for all Operation Condor countries."""
+        for country in OPERATION_CONDOR_COUNTRIES:
+            assert country in CONDOR_COUNTRY_GEOJSON, f"Missing GeoJSON for {country}"
+
+    def test_valid_geojson_structure(self):
+        """Each country should have valid GeoJSON Feature structure."""
+        for country, geojson in CONDOR_COUNTRY_GEOJSON.items():
+            assert geojson["type"] == "Feature", f"{country} should be a Feature"
+            assert "properties" in geojson, f"{country} missing properties"
+            assert "geometry" in geojson, f"{country} missing geometry"
+            assert "name" in geojson["properties"], f"{country} missing name property"
+
+    def test_valid_polygon_geometry(self):
+        """Each country should have valid Polygon geometry."""
+        for country, geojson in CONDOR_COUNTRY_GEOJSON.items():
+            geometry = geojson["geometry"]
+            assert geometry["type"] == "Polygon", f"{country} should be Polygon"
+            assert "coordinates" in geometry, f"{country} missing coordinates"
+            coords = geometry["coordinates"]
+            assert isinstance(coords, list), f"{country} coordinates should be list"
+            assert len(coords) >= 1, f"{country} should have at least 1 ring"
+            # First ring (exterior ring) should have points
+            ring = coords[0]
+            assert len(ring) >= 4, f"{country} polygon should have >= 4 points"
+
+    def test_polygon_coordinates_are_valid(self):
+        """All polygon coordinates should be valid [lon, lat] pairs."""
+        for country, geojson in CONDOR_COUNTRY_GEOJSON.items():
+            ring = geojson["geometry"]["coordinates"][0]
+            for point in ring:
+                assert len(point) == 2, f"{country} point should have 2 coords"
+                lon, lat = point
+                assert -180 <= lon <= 180, f"{country} lon {lon} out of range"
+                assert -90 <= lat <= 90, f"{country} lat {lat} out of range"
+
+    def test_polygon_is_closed(self):
+        """Polygon exterior rings should be closed (first == last point)."""
+        for country, geojson in CONDOR_COUNTRY_GEOJSON.items():
+            ring = geojson["geometry"]["coordinates"][0]
+            first = ring[0]
+            last = ring[-1]
+            assert first == last, f"{country} polygon should be closed"
+
+    def test_chile_extends_to_tierra_del_fuego(self):
+        """Chile polygon should extend to Tierra del Fuego (latitude ~-55)."""
+        chile = CONDOR_COUNTRY_GEOJSON["CHILE"]
+        ring = chile["geometry"]["coordinates"][0]
+        lats = [point[1] for point in ring]
+        min_lat = min(lats)
+        assert min_lat < -50, f"Chile should extend to ~-55 lat, got {min_lat}"
+
+    def test_argentina_extends_to_tierra_del_fuego(self):
+        """Argentina polygon should extend to Tierra del Fuego (latitude ~-55)."""
+        argentina = CONDOR_COUNTRY_GEOJSON["ARGENTINA"]
+        ring = argentina["geometry"]["coordinates"][0]
+        lats = [point[1] for point in ring]
+        min_lat = min(lats)
+        assert min_lat < -50, f"Argentina should extend to ~-55 lat, got {min_lat}"
+
+    def test_brazil_extends_to_amazon(self):
+        """Brazil polygon should extend to the Amazon (latitude ~5 north)."""
+        brazil = CONDOR_COUNTRY_GEOJSON["BRAZIL"]
+        ring = brazil["geometry"]["coordinates"][0]
+        lats = [point[1] for point in ring]
+        max_lat = max(lats)
+        assert max_lat > 0, f"Brazil should extend north of equator, got {max_lat}"
