@@ -1,0 +1,233 @@
+{
+  "id": "RQ-002",
+  "title": "Origins of the 1973 Chilean Coup: Who Proposed It?",
+  "subtitle": "Evidence from Declassified CIA Documents",
+  "question": "Who was the first to propose the plan for a coup in Chile?",
+  "introduction": "This report examines declassified CIA documents to identify the actors who initiated or proposed military action against Allende. The evidence reveals multiple parallel initiatives rather than a single originator.",
+  "methodology": {
+    "description": "This analysis was conducted using semantic search (RAG - Retrieval Augmented Generation) on the Desclasificados archive of declassified CIA documents related to Chile.",
+    "index_version": "RAG v1.0.0",
+    "index_date": "December 18, 2025",
+    "total_documents": 5666,
+    "total_chunks": 12811,
+    "sources": "gpt-5-mini-v2.2.0 (4,206 docs) + gpt-5-mini-v2.0.0 (1,460 docs)",
+    "embedding_model": "OpenAI text-embedding-3-small",
+    "llm": "OpenAI GPT-4o-mini for answer synthesis",
+    "queries": "Two semantic searches with top-15 and top-10 retrieval"
+  },
+  "sections": [
+    {
+      "number": 1,
+      "title": "Track II: Nixon's Direct Order (September 15, 1970)",
+      "content": [
+        {
+          "type": "document_reference",
+          "doc_id": "25035",
+          "classification": "UNCLASSIFIED",
+          "date": "November 1975",
+          "intro": "describes the initiation of Track II:"
+        },
+        {
+          "type": "quote",
+          "text": "Track II, the operation undertaken pursuant to instructions given the DCI on September 15, 1970 by President Nixon to prevent the assumption of power by Allende."
+        },
+        {
+          "type": "paragraph",
+          "text": "On September 15, 1970, President Nixon directly ordered CIA Director Richard Helms to prevent Allende from taking office. This covert operation bypassed the State Department, the US Ambassador, and normal policy channels. Kissinger oversaw the operation."
+        },
+        {
+          "type": "source",
+          "doc_id": "25035",
+          "description": "Church Committee Staff Report by Margaret P. Garfield"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Chilean Military Officers Seeking US Support",
+      "content": [
+        {
+          "type": "document_reference",
+          "doc_id": "24927",
+          "classification": "UNCLASSIFIED",
+          "date": "September 1970",
+          "intro": "Ambassador Korry reports to Kissinger:"
+        },
+        {
+          "type": "quote",
+          "text": "A group of military persons, excluding the top military leaders, prepared to launch a coup if they received assurances from the USG."
+        },
+        {
+          "type": "document_reference",
+          "doc_id": "24954",
+          "classification": "UNCLASSIFIED",
+          "date": "1970",
+          "intro": "confirms these approaches:"
+        },
+        {
+          "type": "quote",
+          "text": "Sept. 26-Oct. 1 - Korry reported indirect approaches by lower-level military persons prepared to launch a coup if they received assurances from the USG; he gave no affirmative answer."
+        },
+        {
+          "type": "paragraph",
+          "text": "Chilean military officers independently approached the US seeking guarantees before acting. Ambassador Korry did not provide direct encouragement, only reminding them of US interests. This shows coup planning existed within Chilean military circles, seeking external validation."
+        },
+        {
+          "type": "source",
+          "doc_id": "24954",
+          "description": "Report by Margaret P. Gaffield on Washington-Santiago Exchanges"
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "title": "Patria y Libertad: Chilean Right-Wing Initiative",
+      "content": [
+        {
+          "type": "document_reference",
+          "doc_id": "29436",
+          "classification": "UNCLASSIFIED",
+          "date": "April 1987",
+          "intro": "documents the activities of the right-wing group:"
+        },
+        {
+          "type": "quote",
+          "text": "Patria y Libertad also encouraged the organization of vigilante squads in the wealthier suburbs of Santiago and maintained gangs of youth."
+        },
+        {
+          "type": "paragraph",
+          "text": "The document notes that leaders of Patria y Libertad and some military officers were involved in a plot to mount a coup or kidnap Allende on June 27, 1973. Pablo Rodriguez Grez led this nationalist movement that actively pushed for military intervention."
+        },
+        {
+          "type": "source",
+          "doc_id": "29436",
+          "description": "Report on Pablo Rodriguez Grez and Patria y Libertad"
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "title": "US Caution About Direct Involvement",
+      "content": [
+        {
+          "type": "document_reference",
+          "doc_id": "24940",
+          "classification": "UNCLASSIFIED",
+          "date": "August 1970",
+          "intro": "Charles Mayer warns:"
+        },
+        {
+          "type": "quote",
+          "text": "Even were we to develop our assets among the Chilean military to the point that we could ultimately suggest or try to sponsor military action against Allende, we believe that in this case a coup would not succeed."
+        },
+        {
+          "type": "paragraph",
+          "text": "US officials were cautious about being seen as the initiators. They wanted any coup to appear as a Chilean decision, not a US directive. This reflects concern about international perception and the risk of a failed coup being traced back to Washington."
+        },
+        {
+          "type": "document_reference",
+          "doc_id": "24818",
+          "classification": "UNCLASSIFIED",
+          "date": "June 1973",
+          "intro": "outlines preconditions for military action:"
+        },
+        {
+          "type": "quote",
+          "text": "It would take many preconditions (mass support, political party support, especially from the PDC, a clear constitutional reason, and military consensus) for a coup to be seriously considered."
+        },
+        {
+          "type": "source",
+          "doc_id": "24818",
+          "description": "Memorandum by James R. Gardner"
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "title": "The 40 Committee and Policy Coordination",
+      "content": [
+        {
+          "type": "document_reference",
+          "doc_id": "24918",
+          "classification": "SECRET",
+          "date": "October 1970",
+          "intro": "chronicles the policy discussions:"
+        },
+        {
+          "type": "quote",
+          "text": "September 14: 40 Committee instructed Korry to intensify contacts with Chilean military."
+        },
+        {
+          "type": "paragraph",
+          "text": "The 40 Committee (the NSC's covert operations oversight group) coordinated US policy toward Chile. While Track II operated outside normal channels, the 40 Committee approved broader destabilization efforts including funding opposition media and political parties."
+        },
+        {
+          "type": "source",
+          "doc_id": "24918",
+          "description": "SECRET Report - Chile Chronology from DDC Files"
+        }
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "title": "Timeline of Coup Planning Initiatives",
+      "headers": ["Date", "Actor", "Action"],
+      "rows": [
+        ["Sept 15, 1970", "President Nixon", "Orders Track II - CIA to prevent Allende taking office"],
+        ["Sept 26-Oct 1, 1970", "Chilean military officers", "Approach US seeking assurances for coup"],
+        ["1970-1973", "Patria y Libertad", "Organize vigilante squads, push for military action"],
+        ["June 27, 1973", "Military + Patria y Libertad", "Plot to mount coup or kidnap Allende (failed)"],
+        ["Sept 11, 1973", "Chilean military", "Successful coup against Allende"]
+      ]
+    },
+    {
+      "title": "Key Source Documents",
+      "description": "Click document IDs to view original declassified documents:",
+      "headers": ["Document", "Date", "Classification", "Type"],
+      "rows": [
+        ["25035", "Nov 1975", "UNCLASSIFIED", "Church Committee Report"],
+        ["24927", "Sept 1970", "UNCLASSIFIED", "Memorandum (Korry)"],
+        ["24954", "1970", "UNCLASSIFIED", "Report (Gaffield)"],
+        ["29436", "Apr 1987", "UNCLASSIFIED", "Report (Rodriguez Grez)"],
+        ["24940", "Aug 1970", "UNCLASSIFIED", "Memorandum (Mayer)"],
+        ["24918", "Oct 1970", "SECRET", "Chronology"],
+        ["24818", "Jun 1973", "UNCLASSIFIED", "Memorandum (Gardner)"]
+      ]
+    }
+  ],
+  "conclusions": {
+    "proven": {
+      "title": "What the Documents Prove",
+      "items": [
+        {
+          "bold": "Nixon directly ordered covert action",
+          "text": "On September 15, 1970, Nixon instructed the CIA to prevent Allende from taking power - this was Track II, hidden from the State Department."
+        },
+        {
+          "bold": "Chilean military sought US approval",
+          "text": "Lower-level Chilean officers approached the US seeking assurances before launching a coup, indicating domestic military interest in intervention."
+        },
+        {
+          "bold": "Right-wing groups actively plotted",
+          "text": "Patria y Libertad organized paramilitary activities and coordinated with military officers on coup attempts."
+        },
+        {
+          "bold": "The US wanted deniability",
+          "text": "American officials were careful not to be seen as the initiators, preferring the coup appear as a Chilean decision."
+        }
+      ]
+    },
+    "balanced": {
+      "title": "Balanced Assessment",
+      "intro": "The documents reveal a complex picture with multiple actors pursuing parallel tracks:",
+      "caveats": [
+        "Track II (1970) failed - Allende took office despite US efforts",
+        "The successful 1973 coup was executed by Chilean military, not directly by the US",
+        "Chilean domestic actors (military, Patria y Libertad) had their own motivations independent of US pressure",
+        "The US role was primarily destabilization and encouragement, not direct command"
+      ],
+      "summary": "There was no single 'first proposer' of the coup. Nixon's Track II order on September 15, 1970 represents the earliest documented US directive for regime change. However, Chilean military officers and right-wing groups were simultaneously developing their own coup plans. The 1973 coup emerged from the convergence of US destabilization efforts, Chilean military ambition, and right-wing civilian pressure - not from a single mastermind."
+    }
+  }
+}
