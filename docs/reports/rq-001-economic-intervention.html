@@ -41,6 +41,40 @@
         background: white;
     }
 
+    /* Site Navigation */
+    .site-nav {
+        background: var(--gray-800);
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .site-nav a {
+        color: var(--gray-200);
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .site-nav a:hover {
+        background: rgba(255,255,255,0.1);
+    }
+
+    .site-nav .nav-brand {
+        font-weight: 600;
+        color: white;
+        margin-right: 20px;
+    }
+
+    .site-nav .nav-divider {
+        color: var(--gray-500);
+        margin: 0 4px;
+    }
+
     .container {
         max-width: 800px;
         margin: 0 auto;
@@ -266,9 +300,16 @@
     </style>
 </head>
 <body>
+    <nav class="site-nav">
+        <a href="../index.html" class="nav-brand">Desclasificados</a>
+        <a href="../index.html">Dashboard</a>
+        <a href="../about.html">About</a>
+        <span class="nav-divider">|</span>
+        <a href="../index.html#research-questions">Research Questions</a>
+    </nav>
+
     <div class="container">
         <nav class="breadcrumb">
-            <a href="../index.html">Analysis Report</a> /
             <a href="../index.html#research-questions">Research Questions</a> /
             RQ-001
         </nav>

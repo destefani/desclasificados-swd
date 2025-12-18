@@ -106,6 +106,40 @@ def generate_rich_report_css() -> str:
         background: white;
     }
 
+    /* Site Navigation */
+    .site-nav {
+        background: var(--gray-800);
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .site-nav a {
+        color: var(--gray-200);
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .site-nav a:hover {
+        background: rgba(255,255,255,0.1);
+    }
+
+    .site-nav .nav-brand {
+        font-weight: 600;
+        color: white;
+        margin-right: 20px;
+    }
+
+    .site-nav .nav-divider {
+        color: var(--gray-500);
+        margin: 0 4px;
+    }
+
     .container {
         max-width: 800px;
         margin: 0 auto;
@@ -527,9 +561,16 @@ def generate_rich_report_html(
     </style>
 </head>
 <body>
+    <nav class="site-nav">
+        <a href="../index.html" class="nav-brand">Desclasificados</a>
+        <a href="../index.html">Dashboard</a>
+        <a href="../about.html">About</a>
+        <span class="nav-divider">|</span>
+        <a href="../index.html#research-questions">Research Questions</a>
+    </nav>
+
     <div class="container">
         <nav class="breadcrumb">
-            <a href="../index.html">Analysis Report</a> /
             <a href="../index.html#research-questions">Research Questions</a> /
             {q_id}
         </nav>
@@ -587,6 +628,40 @@ def generate_basic_report_css() -> str:
         line-height: 1.6;
         color: var(--gray-800);
         background: var(--gray-50);
+    }
+
+    /* Site Navigation */
+    .site-nav {
+        background: var(--gray-800);
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .site-nav a {
+        color: #E5E7EB;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .site-nav a:hover {
+        background: rgba(255,255,255,0.1);
+    }
+
+    .site-nav .nav-brand {
+        font-weight: 600;
+        color: white;
+        margin-right: 20px;
+    }
+
+    .site-nav .nav-divider {
+        color: #6B7280;
+        margin: 0 4px;
     }
 
     .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
@@ -676,9 +751,16 @@ def generate_basic_report_html(
     <style>{css}</style>
 </head>
 <body>
+    <nav class="site-nav">
+        <a href="../index.html" class="nav-brand">Desclasificados</a>
+        <a href="../index.html">Dashboard</a>
+        <a href="../about.html">About</a>
+        <span class="nav-divider">|</span>
+        <a href="../index.html#research-questions">Research Questions</a>
+    </nav>
     <div class="container">
         <header>
-            <nav class="breadcrumb"><a href="../index.html">Analysis Report</a> / <a href="../index.html#research-questions">Research Questions</a> / {q_id}</nav>
+            <nav class="breadcrumb"><a href="../index.html#research-questions">Research Questions</a> / {q_id}</nav>
             <h1>{q_text}</h1>
             <div class="meta-badges">
                 <span class="badge" style="{status_style}">{status_info['icon']} {status_info['label']}</span>
