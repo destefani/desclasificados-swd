@@ -200,6 +200,46 @@ typecheck:
 	uv run mypy app/ --ignore-missing-imports
 
 # =============================================================================
+# RESEARCH QUESTIONS TRACKER
+# =============================================================================
+#
+# Track research questions asked about the declassified documents.
+#
+# Usage:
+#   make rq-list                    List all research questions
+#   make rq-add Q="your question"   Add a new question
+#   make rq-update ID=RQ-001 ...    Update a question
+#
+
+rq-list:
+	uv run python -m app.research_tracker list
+
+rq-add:
+	@if [ -z "$(Q)" ]; then echo "Usage: make rq-add Q='your question' [CAT=CATEGORY]"; exit 1; fi
+	@CMD="uv run python -m app.research_tracker add '$(Q)'"; \
+	if [ -n "$(CAT)" ]; then CMD="$$CMD --category $(CAT)"; fi; \
+	if [ -n "$(NOTES)" ]; then CMD="$$CMD --notes '$(NOTES)'"; fi; \
+	$$CMD
+
+rq-show:
+	@if [ -z "$(ID)" ]; then echo "Usage: make rq-show ID=RQ-001"; exit 1; fi
+	uv run python -m app.research_tracker show $(ID)
+
+rq-update:
+	@if [ -z "$(ID)" ]; then echo "Usage: make rq-update ID=RQ-001 [STATUS=answered] [PDF=path/to/report.pdf]"; exit 1; fi
+	@CMD="uv run python -m app.research_tracker update $(ID)"; \
+	if [ -n "$(STATUS)" ]; then CMD="$$CMD --status $(STATUS)"; fi; \
+	if [ -n "$(RAG)" ]; then CMD="$$CMD --rag-results '$(RAG)'"; fi; \
+	if [ -n "$(REL)" ]; then CMD="$$CMD --relevance $(REL)"; fi; \
+	if [ -n "$(DOCS)" ]; then CMD="$$CMD --docs $(DOCS)"; fi; \
+	if [ -n "$(NOTES)" ]; then CMD="$$CMD --notes '$(NOTES)'"; fi; \
+	if [ -n "$(PDF)" ]; then CMD="$$CMD --pdf-report $(PDF)"; fi; \
+	$$CMD
+
+rq-generate-md:
+	uv run python -m app.research_tracker generate-md
+
+# =============================================================================
 # UTILITIES
 # =============================================================================
 
@@ -282,6 +322,13 @@ help:
 	@echo "  format           Format code"
 	@echo "  typecheck        Run mypy type checking"
 	@echo ""
+	@echo "Research Questions Tracker:"
+	@echo "  rq-list          List all research questions"
+	@echo "  rq-add           Add question (Q='...' [CAT=CATEGORY])"
+	@echo "  rq-show          Show question (ID=RQ-001)"
+	@echo "  rq-update        Update question (ID=RQ-001 [STATUS=...] [PDF=...])"
+	@echo "  rq-generate-md   Regenerate markdown documentation"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  clean            Remove caches and venv"
 	@echo "  update           Update dependencies"
@@ -296,4 +343,5 @@ help:
         eval-stats eval-validate eval-sample eval-report progress \
         analyze analyze-full github-pages github-pages-external deploy serve visualize \
         test test-unit lint format typecheck \
+        rq-list rq-add rq-show rq-update rq-generate-md \
         clean update lock run shell help
