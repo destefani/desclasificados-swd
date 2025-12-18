@@ -578,6 +578,7 @@ dependencies = [
     { name = "pdf2image" },
     { name = "pillow" },
     { name = "pymupdf" },
+    { name = "reportlab" },
     { name = "ruff" },
     { name = "tiktoken" },
     { name = "tqdm" },
@@ -603,6 +604,7 @@ requires-dist = [
     { name = "pdf2image", specifier = ">=1.17.0" },
     { name = "pillow", specifier = ">=12.0.0" },
     { name = "pymupdf", specifier = ">=1.24.0" },
+    { name = "reportlab", specifier = ">=4.4.6" },
     { name = "ruff", specifier = ">=0.11.5" },
     { name = "tiktoken", specifier = ">=0.12.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
@@ -3008,6 +3010,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/67/90/8f37138181c9a7690e7e4cb388debbd389342db3c7381d636d2875940752/regex-2025.11.3-cp314-cp314t-win32.whl", hash = "sha256:4bf146dca15cdd53224a1bf46d628bd7590e4a07fbb69e720d561aea43a32b38", size = 274583 },
     { url = "https://files.pythonhosted.org/packages/8f/cd/867f5ec442d56beb56f5f854f40abcfc75e11d10b11fdb1869dd39c63aaf/regex-2025.11.3-cp314-cp314t-win_amd64.whl", hash = "sha256:adad1a1bcf1c9e76346e091d22d23ac54ef28e1365117d99521631078dfec9de", size = 284286 },
     { url = "https://files.pythonhosted.org/packages/20/31/32c0c4610cbc070362bf1d2e4ea86d1ea29014d400a6d6c2486fcfd57766/regex-2025.11.3-cp314-cp314t-win_arm64.whl", hash = "sha256:c54f768482cef41e219720013cd05933b6f971d9562544d691c68699bf2b6801", size = 274741 },
+]
+
+[[package]]
+name = "reportlab"
+version = "4.4.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "charset-normalizer" },
+    { name = "pillow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/ec/f7a50b3cbee58407090bd1f2a9db2f1a23052c5de3bc7408024ca776ee02/reportlab-4.4.6.tar.gz", hash = "sha256:8792c87c23dd034d17530e6ebe4164d61bcc8f7b0eac203fe13cc03cc2c1c607", size = 3910805 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/ee/5f7a31ab05cf817e0cc70ae6df51a1a4fda188c899790a3131a24dd78d18/reportlab-4.4.6-py3-none-any.whl", hash = "sha256:c7c31d5c815bae7c76fc17f64ffc417e68992901acddb24504296cc39b065424", size = 1954259 },
 ]
 
 [[package]]
