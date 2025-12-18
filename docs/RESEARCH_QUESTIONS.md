@@ -3,13 +3,13 @@
 This document tracks research questions asked about the declassified CIA documents.
 Auto-generated from `data/research_questions.json`.
 
-**Total Questions:** 2
+**Total Questions:** 3
 
 ## Summary by Status
 
 | Status | Count |
 |--------|-------|
-| answered | 1 |
+| answered | 2 |
 | partially_answered | 1 |
 
 ## Summary by Category
@@ -18,6 +18,7 @@ Auto-generated from `data/research_questions.json`.
 |----------|-------|
 | COUP 1973 | 1 |
 | ECONOMIC INTERVENTION | 1 |
+| PINOCHET REGIME | 1 |
 
 ## Questions
 
@@ -47,5 +48,19 @@ Auto-generated from `data/research_questions.json`.
 
 **RAG Results Summary:**
 > Documents show multiple actors: Nixon initiated Track II on Sept 15, 1970; Chilean military (lower-level officers) prepared to act with US assurances; Patria y Libertad encouraged coup. No single originator identified.
+
+---
+
+### RQ-003: What was the role of civilians in the dictatorship and how did they end up there...
+
+- **Full Question:** What was the role of civilians in the dictatorship and how did they end up there?
+- **Date Asked:** 2025-12-18
+- **Category:** PINOCHET REGIME
+- **Status:** answered
+- **Top Relevance Score:** 35.00%
+- **Related Documents:** 28055, 27803, 27943, 26691, 30295 (+2 more)
+
+**RAG Results Summary:**
+> Civilians served as ministers but military retained control. Chicago Boys (economists trained at U of Chicago) dominated economic policy. Pablo Baraona was Minister of Economy 1976-78. Cabinet had mix of military and civilian members, with Pinochet consulting small circle of trusted advisors.
 
 ---
