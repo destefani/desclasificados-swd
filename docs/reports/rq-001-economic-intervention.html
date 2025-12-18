@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RQ-001: How much was Allende's economic crisis influenced by the US? | Desclasificados Research</title>
+    <title>US Economic Intervention in Chile During Allende's Government (1970-1973) | Desclasificados Research</title>
     <style>
 
     :root {
         --primary: #2563EB;
-        --primary-dark: #1E40AF;
+        --primary-dark: #1a365d;
+        --heading-color: #1a365d;
+        --subheading-color: #2c5282;
         --gray-50: #F9FAFB;
         --gray-100: #F3F4F6;
         --gray-200: #E5E7EB;
@@ -19,6 +21,11 @@
         --gray-700: #374151;
         --gray-800: #1F2937;
         --gray-900: #111827;
+        --quote-bg: #f7fafc;
+        --quote-text: #4a5568;
+        --table-header-bg: #2c5282;
+        --table-row-bg: #f7fafc;
+        --table-border: #cbd5e0;
     }
 
     * {
@@ -31,190 +38,185 @@
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         line-height: 1.6;
         color: var(--gray-800);
-        background: var(--gray-50);
+        background: white;
     }
 
     .container {
-        max-width: 900px;
+        max-width: 800px;
         margin: 0 auto;
         padding: 40px 20px;
     }
 
+    /* Header styles */
     header {
+        text-align: center;
         margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--gray-200);
     }
 
-    .breadcrumb {
-        font-size: 14px;
-        color: var(--gray-500);
-        margin-bottom: 20px;
-    }
-
-    .breadcrumb a {
-        color: var(--primary);
-        text-decoration: none;
-    }
-
-    .breadcrumb a:hover {
-        text-decoration: underline;
-    }
-
-    h1 {
-        font-size: 28px;
+    header h1 {
+        font-size: 24px;
         color: var(--gray-900);
-        margin-bottom: 16px;
+        margin-bottom: 8px;
         line-height: 1.3;
     }
 
-    .meta-badges {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 16px;
-    }
-
-    .badge {
-        font-size: 12px;
-        padding: 4px 12px;
-        border-radius: 16px;
-        font-weight: 500;
-    }
-
-    .meta-info {
+    header .subtitle {
         font-size: 14px;
         color: var(--gray-500);
-    }
-
-    section {
-        background: white;
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 24px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    section h2 {
-        font-size: 18px;
-        color: var(--gray-900);
         margin-bottom: 16px;
+    }
+
+    header .meta {
+        font-size: 12px;
+        color: var(--gray-400);
+    }
+
+    /* Section styles */
+    .section-heading {
+        font-size: 18px;
+        color: var(--heading-color);
+        margin: 30px 0 16px 0;
         padding-bottom: 8px;
         border-bottom: 2px solid var(--gray-100);
     }
 
-    .summary-box {
-        background: var(--gray-50);
-        border-left: 4px solid var(--primary);
-        padding: 16px;
-        border-radius: 0 8px 8px 0;
-        font-size: 15px;
-    }
-
-    .evidence-list {
-        list-style: none;
-    }
-
-    .evidence-item {
-        padding: 16px;
-        border: 1px solid var(--gray-200);
-        border-radius: 8px;
-        margin-bottom: 12px;
-    }
-
-    .evidence-item:last-child {
-        margin-bottom: 0;
-    }
-
-    blockquote {
+    .subheading {
+        font-size: 14px;
         font-style: italic;
-        color: var(--gray-700);
+        color: var(--subheading-color);
+        margin: 20px 0 12px 0;
+    }
+
+    /* Content styles */
+    p {
         margin-bottom: 12px;
-        padding-left: 16px;
-        border-left: 3px solid var(--gray-300);
+        font-size: 14px;
+        line-height: 1.7;
     }
 
-    .evidence-source {
-        font-size: 13px;
+    .intro-text {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    /* Quote styles */
+    blockquote {
+        background: var(--quote-bg);
+        color: var(--quote-text);
+        padding: 16px 20px;
+        margin: 16px 0;
+        border-radius: 4px;
+        font-size: 14px;
+        line-height: 1.6;
+        border-left: 4px solid var(--primary);
+    }
+
+    /* Source citation */
+    .source {
+        font-size: 12px;
         color: var(--gray-500);
+        margin-top: 8px;
     }
 
-    .evidence-source a {
+    .source a {
         color: var(--primary);
         text-decoration: none;
     }
 
-    .evidence-source a:hover {
+    .source a:hover {
         text-decoration: underline;
     }
 
-    .doc-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
+    /* Document reference */
+    .doc-ref {
+        color: var(--primary);
+        text-decoration: none;
     }
 
-    .doc-link::after {
-        content: " ↗";
-        font-size: 0.85em;
+    .doc-ref:hover {
+        text-decoration: underline;
     }
 
-    .documents-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 12px;
+    /* Lists */
+    ul {
+        margin: 12px 0 12px 24px;
     }
 
-    .doc-card {
-        background: var(--gray-50);
-        padding: 12px;
-        border-radius: 8px;
+    li {
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+
+    /* Tables */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 16px 0;
         font-size: 13px;
     }
 
-    .doc-card .doc-id {
-        font-family: monospace;
-        font-weight: 600;
+    th {
+        background: var(--table-header-bg);
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 500;
+    }
+
+    td {
+        background: var(--table-row-bg);
+        padding: 10px 12px;
+        border: 1px solid var(--table-border);
+    }
+
+    td a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    td a:hover {
+        text-decoration: underline;
+    }
+
+    /* Conclusion items */
+    .conclusion-item {
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .conclusion-item strong {
         color: var(--gray-900);
     }
 
-    .doc-card .doc-meta {
-        color: var(--gray-500);
-        margin-top: 4px;
-    }
-
-    .doc-card a {
-        color: var(--primary);
-        text-decoration: none;
-    }
-
-    .doc-card a:hover {
-        text-decoration: underline;
-    }
-
-    .methodology {
+    /* Summary box */
+    .summary-box {
+        background: var(--gray-50);
+        padding: 16px;
+        border-radius: 4px;
+        margin: 16px 0;
         font-size: 14px;
-        color: var(--gray-600);
     }
 
-    .methodology dl {
-        display: grid;
-        grid-template-columns: 150px 1fr;
-        gap: 8px 16px;
+    /* Methodology */
+    .methodology-list {
+        list-style: none;
+        margin-left: 0;
     }
 
-    .methodology dt {
-        font-weight: 500;
-        color: var(--gray-700);
+    .methodology-list li {
+        margin-bottom: 4px;
     }
 
-    .methodology dd {
-        color: var(--gray-600);
-    }
-
+    /* Footer */
     footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid var(--gray-200);
         text-align: center;
-        padding: 40px 20px;
+        font-size: 12px;
         color: var(--gray-500);
-        font-size: 13px;
     }
 
     footer a {
@@ -226,21 +228,38 @@
         text-decoration: underline;
     }
 
+    /* Breadcrumb */
+    .breadcrumb {
+        font-size: 13px;
+        color: var(--gray-500);
+        margin-bottom: 30px;
+        text-align: left;
+    }
+
+    .breadcrumb a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
     @media (max-width: 640px) {
         .container {
             padding: 20px 16px;
         }
 
-        h1 {
-            font-size: 22px;
+        header h1 {
+            font-size: 20px;
         }
 
-        section {
-            padding: 16px;
+        table {
+            font-size: 12px;
         }
 
-        .methodology dl {
-            grid-template-columns: 1fr;
+        th, td {
+            padding: 8px;
         }
     }
     
@@ -248,93 +267,61 @@
 </head>
 <body>
     <div class="container">
+        <nav class="breadcrumb">
+            <a href="../index.html">Analysis Report</a> /
+            <a href="../index.html#research-questions">Research Questions</a> /
+            RQ-001
+        </nav>
+
         <header>
-            <nav class="breadcrumb">
-                <a href="../index.html">Analysis Report</a> /
-                <a href="../index.html#research-questions">Research Questions</a> /
-                RQ-001
-            </nav>
-            <h1>How much was Allende's economic crisis influenced by the US?</h1>
-            <div class="meta-badges">
-                <span class="badge" style="background-color: #16A34A20; color: #16A34A; border: 1px solid #16A34A40;">✅ Answered</span>
-                <span class="badge" style="background-color: #16A34A20; color: #16A34A; border: 1px solid #16A34A40;">ECONOMIC INTERVENTION</span>
-            </div>
-            <div class="meta-info">
-                Asked on 2025-12-18 | Relevance: 41.6%
-            </div>
+            <h1>US Economic Intervention in Chile During Allende's Government (1970-1973)</h1>
+            <p class="subtitle">Evidence from Declassified CIA Documents</p>
+            <p class="meta">Generated: December 18, 2025 | Source: RAG v1.0.0 (5666 documents, 12811 chunks)</p>
         </header>
 
+        <h2 class="section-heading">Research Question</h2>
+        <p class="intro-text">People justify the military coup under the argument that the economic situation under Allende's government was very bad. How much of the economic situation during Allende's government was influenced by the United States?</p>
+        <p>This report presents evidence from declassified CIA documents retrieved through semantic search of the Desclasificados archive.</p>
+
+        <h2 class="section-heading">1. Explicit Policy of 'Maximum Economic Pressure'</h2>
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=25031" class="pdf-link external">Document 25031</a> (TOP SECRET, May 1976) explicitly states US policy:</p><blockquote>"Basic policy objective of preventing the consolidation of the Allende administration by using maximum pressure — especially economic pressure — against Chile while maintaining a restrained public stance."</blockquote><p>This confirms that economic destabilization was official US policy, not incidental. The document reveals that the US pursued this strategy while publicly denying interference.</p><p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=25031" class="pdf-link external">Doc 25031</a>, TOP SECRET Report by Mary P. Chapman</p><h2 class="section-heading">2. Covert Funding of Opposition and Strikes</h2>
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24887" class="pdf-link external">Document 24887</a> (SECRET, September 1974) reveals:</p><blockquote>"CIA secretly financed striking labor unions and trade groups for over 16 months before Allende's overthrow, with more than $8 million authorized for clandestine activities."</blockquote><p>This funding supported the truckers' strikes and shop owners' strikes that paralyzed the Chilean economy in 1972-1973. These strikes created severe shortages and economic chaos that undermined public confidence in the Allende government.</p><p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24887" class="pdf-link external">Doc 24887</a>, SECRET Memorandum by Margaret P. Grafeld</p><h2 class="section-heading">3. Credit Blockade ('Invisible Blockade')</h2>
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=25031" class="pdf-link external">Document 25031</a> documents systematic US actions through international financial channels:</p><ul><li>Paris Club debt renegotiations used as economic pressure</li><li>Blocking compensation for nationalized copper companies (Kennecott, Anaconda)</li><li>Selective suspension of aid and credits</li><li>Coordination with international financial institutions (World Bank, IMF, IDB)</li><li>Legal actions to block Chilean copper exports in European courts</li></ul><p>Neither the compensation nor debt issues were resolved before Allende's overthrow in September 1973, indicating these were used as ongoing pressure tools rather than genuine negotiations.</p><h2 class="section-heading">4. Corporate-CIA Coordination</h2>
+<h4 class="subheading">ITT Corporation</h4><p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24845" class="pdf-link external">Document 24845</a> (UNCLASSIFIED, January 1973) confirms:</p><blockquote>"Anti-Allende operation...attention turned to what might be done to prevent his accession [to power]"</blockquote><p>Document 24842 references the 'CIA-ITT conversations published in the Anderson papers,' confirming coordination between the intelligence agency and major US corporations with interests in Chile.</p><h4 class="subheading">Copper Companies</h4><p>Kennecott and Anaconda copper companies coordinated with US policy to pressure Chile over nationalization. The US supported legal actions in European courts to embargo Chilean copper shipments, directly targeting Chile's primary export revenue.</p><h2 class="section-heading">5. Track II Operations</h2>
+<p>Document 24885 explicitly references 'Track II' - the covert operation to prevent Allende from taking office, which included economic components alongside political and military tracks. This was a parallel operation hidden even from the US Ambassador and State Department.</p><p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24885" class="pdf-link external">Doc 24885</a>, SECRET Memorandum by William G. Hyland</p>
         
-        <section>
-            <h2>Summary of Findings</h2>
-            <div class="summary-box">
-                Documents show M+ covert funding, credit blockade, CIA-funded strikes
-            </div>
-        </section>
+    <h2 class="section-heading">Scale of US Intervention</h2>
+    
+    <table>
+        <thead><tr><th>Action</th><th>Amount/Scale</th><th>Period</th></tr></thead>
+        <tbody><tr><td>Covert funding (total)</td><td>$8+ million</td><td>1970-1973</td></tr><tr><td>Support for Frei campaign</td><td>$3 million</td><td>1964</td></tr><tr><td>Funding to El Mercurio newspaper</td><td>Confirmed (amount redacted)</td><td>1970-1973</td></tr><tr><td>Financial support to opposition parties</td><td>Ongoing</td><td>1970-1973</td></tr><tr><td>CIA-funded strikes</td><td>16+ months</td><td>1972-1973</td></tr></tbody>
+    </table>
+    
+    <h2 class="section-heading">Key Source Documents</h2>
+    <p>Click document IDs to view original declassified documents:</p>
+    <table>
+        <thead><tr><th>Document</th><th>Date</th><th>Classification</th><th>Type</th></tr></thead>
+        <tbody><tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=25031" class="pdf-link external">25031</a></td><td>May 1976</td><td>TOP SECRET</td><td>Report</td></tr><tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24916" class="pdf-link external">24916</a></td><td>Oct 1970</td><td>UNCLASSIFIED</td><td>Memorandum</td></tr><tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24887" class="pdf-link external">24887</a></td><td>Sep 1974</td><td>SECRET</td><td>Memorandum</td></tr><tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24845" class="pdf-link external">24845</a></td><td>Jan 1973</td><td>UNCLASSIFIED</td><td>Memorandum</td></tr><tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24885" class="pdf-link external">24885</a></td><td>Aug 1975</td><td>SECRET</td><td>Memorandum</td></tr><tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24828" class="pdf-link external">24828</a></td><td>1969</td><td>UNCLASSIFIED</td><td>Report</td></tr><tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24918" class="pdf-link external">24918</a></td><td>Oct 1970</td><td>SECRET</td><td>Report</td></tr></tbody>
+    </table>
+    
+        <h2 class="section-heading">Conclusions</h2><h4 class="subheading">What the Documents Prove</h4><ul><li class="conclusion-item"><strong>Credit was intentionally blocked</strong> - The US used its influence at the World Bank, IMF, and Inter-American Development Bank to cut off loans to Chile.</li><li class="conclusion-item"><strong>Strikes were funded</strong> - The CIA financed labor disruptions that damaged the economy and created public discontent.</li><li class="conclusion-item"><strong>Copper revenue was targeted</strong> - The US supported legal actions by Kennecott to block Chilean copper exports in European courts, hitting Chile's main source of foreign currency.</li><li class="conclusion-item"><strong>This was coordinated policy</strong> - The 40 Committee (NSC covert operations group) approved these actions at the highest levels of government.</li></ul><h4 class="subheading">Balanced Assessment</h4><p>The documents show the US conducted systematic economic warfare against Chile. However, it is also true that:</p><ul><li>Allende's economic policies (wage increases, price controls, nationalizations) created genuine economic challenges</li><li>Chile faced pre-existing structural economic issues</li><li>Inflation had complex domestic causes as well</li></ul><p><strong>The evidence suggests both factors contributed:</strong> The evidence suggests both factors contributed: US intervention demonstrably worsened economic conditions, but the extent to which each factor contributed is difficult to quantify precisely. What the documents do prove is that the US intentionally tried to destabilize Chile's economy as a tool of regime change. The argument that Allende's government failed purely due to its own policies is contradicted by these declassified documents showing coordinated external economic sabotage.</p>
         
-        
-        <section>
-            <h2>Source Documents</h2>
-            <p style="margin-bottom: 16px; color: var(--gray-600);">
-                5 document(s) identified as relevant to this research question.
-            </p>
-            <div class="documents-grid">
-                
-            <div class="doc-card">
-                <div class="doc-id">Document 25031</div>
-                <div class="doc-meta"><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=25031" class="pdf-link external">View Document</a></div>
-            </div>
-            
-            <div class="doc-card">
-                <div class="doc-id">Document 24887</div>
-                <div class="doc-meta"><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24887" class="pdf-link external">View Document</a></div>
-            </div>
-            
-            <div class="doc-card">
-                <div class="doc-id">Document 24845</div>
-                <div class="doc-meta"><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24845" class="pdf-link external">View Document</a></div>
-            </div>
-            
-            <div class="doc-card">
-                <div class="doc-id">Document 24885</div>
-                <div class="doc-meta"><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24885" class="pdf-link external">View Document</a></div>
-            </div>
-            
-            <div class="doc-card">
-                <div class="doc-id">Document 24828</div>
-                <div class="doc-meta"><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24828" class="pdf-link external">View Document</a></div>
-            </div>
-            
-            </div>
-        </section>
-        
-        
-        
-    <section>
-        <h2>Methodology</h2>
-        <div class="methodology">
-            <dl>
-                <dt>Question ID</dt>
-                <dd>RQ-001</dd>
-                <dt>Date Asked</dt>
-                <dd>2025-12-18</dd>
-                <dt>Category</dt>
-                <dd>ECONOMIC INTERVENTION</dd>
-                <dt>Status</dt>
-                <dd>Answered</dd>
-                <dt>Top Relevance Score</dt>
-                <dd>41.6%</dd>
-                <dt>Documents Analyzed</dt>
-                <dd>5</dd>
-            </dl>
-        </div>
-    </section>
+    <h2 class="section-heading">Methodology</h2>
+    <p>This analysis was conducted using semantic search (RAG - Retrieval Augmented Generation) on the Desclasificados archive of declassified CIA documents related to Chile.</p>
+    <ul class="methodology-list"><li><strong>Index:</strong> RAG v1.0.0 (created December 18, 2025)</li><li><strong>Documents:</strong> 5666 transcribed documents (12811 text chunks)</li><li><strong>Sources:</strong> gpt-5-mini-v2.2.0 (4,206 docs) + gpt-5-mini-v2.0.0 (1,460 docs)</li><li><strong>Embedding Model:</strong> OpenAI text-embedding-3-small</li><li><strong>LLM:</strong> Claude 3.5 Haiku for answer synthesis</li><li><strong>Queries:</strong> Two semantic searches with top-15 and top-10 retrieval</li></ul>
+    <p style="margin-top: 16px;">
+        <strong>Document Viewer:</strong>
+        <a href="https://declasseuucl.vercel.app" target="_blank">https://declasseuucl.vercel.app</a>
+    </p>
+    <p class="source">
+        All document links open in the Desclasificados document viewer where you can browse the original declassified PDFs.
+    </p>
     
 
         <footer>
             <p>
-                Part of the <a href="../index.html">Desclasificados</a> research project.<br>
-                Generated on 2025-12-18 22:13
+                This report was generated from the <a href="../index.html">Desclasificados</a> project archive.<br>
+                All cited documents are from declassified US government records.
             </p>
         </footer>
     </div>
