@@ -1,24 +1,49 @@
 """Data loading, chunking, and embedding generation."""
 
 import json
+import re
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Tuple
+
 import tiktoken
 from openai import OpenAI
+
 from app.rag.config import (
-    TRANSCRIPTS_V1_DIR,
-    TRANSCRIPTS_DIR,
-    TRANSCRIPT_TEXT_DIR,
-    CHUNK_SIZE,
     CHUNK_OVERLAP,
-    EMBEDDING_MODEL,
+    CHUNK_SIZE,
     EMBEDDING_BATCH_SIZE,
+    EMBEDDING_MODEL,
     EMBEDDING_RPS,
     OPENAI_API_KEY,
+    TRANSCRIPTS_DIR,
+    TRANSCRIPTS_V1_DIR,
 )
 
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+def parse_transcript_source(directory_name: str) -> Dict[str, str]:
+    """Parse transcript directory name into source metadata.
+
+    Args:
+        directory_name: e.g., "gpt-5-mini-v2.2.0"
+
+    Returns:
+        Dict with model and schema_version
+    """
+    # Pattern: {model}-v{schema}
+    # e.g., "gpt-5-mini-v2.2.0" -> model="gpt-5-mini", schema="v2.2.0"
+    match = re.match(r"(.+)-(v\d+\.\d+\.\d+)$", directory_name)
+    if match:
+        return {
+            "model": match.group(1),
+            "schema_version": match.group(2),
+        }
+    return {
+        "model": "unknown",
+        "schema_version": "unknown",
+    }
 
 
 def load_json_transcripts(directory: Path) -> List[Dict[str, Any]]:
@@ -37,6 +62,10 @@ def load_json_transcripts(directory: Path) -> List[Dict[str, Any]]:
         try:
             with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
+
+            # Skip non-dictionary files (e.g., failed_documents.json contains a list)
+            if not isinstance(data, dict):
+                continue
 
             # Extract document ID from filename
             doc_id = json_file.stem
@@ -187,7 +216,9 @@ def generate_embeddings(
     chunks_with_embeddings = []
     total_batches = (len(chunks) + batch_size - 1) // batch_size
 
-    print(f"Generating embeddings for {len(chunks)} chunks in {total_batches} batches...")
+    print(
+        f"Generating embeddings for {len(chunks)} chunks in {total_batches} batches..."
+    )
 
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i : i + batch_size]
@@ -221,34 +252,63 @@ def generate_embeddings(
     return chunks_with_embeddings
 
 
-def load_all_data() -> List[Dict[str, Any]]:
-    """Load all available transcript data.
+def load_all_data() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Load all available transcript data with source tracking.
 
     Priority:
-    1. generated_transcripts/ (current schema)
+    1. generated_transcripts/{model}-{schema}/ subdirectories (current schema)
     2. generated_transcripts_v1/ (legacy schema)
-    3. transcript_text/ (plain text fallback)
 
     Returns:
-        List of all loaded transcripts (deduplicated by document_id)
+        Tuple of (transcripts, sources) where:
+        - transcripts: List of all loaded transcripts (deduplicated by document_id)
+        - sources: List of source metadata dictionaries for manifest
     """
     all_transcripts = []
-    seen_ids = set()
+    seen_ids: set[str] = set()
+    sources: List[Dict[str, Any]] = []
 
-    # Load current transcripts (highest priority)
+    # Load from subdirectories in generated_transcripts/
+    # Sorted in reverse so newer versions (v2.2.0) take priority over older (v2.0.0)
     if TRANSCRIPTS_DIR.exists():
-        print(f"Loading transcripts from {TRANSCRIPTS_DIR}...")
-        current = load_json_transcripts(TRANSCRIPTS_DIR)
-        for transcript in current:
-            doc_id = transcript.get("document_id")
-            if doc_id and doc_id not in seen_ids:
-                all_transcripts.append(transcript)
-                seen_ids.add(doc_id)
-        print(f"Loaded {len(current)} current transcripts")
+        subdirs = sorted(
+            [
+                d
+                for d in TRANSCRIPTS_DIR.iterdir()
+                if d.is_dir() and not d.name.startswith(".")
+            ],
+            key=lambda d: d.name,
+            reverse=True,
+        )
+
+        for subdir in subdirs:
+            print(f"Loading transcripts from {subdir.name}...")
+            transcripts = load_json_transcripts(subdir)
+
+            added_count = 0
+            for transcript in transcripts:
+                doc_id = transcript.get("document_id")
+                if doc_id and doc_id not in seen_ids:
+                    all_transcripts.append(transcript)
+                    seen_ids.add(doc_id)
+                    added_count += 1
+
+            if added_count > 0:
+                source_info = parse_transcript_source(subdir.name)
+                sources.append(
+                    {
+                        "directory": subdir.name,
+                        **source_info,
+                        "documents_count": added_count,
+                    }
+                )
+
+            skipped = len(transcripts) - added_count
+            print(f"  Added {added_count} documents ({skipped} duplicates skipped)")
 
     # Load v1 transcripts (skip duplicates)
     if TRANSCRIPTS_V1_DIR.exists():
-        print(f"Loading transcripts from {TRANSCRIPTS_V1_DIR}...")
+        print(f"Loading transcripts from {TRANSCRIPTS_V1_DIR.name}...")
         v1 = load_json_transcripts(TRANSCRIPTS_V1_DIR)
         v1_added = 0
         for transcript in v1:
@@ -257,9 +317,19 @@ def load_all_data() -> List[Dict[str, Any]]:
                 all_transcripts.append(transcript)
                 seen_ids.add(doc_id)
                 v1_added += 1
-        print(f"Loaded {v1_added} v1 transcripts ({len(v1) - v1_added} duplicates skipped)")
 
-    # TODO: Add support for plain text files from transcript_text/
+        if v1_added > 0:
+            sources.append(
+                {
+                    "directory": TRANSCRIPTS_V1_DIR.name,
+                    "model": "unknown",
+                    "schema_version": "v1.0.0",
+                    "documents_count": v1_added,
+                }
+            )
+
+        skipped = len(v1) - v1_added
+        print(f"  Added {v1_added} documents ({skipped} duplicates skipped)")
 
     print(f"Total unique transcripts loaded: {len(all_transcripts)}")
-    return all_transcripts
+    return all_transcripts, sources

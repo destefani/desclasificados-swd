@@ -23,6 +23,73 @@ The system supports two LLM providers for answer generation:
 
 **Note**: Embeddings always use OpenAI's `text-embedding-3-small` regardless of LLM choice (Claude does not offer embeddings).
 
+## RAG Versioning
+
+The RAG system supports versioned indexes to track which transcript sources were used:
+
+### List Available Indexes
+
+```bash
+uv run python -m app.rag.cli list
+```
+
+Output:
+```
+================================================================================
+Available RAG Indexes
+================================================================================
+
+[v1.0.0] rag-v1.0.0/
+  Chunks: 12000
+  Created: 2025-12-18T20:05:00Z
+  Embedding model: text-embedding-3-small
+  Sources:
+    - gpt-5-mini-v2.2.0: 3815 docs (model=gpt-5-mini, schema=v2.2.0)
+    - gpt-5-mini-v2.0.0: 5667 docs (model=gpt-5-mini, schema=v2.0.0)
+
+[legacy] vector_db/
+  Chunks: 6929
+  (No manifest - legacy unversioned index)
+================================================================================
+```
+
+### Version-Specific Operations
+
+```bash
+# Build a specific version
+uv run python -m app.rag.cli build --rag-version 1.0.0
+
+# Query a specific version
+uv run python -m app.rag.cli query "Pinochet" --rag-version 1.0.0
+
+# Stats for a specific version
+uv run python -m app.rag.cli stats --rag-version 1.0.0
+```
+
+### Manifest File
+
+Each versioned RAG index stores a `manifest.json` with source metadata:
+
+```json
+{
+  "rag_version": "1.0.0",
+  "created_at": "2025-12-18T20:05:00Z",
+  "embedding_model": "text-embedding-3-small",
+  "chunk_size": 512,
+  "chunk_overlap": 128,
+  "sources": [
+    {
+      "directory": "gpt-5-mini-v2.2.0",
+      "schema_version": "v2.2.0",
+      "model": "gpt-5-mini",
+      "documents_count": 3815
+    }
+  ],
+  "total_documents": 9482,
+  "total_chunks": 12000
+}
+```
+
 ## Quick Start
 
 ### 1. Build the Index
@@ -30,20 +97,24 @@ The system supports two LLM providers for answer generation:
 First, build the vector database from existing transcripts:
 
 ```bash
-# Build from all available transcripts
+# Build from all available transcripts (creates rag-v1.0.0/)
 uv run python -m app.rag.cli build
 
 # Reset and rebuild
 uv run python -m app.rag.cli build --reset
+
+# Build a specific version
+uv run python -m app.rag.cli build --rag-version 1.1.0
 ```
 
 This will:
-- Load transcripts from `data/generated_transcripts_v1/` and `data/generated_transcripts/`
+- Load transcripts from `data/generated_transcripts/{model}-{schema}/` subdirectories
 - Chunk documents into 512-token segments with 128-token overlap
 - Generate embeddings using OpenAI's `text-embedding-3-small`
-- Store in ChromaDB at `data/vector_db/`
+- Store in ChromaDB at `data/rag-v{version}/`
+- Create a `manifest.json` with source metadata
 
-**Note**: Initial build with 5,611 documents (~17,000 chunks) takes approximately 10-15 minutes and costs ~$0.60 in API fees.
+**Note**: Initial build with ~9,000 documents (~12,000 chunks) takes approximately 10-15 minutes and costs ~$0.60 in API fees.
 
 ### 2. Query the System
 
