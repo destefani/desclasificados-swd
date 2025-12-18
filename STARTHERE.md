@@ -4,6 +4,43 @@
 
 ---
 
+## 🆕 Research Questions Tracker (2025-12-18)
+
+**Branch:** `feat/research-questions-tracker`
+
+Track research questions asked during sessions with status, RAG results, and PDF report links.
+
+**Quick Commands:**
+```bash
+# List all research questions
+make rq-list
+
+# Add a new question
+make rq-add Q="What did the CIA know about X?" CAT="OPERATION CONDOR"
+
+# Update a question (after RAG query)
+make rq-update ID=RQ-001 STATUS=answered PDF=reports/my_report.pdf
+
+# Show specific question
+make rq-show ID=RQ-001
+```
+
+**CLI usage:**
+```bash
+uv run python -m app.research_tracker add "Your question" --category "HUMAN RIGHTS"
+uv run python -m app.research_tracker update RQ-001 --status answered --pdf-report reports/report.pdf
+uv run python -m app.research_tracker list --status unanswered
+```
+
+**Files:**
+- `data/research_questions.json` - Source of truth (JSON)
+- `docs/research_questions.md` - Auto-generated markdown
+- `app/research_tracker.py` - Tracker module
+
+**Categories:** OPERATION CONDOR, HUMAN RIGHTS, LETELIER ASSASSINATION, COUP 1973, ECONOMIC INTERVENTION, ALLENDE GOVERNMENT, PINOCHET REGIME, DINA, 40 COMMITTEE, TRACK II, CIA OPERATIONS, OTHER
+
+---
+
 ## 🆕 RAG Versioning Implemented (2025-12-18)
 
 **Branch:** `research/disambiguation`

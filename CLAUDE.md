@@ -402,6 +402,62 @@ Comprehensive project documentation is available in the `docs/` directory:
 
 Refer to these documents when working on features related to research applications, data ethics, or user-facing functionality.
 
+## Research Questions Tracker
+
+**IMPORTANT: Automatically track research questions when users ask them.**
+
+### When to Track
+
+Track a question when the user asks about historical events, people, or intelligence activities related to:
+- Chile, the coup, or the Pinochet regime
+- CIA operations, knowledge, or involvement
+- Specific events (Letelier assassination, Operation Condor, etc.)
+- People (Pinochet, Allende, specific agents, etc.)
+- US policy or intervention
+
+**Examples of research questions to track:**
+- "What did the CIA know about Operation Condor?"
+- "How much was Allende's economic crisis influenced by the US?"
+- "Who was involved in the Letelier assassination?"
+- "What documents mention DINA?"
+
+### How to Track
+
+1. **Recognize** the research question in the user's message
+2. **Add it** using the tracker CLI:
+   ```bash
+   uv run python -m app.research_tracker add "The exact question" --category "CATEGORY"
+   ```
+3. **After querying RAG**, update with results:
+   ```bash
+   uv run python -m app.research_tracker update RQ-XXX \
+     --status answered \
+     --relevance 0.42 \
+     --docs "doc1,doc2,doc3" \
+     --rag-results "Brief summary of findings"
+   ```
+4. **If a PDF report is generated**, link it:
+   ```bash
+   uv run python -m app.research_tracker update RQ-XXX \
+     --pdf-report "reports/report_name.pdf"
+   ```
+
+### Categories
+
+Use one of: `OPERATION CONDOR`, `HUMAN RIGHTS`, `LETELIER ASSASSINATION`, `COUP 1973`, `ECONOMIC INTERVENTION`, `ALLENDE GOVERNMENT`, `PINOCHET REGIME`, `DINA`, `40 COMMITTEE`, `TRACK II`, `CIA OPERATIONS`, `OTHER`
+
+### Status Values
+
+- `unanswered` - Just added, not yet queried
+- `partially_answered` - Some results found but incomplete
+- `answered` - Question fully addressed with evidence
+- `needs_more_data` - Requires more document transcription
+
+### Files
+
+- `data/research_questions.json` - Source of truth
+- `docs/research_questions.md` - Auto-generated documentation
+
 ## Important Notes
 
 - **CRITICAL: Always use PDFs from `data/original_pdfs/` for transcription, never JPEGs from `data/images/`**
@@ -413,6 +469,6 @@ Refer to these documents when working on features related to research applicatio
 - After every new feature implementation, make it easy for the reviewer to test it
 - Always work on a new branch and create a PR when finished. PRs have to be manually accepted by a human in github
 - Always use typing
-- always document investigations
-- always keep dataset progress log up to date
-- never delete generated files. Always archive them properly
+- Always document investigations
+- Always keep dataset progress log up to date
+- Never delete generated files. Always archive them properly
