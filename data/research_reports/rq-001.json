@@ -1,0 +1,205 @@
+{
+  "id": "RQ-001",
+  "title": "US Economic Intervention in Chile During Allende's Government (1970-1973)",
+  "subtitle": "Evidence from Declassified CIA Documents",
+  "question": "People justify the military coup under the argument that the economic situation under Allende's government was very bad. How much of the economic situation during Allende's government was influenced by the United States?",
+  "introduction": "This report presents evidence from declassified CIA documents retrieved through semantic search of the Desclasificados archive.",
+  "methodology": {
+    "description": "This analysis was conducted using semantic search (RAG - Retrieval Augmented Generation) on the Desclasificados archive of declassified CIA documents related to Chile.",
+    "index_version": "RAG v1.0.0",
+    "index_date": "December 18, 2025",
+    "total_documents": 5666,
+    "total_chunks": 12811,
+    "sources": "gpt-5-mini-v2.2.0 (4,206 docs) + gpt-5-mini-v2.0.0 (1,460 docs)",
+    "embedding_model": "OpenAI text-embedding-3-small",
+    "llm": "Claude 3.5 Haiku for answer synthesis",
+    "queries": "Two semantic searches with top-15 and top-10 retrieval"
+  },
+  "sections": [
+    {
+      "number": 1,
+      "title": "Explicit Policy of 'Maximum Economic Pressure'",
+      "content": [
+        {
+          "type": "document_reference",
+          "doc_id": "25031",
+          "classification": "TOP SECRET",
+          "date": "May 1976",
+          "intro": "explicitly states US policy:"
+        },
+        {
+          "type": "quote",
+          "text": "Basic policy objective of preventing the consolidation of the Allende administration by using maximum pressure — especially economic pressure — against Chile while maintaining a restrained public stance."
+        },
+        {
+          "type": "paragraph",
+          "text": "This confirms that economic destabilization was official US policy, not incidental. The document reveals that the US pursued this strategy while publicly denying interference."
+        },
+        {
+          "type": "source",
+          "doc_id": "25031",
+          "description": "TOP SECRET Report by Mary P. Chapman"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Covert Funding of Opposition and Strikes",
+      "content": [
+        {
+          "type": "document_reference",
+          "doc_id": "24887",
+          "classification": "SECRET",
+          "date": "September 1974",
+          "intro": "reveals:"
+        },
+        {
+          "type": "quote",
+          "text": "CIA secretly financed striking labor unions and trade groups for over 16 months before Allende's overthrow, with more than $8 million authorized for clandestine activities."
+        },
+        {
+          "type": "paragraph",
+          "text": "This funding supported the truckers' strikes and shop owners' strikes that paralyzed the Chilean economy in 1972-1973. These strikes created severe shortages and economic chaos that undermined public confidence in the Allende government."
+        },
+        {
+          "type": "source",
+          "doc_id": "24887",
+          "description": "SECRET Memorandum by Margaret P. Grafeld"
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "title": "Credit Blockade ('Invisible Blockade')",
+      "content": [
+        {
+          "type": "document_reference",
+          "doc_id": "25031",
+          "intro": "documents systematic US actions through international financial channels:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Paris Club debt renegotiations used as economic pressure",
+            "Blocking compensation for nationalized copper companies (Kennecott, Anaconda)",
+            "Selective suspension of aid and credits",
+            "Coordination with international financial institutions (World Bank, IMF, IDB)",
+            "Legal actions to block Chilean copper exports in European courts"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Neither the compensation nor debt issues were resolved before Allende's overthrow in September 1973, indicating these were used as ongoing pressure tools rather than genuine negotiations."
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "title": "Corporate-CIA Coordination",
+      "content": [
+        {
+          "type": "subheading",
+          "text": "ITT Corporation"
+        },
+        {
+          "type": "document_reference",
+          "doc_id": "24845",
+          "classification": "UNCLASSIFIED",
+          "date": "January 1973",
+          "intro": "confirms:"
+        },
+        {
+          "type": "quote",
+          "text": "Anti-Allende operation...attention turned to what might be done to prevent his accession [to power]"
+        },
+        {
+          "type": "paragraph",
+          "text": "Document 24842 references the 'CIA-ITT conversations published in the Anderson papers,' confirming coordination between the intelligence agency and major US corporations with interests in Chile."
+        },
+        {
+          "type": "subheading",
+          "text": "Copper Companies"
+        },
+        {
+          "type": "paragraph",
+          "text": "Kennecott and Anaconda copper companies coordinated with US policy to pressure Chile over nationalization. The US supported legal actions in European courts to embargo Chilean copper shipments, directly targeting Chile's primary export revenue."
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "title": "Track II Operations",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Document 24885 explicitly references 'Track II' - the covert operation to prevent Allende from taking office, which included economic components alongside political and military tracks. This was a parallel operation hidden even from the US Ambassador and State Department."
+        },
+        {
+          "type": "source",
+          "doc_id": "24885",
+          "description": "SECRET Memorandum by William G. Hyland"
+        }
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "title": "Scale of US Intervention",
+      "headers": ["Action", "Amount/Scale", "Period"],
+      "rows": [
+        ["Covert funding (total)", "$8+ million", "1970-1973"],
+        ["Support for Frei campaign", "$3 million", "1964"],
+        ["Funding to El Mercurio newspaper", "Confirmed (amount redacted)", "1970-1973"],
+        ["Financial support to opposition parties", "Ongoing", "1970-1973"],
+        ["CIA-funded strikes", "16+ months", "1972-1973"]
+      ]
+    },
+    {
+      "title": "Key Source Documents",
+      "description": "Click document IDs to view original declassified documents:",
+      "headers": ["Document", "Date", "Classification", "Type"],
+      "rows": [
+        ["25031", "May 1976", "TOP SECRET", "Report"],
+        ["24916", "Oct 1970", "UNCLASSIFIED", "Memorandum"],
+        ["24887", "Sep 1974", "SECRET", "Memorandum"],
+        ["24845", "Jan 1973", "UNCLASSIFIED", "Memorandum"],
+        ["24885", "Aug 1975", "SECRET", "Memorandum"],
+        ["24828", "1969", "UNCLASSIFIED", "Report"],
+        ["24918", "Oct 1970", "SECRET", "Report"]
+      ]
+    }
+  ],
+  "conclusions": {
+    "proven": {
+      "title": "What the Documents Prove",
+      "items": [
+        {
+          "bold": "Credit was intentionally blocked",
+          "text": "The US used its influence at the World Bank, IMF, and Inter-American Development Bank to cut off loans to Chile."
+        },
+        {
+          "bold": "Strikes were funded",
+          "text": "The CIA financed labor disruptions that damaged the economy and created public discontent."
+        },
+        {
+          "bold": "Copper revenue was targeted",
+          "text": "The US supported legal actions by Kennecott to block Chilean copper exports in European courts, hitting Chile's main source of foreign currency."
+        },
+        {
+          "bold": "This was coordinated policy",
+          "text": "The 40 Committee (NSC covert operations group) approved these actions at the highest levels of government."
+        }
+      ]
+    },
+    "balanced": {
+      "title": "Balanced Assessment",
+      "intro": "The documents show the US conducted systematic economic warfare against Chile. However, it is also true that:",
+      "caveats": [
+        "Allende's economic policies (wage increases, price controls, nationalizations) created genuine economic challenges",
+        "Chile faced pre-existing structural economic issues",
+        "Inflation had complex domestic causes as well"
+      ],
+      "summary": "The evidence suggests both factors contributed: US intervention demonstrably worsened economic conditions, but the extent to which each factor contributed is difficult to quantify precisely. What the documents do prove is that the US intentionally tried to destabilize Chile's economy as a tool of regime change. The argument that Allende's government failed purely due to its own policies is contradicted by these declassified documents showing coordinated external economic sabotage."
+    }
+  }
+}

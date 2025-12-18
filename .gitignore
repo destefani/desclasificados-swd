@@ -1,5 +1,6 @@
 # Data directories
 data/
+!data/research_reports/
 logs/
 
 # Environment and secrets
