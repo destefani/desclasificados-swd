@@ -51,6 +51,10 @@ from app.visualizations.pdf_viewer import (
     generate_external_viewer_modal,
     generate_external_link_interceptor,
 )
+from app.visualizations.research_questions import (
+    generate_research_questions_section,
+    generate_research_questions_css,
+)
 
 
 def image_to_base64(image_path: str) -> str:
@@ -1352,6 +1356,12 @@ def generate_full_html_report(
         confidence_path
     )
 
+    # Generate research questions section
+    research_questions_html = generate_research_questions_section(
+        external_pdf_viewer=external_pdf_viewer,
+    )
+    research_questions_css = generate_research_questions_css()
+
     # Convert images to base64 if standalone mode
     if standalone:
         classification_src = image_to_base64(classification_path) if classification_exists else ""
@@ -1810,6 +1820,9 @@ def generate_full_html_report(
             main {{ margin-left: 0; }}
             .two-col {{ grid-template-columns: 1fr; }}
         }}
+
+        /* Research Questions Styles */
+        {research_questions_css}
     </style>
 </head>
 <body>
@@ -1819,6 +1832,7 @@ def generate_full_html_report(
             <ul>
                 <li><a href="#overview">Overview</a></li>
                 <li><a href="#documents">Document Index</a></li>
+                <li><a href="#research-questions">Research Questions</a></li>
                 <li><a href="#timeline">Timeline</a></li>
                 <li><a href="#classification">Classification</a></li>
                 <li><a href="#document-types">Document Types</a></li>
@@ -1917,6 +1931,8 @@ def generate_full_html_report(
                 <p>Browse all processed documents. Click "View PDF" to open the source document.</p>
                 {create_document_index(results.get('all_documents', []))}
             </section>
+
+            {research_questions_html}
 
             <section id="timeline">
                 <h2>Timeline</h2>

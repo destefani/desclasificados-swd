@@ -159,6 +159,9 @@ github-pages-external:
 
 # Update analysis and deploy to GitHub Pages (one command)
 deploy:
+	@echo "Generating research question HTML reports..."
+	@uv run python -m app.research_reports generate --update-tracker
+	@echo ""
 	@echo "Generating GitHub Pages report..."
 	@uv run python -m app.analyze_documents $(TRANSCRIPTS_DIR) --github-pages \
 		--external-pdf-viewer "https://declasseuucl.vercel.app" --pdf-dir data/original_pdfs
@@ -238,6 +241,20 @@ rq-update:
 
 rq-generate-md:
 	uv run python -m app.research_tracker generate-md
+
+# Generate HTML reports for research questions
+rq-reports:
+	uv run python -m app.research_reports generate --update-tracker
+
+# Generate HTML report for a specific question
+# Usage: make rq-report ID=RQ-001
+rq-report:
+	@if [ -z "$(ID)" ]; then echo "Usage: make rq-report ID=RQ-001"; exit 1; fi
+	uv run python -m app.research_reports generate --question-id $(ID)
+
+# List existing HTML reports
+rq-reports-list:
+	uv run python -m app.research_reports list
 
 # =============================================================================
 # UTILITIES
@@ -328,6 +345,9 @@ help:
 	@echo "  rq-show          Show question (ID=RQ-001)"
 	@echo "  rq-update        Update question (ID=RQ-001 [STATUS=...] [PDF=...])"
 	@echo "  rq-generate-md   Regenerate markdown documentation"
+	@echo "  rq-reports       Generate HTML reports for all questions"
+	@echo "  rq-report        Generate HTML report (ID=RQ-001)"
+	@echo "  rq-reports-list  List existing HTML reports"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  clean            Remove caches and venv"
@@ -343,5 +363,5 @@ help:
         eval-stats eval-validate eval-sample eval-report progress \
         analyze analyze-full github-pages github-pages-external deploy serve visualize \
         test test-unit lint format typecheck \
-        rq-list rq-add rq-show rq-update rq-generate-md \
+        rq-list rq-add rq-show rq-update rq-generate-md rq-reports rq-report rq-reports-list \
         clean update lock run shell help
