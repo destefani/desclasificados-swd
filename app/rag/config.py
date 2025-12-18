@@ -1,8 +1,9 @@
 """Configuration for the RAG system."""
 
 import os
+import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from dotenv import load_dotenv
 
@@ -18,6 +19,21 @@ VECTOR_DB_DIR = DATA_DIR / "vector_db"  # Legacy unversioned directory
 
 # RAG Versioning Configuration
 RAG_VERSION = "1.0.0"
+
+# Regex for valid semver RAG directories (rag-v{major}.{minor}.{patch})
+RAG_VERSION_PATTERN = re.compile(r"^rag-v(\d+)\.(\d+)\.(\d+)$")
+
+
+def _parse_version(dirname: str) -> Optional[Tuple[int, int, int]]:
+    """Parse directory name into semver tuple for sorting.
+
+    Returns:
+        Tuple of (major, minor, patch) or None if not a valid version.
+    """
+    match = RAG_VERSION_PATTERN.match(dirname)
+    if match:
+        return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    return None
 
 
 def get_rag_dir(version: Optional[str] = None) -> Path:
@@ -37,15 +53,17 @@ def get_rag_dir(version: Optional[str] = None) -> Path:
     if version:
         return DATA_DIR / f"rag-v{version}"
 
-    # Find latest versioned index
-    versioned_dirs = sorted(
-        DATA_DIR.glob("rag-v*"),
-        key=lambda p: p.name,
-        reverse=True,
-    )
+    # Find latest versioned index (only valid semver directories)
+    versioned_dirs = []
+    for d in DATA_DIR.glob("rag-v*"):
+        parsed = _parse_version(d.name)
+        if parsed:
+            versioned_dirs.append((parsed, d))
 
+    # Sort by semver (descending) and return the latest
     if versioned_dirs:
-        return versioned_dirs[0]
+        versioned_dirs.sort(key=lambda x: x[0], reverse=True)
+        return versioned_dirs[0][1]
 
     # Fallback to legacy unversioned directory
     return VECTOR_DB_DIR

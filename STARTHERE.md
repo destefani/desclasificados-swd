@@ -37,6 +37,37 @@ uv run python -m app.rag.cli stats --rag-version 1.0.0
 
 ---
 
+## 🆕 Research Reports Feature (2025-12-18)
+
+**Generate evidence-based research reports from declassified documents.**
+
+The RAG system can now answer historical research questions with full source attribution, then generate professional PDF reports with cited evidence.
+
+**Example:**
+```bash
+# 1. Query the RAG system with a research question
+uv run python -m app.rag.cli query \
+  "What actions did the United States take to destabilize Chile's economy during Allende's government?" \
+  --llm claude --top-k 15 --rag-version 1.0.0
+
+# 2. Generate PDF report (uses reportlab)
+uv run python scripts/generate_economic_report.py
+```
+
+**Report contents:**
+- Research question with historical context
+- Evidence sections with direct quotes from documents
+- Full source attribution (Document ID, Date, Classification, Author, Relevance %)
+- Data tables (scale of intervention, key documents)
+- Balanced conclusions acknowledging limitations
+- Methodology section
+
+**Sample report:** `reports/us_economic_intervention_chile_1970-1973.pdf`
+
+**Documentation:** `docs/RESEARCH_REPORTS.md`
+
+---
+
 ## 🆕 Entity Disambiguation Research Started (2025-12-16)
 
 **Branch:** `research/disambiguation`

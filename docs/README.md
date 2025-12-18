@@ -71,6 +71,16 @@ Analysis of migrating LLM operations from OpenAI to Claude (Anthropic):
 - Recommendations: Immediate migration for answer generation, hold on transcription
 - Complete implementation checklist
 
+### [RESEARCH_REPORTS.md](./RESEARCH_REPORTS.md)
+Guide to generating evidence-based research reports from declassified documents:
+- The Research Question pattern and its value proposition
+- Document evidence format with required metadata
+- Example research questions by category
+- Report structure and best practices
+- Ethical considerations for handling sensitive historical material
+- Technical implementation using RAG + PDF generation
+- Sample reports index
+
 ## Contributing to Documentation
 
 When adding new documentation, please:
@@ -102,8 +112,9 @@ When adding new documentation, please:
 - Metadata analysis (future)
 - Case studies (future)
 
-### User Guides (Future)
-- How to query the dataset
-- Interpretation guidelines
-- Best practices for research
-- Citation recommendations
+### User Guides
+- Research report generation (RESEARCH_REPORTS.md)
+- How to query the dataset (app/rag/README.md)
+- Best practices for research (RESEARCH_REPORTS.md)
+- Interpretation guidelines (future)
+- Citation recommendations (future)
