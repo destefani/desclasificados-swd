@@ -521,12 +521,73 @@
                     </p>
                 </section>
 
+                <!-- How Documents Are Transcribed -->
+                <section class="section">
+                    <h2><span class="icon">📝</span> How Documents Are Transcribed</h2>
+                    <p>
+                        The original declassified documents are <strong>scanned images</strong> - they're photographs of
+                        paper documents, not digital text. Traditional OCR (Optical Character Recognition) struggles with
+                        these documents because of:
+                    </p>
+                    <ul>
+                        <li>Poor scan quality and faded text</li>
+                        <li>Handwritten annotations and signatures</li>
+                        <li>Stamps, redaction marks, and overlapping elements</li>
+                        <li>Multiple columns and complex layouts</li>
+                        <li>Mixed languages (English and Spanish)</li>
+                    </ul>
+
+                    <h3>Vision Language Models to the Rescue</h3>
+                    <p>
+                        We use <strong>GPT-5-mini</strong>, a vision-capable language model, to "read" each document.
+                        Unlike traditional OCR, the model can:
+                    </p>
+                    <div class="cards-grid">
+                        <div class="card">
+                            <h4>👁️ See Context</h4>
+                            <p>Understands document structure, headers, and formatting - not just individual characters.</p>
+                        </div>
+                        <div class="card">
+                            <h4>🧠 Interpret Meaning</h4>
+                            <p>Can read partially obscured text by understanding context and common document patterns.</p>
+                        </div>
+                        <div class="card">
+                            <h4>📋 Extract Metadata</h4>
+                            <p>Identifies dates, authors, recipients, classification levels, and document types automatically.</p>
+                        </div>
+                        <div class="card">
+                            <h4>🔤 Handle Complexity</h4>
+                            <p>Processes multi-page documents, handwriting, stamps, and redactions intelligently.</p>
+                        </div>
+                    </div>
+
+                    <h3>The Transcription Process</h3>
+                    <p>Each PDF document goes through these steps:</p>
+                    <ol style="margin: 15px 0 15px 24px; color: var(--gray-600);">
+                        <li style="margin-bottom: 8px;"><strong>PDF Loading:</strong> All pages of the document are extracted as images</li>
+                        <li style="margin-bottom: 8px;"><strong>Vision Analysis:</strong> GPT-5-mini analyzes each page, understanding layout and content</li>
+                        <li style="margin-bottom: 8px;"><strong>Text Extraction:</strong> The model transcribes all readable text, preserving structure</li>
+                        <li style="margin-bottom: 8px;"><strong>Metadata Extraction:</strong> Dates, names, classifications, and keywords are identified</li>
+                        <li style="margin-bottom: 8px;"><strong>Standardization:</strong> Dates are converted to ISO format, names are normalized</li>
+                        <li style="margin-bottom: 8px;"><strong>JSON Output:</strong> Everything is saved in a structured, searchable format</li>
+                    </ol>
+
+                    <div class="callout">
+                        <h4>Why This Matters</h4>
+                        <p>
+                            This AI-powered transcription transforms ~20,000 unsearchable image files into a structured
+                            database. What would take humans years to transcribe manually can be processed in days,
+                            making these historical records truly accessible for the first time.
+                        </p>
+                    </div>
+                </section>
+
                 <!-- How It Works (Simple) -->
                 <section class="section">
-                    <h2><span class="icon">🤖</span> How the AI Works</h2>
+                    <h2><span class="icon">🔍</span> How Search Works</h2>
                     <p>
-                        We use a technique called <strong>RAG (Retrieval-Augmented Generation)</strong> to answer
-                        questions about the documents. Here's the simple version:
+                        Once documents are transcribed, we use a technique called <strong>RAG (Retrieval-Augmented Generation)</strong>
+                        to answer questions. Here's the simple version:
                     </p>
 
                     <div class="pipeline-diagram">
@@ -638,7 +699,7 @@
 
                                     <!-- GPT-4o -->
                                     <rect x="140" y="55" width="100" height="60" rx="8" fill="#10b981" stroke="none"/>
-                                    <text x="190" y="80" text-anchor="middle" font-size="10" font-weight="600" fill="white">GPT-4o-mini</text>
+                                    <text x="190" y="80" text-anchor="middle" font-size="10" font-weight="600" fill="white">GPT-5-mini</text>
                                     <text x="190" y="95" text-anchor="middle" font-size="8" fill="white">Vision Model</text>
 
                                     <!-- Arrow down -->
@@ -730,7 +791,7 @@
 
                                     <!-- Claude -->
                                     <rect x="100" y="205" width="140" height="40" rx="8" fill="#10b981"/>
-                                    <text x="170" y="225" text-anchor="middle" font-size="10" font-weight="600" fill="white">Claude / GPT-4o</text>
+                                    <text x="170" y="225" text-anchor="middle" font-size="10" font-weight="600" fill="white">Claude Opus 4.5</text>
                                     <text x="170" y="238" text-anchor="middle" font-size="8" fill="white">Answer Synthesis</text>
 
                                     <!-- Details -->
@@ -756,7 +817,7 @@
                                 <div class="tech-use">Core language</div>
                             </div>
                             <div class="tech-item">
-                                <div class="tech-name">OpenAI GPT-4o-mini</div>
+                                <div class="tech-name">OpenAI GPT-5-mini</div>
                                 <div class="tech-use">Document transcription (vision)</div>
                             </div>
                             <div class="tech-item">
@@ -768,7 +829,7 @@
                                 <div class="tech-use">Vector database (local)</div>
                             </div>
                             <div class="tech-item">
-                                <div class="tech-name">Claude 3.5 Haiku</div>
+                                <div class="tech-name">Claude Opus 4.5</div>
                                 <div class="tech-use">Answer synthesis (default)</div>
                             </div>
                             <div class="tech-item">
@@ -819,7 +880,7 @@
                             <li>ChromaDB performs cosine similarity search</li>
                             <li>Top-K relevant chunks are retrieved (default K=15)</li>
                             <li>Chunks are assembled into a context prompt</li>
-                            <li>Claude/GPT synthesizes an answer with citations</li>
+                            <li>Claude Opus 4.5 synthesizes an answer with citations</li>
                         </ol>
                     </section>
 
