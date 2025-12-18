@@ -4,6 +4,42 @@
 
 ---
 
+## 🆕 Research Questions on GitHub Pages (2025-12-18)
+
+**PR #35 merged** - Research questions now display on GitHub Pages with rich HTML reports.
+
+**Live:** https://destefani.github.io/desclasificados-swd/
+
+**Features:**
+- Research Questions section in main report with summary cards and category chart
+- Individual question cards with status, relevance scores, and source document links
+- Rich HTML reports matching PDF format (sections, quotes, tables, conclusions)
+- PDF viewer modal for all document links (same as Document Index)
+
+**Two-tier report system:**
+1. **Rich reports** - Load from `data/research_reports/{id}.json` with full content
+2. **Basic reports** - Fall back to `data/research_questions.json` tracker data
+
+**Commands:**
+```bash
+# Generate all research question HTML reports
+make rq-reports
+
+# Generate single report
+make rq-report ID=RQ-001
+
+# Full deploy (regenerates reports + main report + pushes to GitHub)
+make deploy
+```
+
+**Files:**
+- `data/research_reports/rq-001.json` - Rich report content (sections, tables, conclusions)
+- `app/research_reports.py` - HTML report generator
+- `app/visualizations/research_questions.py` - Index page components
+- `docs/reports/rq-001-economic-intervention.html` - Generated HTML report
+
+---
+
 ## 🆕 Research Questions Tracker (2025-12-18)
 
 **Branch:** `feat/research-questions-tracker`
