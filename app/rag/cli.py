@@ -2,34 +2,42 @@
 
 import argparse
 import sys
-from pathlib import Path
-from typing import Optional, List
+
+from app.rag.config import (
+    CLAUDE_MODEL,
+    DATA_DIR,
+    LLM_MODEL,
+    RAG_VERSION,
+    VECTOR_DB_DIR,
+    get_rag_dir,
+)
 from app.rag.embeddings import (
-    load_all_data,
     create_document_chunks,
     generate_embeddings,
+    load_all_data,
 )
-from app.rag.vector_store import init_vector_store, build_index
 from app.rag.qa_pipeline import ask_question
 from app.rag.qa_pipeline_claude import ask_question_claude
-from app.rag.config import VECTOR_DB_DIR, CLAUDE_MODEL, LLM_MODEL
+from app.rag.vector_store import build_index, init_vector_store
 
 
 def build_command(args):
     """Build the vector database index."""
+    version = args.rag_version or RAG_VERSION
+
     print("=" * 80)
-    print("Building RAG Index")
+    print(f"Building RAG Index v{version}")
     print("=" * 80)
 
-    # Load transcripts
+    # Load transcripts with source tracking
     print("\n1. Loading transcripts...")
-    transcripts = load_all_data()
+    transcripts, sources = load_all_data()
 
     if not transcripts:
         print("Error: No transcripts found!")
         sys.exit(1)
 
-    print(f"Loaded {len(transcripts)} transcripts")
+    print(f"Loaded {len(transcripts)} transcripts from {len(sources)} sources")
 
     # Create chunks
     print("\n2. Creating document chunks...")
@@ -41,26 +49,40 @@ def build_command(args):
     chunks_with_embeddings = generate_embeddings(chunks)
     print(f"Generated embeddings for {len(chunks_with_embeddings)} chunks")
 
-    # Build index
+    # Build index with version and sources
     print("\n4. Building vector database...")
-    vector_store = build_index(chunks_with_embeddings, reset=args.reset)
+    vector_store = build_index(
+        chunks_with_embeddings,
+        reset=args.reset,
+        version=version,
+        sources=sources,
+    )
 
+    rag_dir = get_rag_dir(version)
     print("\n" + "=" * 80)
-    print(f"Index built successfully!")
+    print("Index built successfully!")
+    print(f"RAG version: v{version}")
     print(f"Total chunks indexed: {vector_store.count()}")
-    print(f"Database location: {VECTOR_DB_DIR}")
+    print(f"Database location: {rag_dir}")
+    print(f"Manifest: {rag_dir / 'manifest.json'}")
     print("=" * 80)
 
 
 def query_command(args):
     """Query the RAG system."""
-    # Initialize vector store
-    vector_store = init_vector_store()
+    # Initialize vector store with optional version
+    version = getattr(args, "rag_version", None)
+    vector_store = init_vector_store(version=version)
 
     if vector_store.count() == 0:
         print("Error: Vector database is empty. Please run 'build' first.")
         sys.exit(1)
 
+    rag_dir = get_rag_dir(version)
+    manifest = vector_store.load_manifest()
+    rag_version = manifest.get("rag_version", "legacy") if manifest else "legacy"
+
+    print(f"RAG Index: v{rag_version} ({rag_dir.name})")
     print(f"Database loaded: {vector_store.count()} chunks")
     print(f"LLM: {args.llm}")
     if args.model:
@@ -122,16 +144,22 @@ def query_command(args):
 
 def interactive_command(args):
     """Interactive query mode."""
-    # Initialize vector store
-    vector_store = init_vector_store()
+    # Initialize vector store with optional version
+    version = getattr(args, "rag_version", None)
+    vector_store = init_vector_store(version=version)
 
     if vector_store.count() == 0:
         print("Error: Vector database is empty. Please run 'build' first.")
         sys.exit(1)
 
+    rag_dir = get_rag_dir(version)
+    manifest = vector_store.load_manifest()
+    rag_version = manifest.get("rag_version", "legacy") if manifest else "legacy"
+
     print("=" * 80)
     print("RAG Interactive Mode")
     print("=" * 80)
+    print(f"RAG Index: v{rag_version} ({rag_dir.name})")
     print(f"Database loaded: {vector_store.count()} chunks")
     print(f"LLM: {args.llm}")
     if args.model:
@@ -187,7 +215,9 @@ def interactive_command(args):
             # Display sources
             print(f"\nSources: {result['num_sources']} documents")
             for i, source in enumerate(result["sources"], 1):
-                print(f"  {i}. Doc {source['document_id']} ({source['date']}) - {source['type']}")
+                print(
+                    f"  {i}. Doc {source['document_id']} ({source['date']}) - {source['type']}"
+                )
 
         except KeyboardInterrupt:
             print("\n\nGoodbye!")
@@ -197,15 +227,90 @@ def interactive_command(args):
             continue
 
 
+def list_command(args):
+    """List available RAG indexes."""
+    print("=" * 80)
+    print("Available RAG Indexes")
+    print("=" * 80)
+
+    # Find versioned indexes
+    versioned_dirs = sorted(DATA_DIR.glob("rag-v*"), reverse=True)
+
+    if not versioned_dirs:
+        # Check for legacy
+        legacy_dir = VECTOR_DB_DIR
+        if legacy_dir.exists():
+            store = init_vector_store(persist_directory=str(legacy_dir))
+            print(f"\n[legacy] {legacy_dir.name}/")
+            print(f"  Chunks: {store.count()}")
+            print("  (No manifest - legacy unversioned index)")
+        else:
+            print("\nNo RAG indexes found. Run 'build' to create one.")
+        print("=" * 80)
+        return
+
+    for rag_dir in versioned_dirs:
+        version = rag_dir.name.replace("rag-v", "")
+        store = init_vector_store(persist_directory=str(rag_dir))
+        manifest = store.load_manifest()
+
+        print(f"\n[v{version}] {rag_dir.name}/")
+        print(f"  Chunks: {store.count()}")
+
+        if manifest:
+            print(f"  Created: {manifest.get('created_at', 'unknown')}")
+            print(f"  Embedding model: {manifest.get('embedding_model', 'unknown')}")
+            print("  Sources:")
+            for source in manifest.get("sources", []):
+                model = source.get("model", "unknown")
+                schema = source.get("schema_version", "unknown")
+                docs = source.get("documents_count", 0)
+                print(
+                    f"    - {source['directory']}: {docs} docs (model={model}, schema={schema})"
+                )
+
+    # Also check for legacy
+    legacy_dir = VECTOR_DB_DIR
+    if legacy_dir.exists():
+        store = init_vector_store(persist_directory=str(legacy_dir))
+        if store.count() > 0:
+            print(f"\n[legacy] {legacy_dir.name}/")
+            print(f"  Chunks: {store.count()}")
+            print("  (No manifest - legacy unversioned index)")
+
+    print("\n" + "=" * 80)
+
+
 def stats_command(args):
     """Show database statistics."""
-    vector_store = init_vector_store()
+    version = getattr(args, "rag_version", None)
+    rag_dir = get_rag_dir(version)
+    vector_store = init_vector_store(persist_directory=str(rag_dir))
+    manifest = vector_store.load_manifest()
 
     print("=" * 80)
     print("RAG Database Statistics")
     print("=" * 80)
+
+    if manifest:
+        print(f"RAG Version: v{manifest.get('rag_version', 'unknown')}")
+        print(f"Created: {manifest.get('created_at', 'unknown')}")
+        print(f"Embedding model: {manifest.get('embedding_model', 'unknown')}")
+        print(f"Chunk size: {manifest.get('chunk_size', 'unknown')} tokens")
+        print(f"Chunk overlap: {manifest.get('chunk_overlap', 'unknown')} tokens")
+        print()
+        print("Sources:")
+        for source in manifest.get("sources", []):
+            print(f"  - {source['directory']}")
+            print(f"      Model: {source.get('model', 'unknown')}")
+            print(f"      Schema: {source.get('schema_version', 'unknown')}")
+            print(f"      Documents: {source.get('documents_count', 0)}")
+        print()
+    else:
+        print("(Legacy index - no manifest available)")
+
     print(f"Total chunks: {vector_store.count()}")
-    print(f"Database location: {VECTOR_DB_DIR}")
+    print(f"Database location: {rag_dir}")
     print("=" * 80)
 
 
@@ -219,12 +324,23 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Build command
-    build_parser = subparsers.add_parser("build", help="Build the vector database index")
+    build_parser = subparsers.add_parser(
+        "build", help="Build the vector database index"
+    )
     build_parser.add_argument(
         "--reset",
         action="store_true",
         help="Reset the database before building",
     )
+    build_parser.add_argument(
+        "--rag-version",
+        type=str,
+        default=None,
+        help=f"RAG index version to create (default: {RAG_VERSION})",
+    )
+
+    # List command
+    subparsers.add_parser("list", help="List available RAG indexes")
 
     # Query command
     query_parser = subparsers.add_parser("query", help="Query the RAG system")
@@ -262,6 +378,12 @@ def main():
         type=str,
         help="Comma-separated keywords to filter by",
     )
+    query_parser.add_argument(
+        "--rag-version",
+        type=str,
+        default=None,
+        help="RAG index version to query (default: latest)",
+    )
 
     # Interactive command
     interactive_parser = subparsers.add_parser(
@@ -280,9 +402,21 @@ def main():
         type=str,
         help="Specific model to use (overrides default for selected LLM)",
     )
+    interactive_parser.add_argument(
+        "--rag-version",
+        type=str,
+        default=None,
+        help="RAG index version to use (default: latest)",
+    )
 
     # Stats command
     stats_parser = subparsers.add_parser("stats", help="Show database statistics")
+    stats_parser.add_argument(
+        "--rag-version",
+        type=str,
+        default=None,
+        help="RAG index version to show stats for (default: latest)",
+    )
 
     # Parse arguments
     args = parser.parse_args()
@@ -294,6 +428,8 @@ def main():
     # Execute command
     if args.command == "build":
         build_command(args)
+    elif args.command == "list":
+        list_command(args)
     elif args.command == "query":
         query_command(args)
     elif args.command == "interactive":

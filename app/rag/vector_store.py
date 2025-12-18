@@ -1,22 +1,43 @@
 """Vector database operations using ChromaDB."""
 
-from typing import List, Dict, Any, Optional
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 import chromadb
 from chromadb.config import Settings
-from app.rag.config import VECTOR_DB_DIR
+
+from app.rag.config import (
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    EMBEDDING_MODEL,
+    get_rag_dir,
+)
 
 
 class VectorStore:
     """ChromaDB vector store for document chunks."""
 
-    def __init__(self, persist_directory: Optional[str] = None):
+    def __init__(
+        self,
+        persist_directory: Optional[str] = None,
+        version: Optional[str] = None,
+    ):
         """Initialize ChromaDB client.
 
         Args:
-            persist_directory: Directory to persist the database.
-                              Defaults to VECTOR_DB_DIR from config.
+            persist_directory: Explicit directory path (overrides version).
+            version: RAG version string. If None, uses latest or legacy.
         """
-        self.persist_directory = persist_directory or str(VECTOR_DB_DIR)
+        if persist_directory:
+            self.persist_directory = persist_directory
+        elif version:
+            self.persist_directory = str(get_rag_dir(version))
+        else:
+            self.persist_directory = str(get_rag_dir())
+
+        self.version = version
 
         # Initialize ChromaDB with persistence
         self.client = chromadb.PersistentClient(
@@ -30,7 +51,9 @@ class VectorStore:
         # Get or create collection
         self.collection = self.client.get_or_create_collection(
             name="cia_documents",
-            metadata={"description": "Declassified CIA documents on Chilean dictatorship"},
+            metadata={
+                "description": "Declassified CIA documents on Chilean dictatorship"
+            },
         )
 
     def add_documents(self, chunks: List[Dict[str, Any]]) -> None:
@@ -125,7 +148,9 @@ class VectorStore:
         self.client.delete_collection(name="cia_documents")
         self.collection = self.client.get_or_create_collection(
             name="cia_documents",
-            metadata={"description": "Declassified CIA documents on Chilean dictatorship"},
+            metadata={
+                "description": "Declassified CIA documents on Chilean dictatorship"
+            },
         )
         print("Vector database reset successfully")
 
@@ -153,30 +178,68 @@ class VectorStore:
 
         return chunks
 
+    def get_manifest_path(self) -> Path:
+        """Get path to manifest.json."""
+        return Path(self.persist_directory) / "manifest.json"
 
-def init_vector_store(persist_directory: Optional[str] = None) -> VectorStore:
+    def load_manifest(self) -> Optional[Dict[str, Any]]:
+        """Load manifest.json if it exists.
+
+        Returns:
+            Manifest dictionary or None if not found
+        """
+        manifest_path = self.get_manifest_path()
+        if manifest_path.exists():
+            with open(manifest_path) as f:
+                return json.load(f)
+        return None
+
+    def save_manifest(self, manifest: Dict[str, Any]) -> None:
+        """Save manifest.json.
+
+        Args:
+            manifest: Manifest dictionary to save
+        """
+        manifest_path = self.get_manifest_path()
+        with open(manifest_path, "w") as f:
+            json.dump(manifest, f, indent=2)
+        print(f"Manifest saved to {manifest_path}")
+
+
+def init_vector_store(
+    persist_directory: Optional[str] = None,
+    version: Optional[str] = None,
+) -> VectorStore:
     """Initialize and return a VectorStore instance.
 
     Args:
         persist_directory: Optional custom persist directory
+        version: RAG version string. If None, uses latest or legacy.
 
     Returns:
         VectorStore instance
     """
-    return VectorStore(persist_directory=persist_directory)
+    return VectorStore(persist_directory=persist_directory, version=version)
 
 
-def build_index(chunks: List[Dict[str, Any]], reset: bool = False) -> VectorStore:
+def build_index(
+    chunks: List[Dict[str, Any]],
+    reset: bool = False,
+    version: Optional[str] = None,
+    sources: Optional[List[Dict[str, Any]]] = None,
+) -> VectorStore:
     """Build the vector index from chunks.
 
     Args:
         chunks: List of chunk dictionaries with embeddings
         reset: Whether to reset the database before adding
+        version: RAG version to create (e.g., "1.0.0")
+        sources: Source transcript metadata for manifest
 
     Returns:
         VectorStore instance with indexed chunks
     """
-    store = init_vector_store()
+    store = init_vector_store(version=version)
 
     if reset:
         print("Resetting vector database...")
@@ -185,5 +248,19 @@ def build_index(chunks: List[Dict[str, Any]], reset: bool = False) -> VectorStor
     print(f"Current database size: {store.count()} chunks")
     store.add_documents(chunks)
     print(f"New database size: {store.count()} chunks")
+
+    # Save manifest if version and sources provided
+    if version and sources:
+        manifest = {
+            "rag_version": version,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "embedding_model": EMBEDDING_MODEL,
+            "chunk_size": CHUNK_SIZE,
+            "chunk_overlap": CHUNK_OVERLAP,
+            "sources": sources,
+            "total_documents": sum(s.get("documents_count", 0) for s in sources),
+            "total_chunks": store.count(),
+        }
+        store.save_manifest(manifest)
 
     return store

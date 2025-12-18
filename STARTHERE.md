@@ -4,6 +4,69 @@
 
 ---
 
+## 🆕 RAG Versioning Implemented (2025-12-18)
+
+**Branch:** `research/disambiguation`
+
+The RAG system now supports versioned indexes with transcript source tracking.
+
+**New commands:**
+```bash
+# List available RAG indexes with source metadata
+uv run python -m app.rag.cli list
+
+# Build a versioned RAG index (creates rag-v1.0.0/)
+uv run python -m app.rag.cli build --rag-version 1.0.0
+
+# Query/stats with specific version
+uv run python -m app.rag.cli query "Pinochet" --rag-version 1.0.0
+uv run python -m app.rag.cli stats --rag-version 1.0.0
+```
+
+**What it tracks:**
+- Schema version of source transcripts (v2.0.0, v2.2.0, etc.)
+- Model used for transcription (gpt-5-mini, etc.)
+- Document counts per source
+- Embedding model and chunk settings
+
+**Directory structure:**
+- `data/rag-v{version}/` - Versioned RAG indexes with `manifest.json`
+- `data/vector_db/` - Legacy unversioned index (still supported)
+
+**Files changed:** `app/rag/config.py`, `app/rag/vector_store.py`, `app/rag/embeddings.py`, `app/rag/cli.py`, `app/rag/README.md`
+
+---
+
+## 🆕 Entity Disambiguation Research Started (2025-12-16)
+
+**Branch:** `research/disambiguation`
+
+**Problem:** The analysis report shows 1,055 people entries with significant disambiguation issues:
+- **28% (298 entries)** marked as `[FIRST NAME UNKNOWN]`
+- Duplicate entries for same person (e.g., LETELIER, ORLANDO + LETELIER, [FIRST NAME UNKNOWN])
+- OCR errors creating spelling variants (MOFFITT/MOFFIT, RONNI/RONNIE)
+- Non-person entities extracted as people (EMBASSY, AMEMBASSY, SECSTATE)
+
+**Key examples:**
+| Entity | Issue |
+|--------|-------|
+| LETELIER, ORLANDO (1,048 docs) + LETELIER, [FIRST NAME UNKNOWN] (257 docs) | Same person, split |
+| GILLESPIE, [FIRST NAME UNKNOWN] (366 docs) | Likely Charles A. Gillespie, US Ambassador |
+| BARNES, [FIRST NAME UNKNOWN] (319 docs) | Likely Harry G. Barnes Jr., US Ambassador |
+| AMEMBASSY (45 entries), EMBASSY (19 entries) | Not people |
+
+**Research document:** `docs/DISAMBIGUATION_RESEARCH.md`
+
+**Recommended approaches:**
+1. Rule-based filtering (remove EMBASSY, AMEMBASSY, etc.)
+2. OCR correction mappings (MOFFIT→MOFFITT)
+3. Knowledge base linking (key historical figures)
+4. LLM-assisted disambiguation for context-dependent cases
+
+**Next steps:** Implement Phase 1 quick wins (filtering, OCR corrections, top 50 canonical names)
+
+---
+
 ## 🆕 Full Report Sections Complete (2025-12-14)
 
 **PR #27: GitHub Pages report now includes all sections.**
