@@ -3,28 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RQ-004: What did the US government do to prevent Allende from being ... | Desclasificados Research</title>
+    <title>US Government Actions to Prevent Allende's Election (1964-1970) | Desclasificados Research</title>
     <style>
+
     :root {
         --primary: #2563EB;
-        --primary-dark: #1E40AF;
+        --primary-dark: #1a365d;
+        --heading-color: #1a365d;
+        --subheading-color: #2c5282;
         --gray-50: #F9FAFB;
         --gray-100: #F3F4F6;
         --gray-200: #E5E7EB;
+        --gray-300: #D1D5DB;
+        --gray-400: #9CA3AF;
         --gray-500: #6B7280;
         --gray-600: #4B5563;
         --gray-700: #374151;
         --gray-800: #1F2937;
         --gray-900: #111827;
+        --quote-bg: #f7fafc;
+        --quote-text: #4a5568;
+        --table-header-bg: #2c5282;
+        --table-row-bg: #f7fafc;
+        --table-border: #cbd5e0;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
 
     body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         line-height: 1.6;
         color: var(--gray-800);
-        background: var(--gray-50);
+        background: white;
     }
 
     /* Site Navigation */
@@ -38,7 +52,7 @@
     }
 
     .site-nav a {
-        color: #E5E7EB;
+        color: var(--gray-200);
         text-decoration: none;
         font-size: 14px;
         padding: 6px 12px;
@@ -57,40 +71,232 @@
     }
 
     .site-nav .nav-divider {
-        color: #6B7280;
+        color: var(--gray-500);
         margin: 0 4px;
     }
 
-    .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
 
-    header { margin-bottom: 40px; }
+    /* Header styles */
+    header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--gray-200);
+    }
 
-    .breadcrumb { font-size: 14px; color: var(--gray-500); margin-bottom: 20px; }
-    .breadcrumb a { color: var(--primary); text-decoration: none; }
-    .breadcrumb a:hover { text-decoration: underline; }
+    header h1 {
+        font-size: 24px;
+        color: var(--gray-900);
+        margin-bottom: 8px;
+        line-height: 1.3;
+    }
 
-    h1 { font-size: 28px; color: var(--gray-900); margin-bottom: 16px; }
+    header .subtitle {
+        font-size: 14px;
+        color: var(--gray-500);
+        margin-bottom: 16px;
+    }
 
-    .meta-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-    .badge { font-size: 12px; padding: 4px 12px; border-radius: 16px; font-weight: 500; }
-    .meta-info { font-size: 14px; color: var(--gray-500); }
+    header .meta {
+        font-size: 12px;
+        color: var(--gray-400);
+    }
 
-    section { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    section h2 { font-size: 18px; color: var(--gray-900); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--gray-100); }
+    /* Section styles */
+    .section-heading {
+        font-size: 18px;
+        color: var(--heading-color);
+        margin: 30px 0 16px 0;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--gray-100);
+    }
 
-    .summary-box { background: var(--gray-50); border-left: 4px solid var(--primary); padding: 16px; border-radius: 0 8px 8px 0; }
+    .subheading {
+        font-size: 14px;
+        font-style: italic;
+        color: var(--subheading-color);
+        margin: 20px 0 12px 0;
+    }
 
-    .documents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-    .doc-card { background: var(--gray-50); padding: 12px; border-radius: 8px; font-size: 13px; }
-    .doc-card .doc-id { font-family: monospace; font-weight: 600; }
-    .doc-card a { color: var(--primary); text-decoration: none; }
+    /* Content styles */
+    p {
+        margin-bottom: 12px;
+        font-size: 14px;
+        line-height: 1.7;
+    }
 
-    .methodology dl { display: grid; grid-template-columns: 150px 1fr; gap: 8px 16px; font-size: 14px; }
-    .methodology dt { font-weight: 500; color: var(--gray-700); }
-    .methodology dd { color: var(--gray-600); }
+    .intro-text {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
 
-    footer { text-align: center; padding: 40px 20px; color: var(--gray-500); font-size: 13px; }
-    footer a { color: var(--primary); text-decoration: none; }
+    /* Quote styles */
+    blockquote {
+        background: var(--quote-bg);
+        color: var(--quote-text);
+        padding: 16px 20px;
+        margin: 16px 0;
+        border-radius: 4px;
+        font-size: 14px;
+        line-height: 1.6;
+        border-left: 4px solid var(--primary);
+    }
+
+    /* Source citation */
+    .source {
+        font-size: 12px;
+        color: var(--gray-500);
+        margin-top: 8px;
+    }
+
+    .source a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    .source a:hover {
+        text-decoration: underline;
+    }
+
+    /* Document reference */
+    .doc-ref {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    .doc-ref:hover {
+        text-decoration: underline;
+    }
+
+    /* Lists */
+    ul {
+        margin: 12px 0 12px 24px;
+    }
+
+    li {
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+
+    /* Tables */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 16px 0;
+        font-size: 13px;
+    }
+
+    th {
+        background: var(--table-header-bg);
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 500;
+    }
+
+    td {
+        background: var(--table-row-bg);
+        padding: 10px 12px;
+        border: 1px solid var(--table-border);
+    }
+
+    td a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    td a:hover {
+        text-decoration: underline;
+    }
+
+    /* Conclusion items */
+    .conclusion-item {
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .conclusion-item strong {
+        color: var(--gray-900);
+    }
+
+    /* Summary box */
+    .summary-box {
+        background: var(--gray-50);
+        padding: 16px;
+        border-radius: 4px;
+        margin: 16px 0;
+        font-size: 14px;
+    }
+
+    /* Methodology */
+    .methodology-list {
+        list-style: none;
+        margin-left: 0;
+    }
+
+    .methodology-list li {
+        margin-bottom: 4px;
+    }
+
+    /* Footer */
+    footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid var(--gray-200);
+        text-align: center;
+        font-size: 12px;
+        color: var(--gray-500);
+    }
+
+    footer a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    footer a:hover {
+        text-decoration: underline;
+    }
+
+    /* Breadcrumb */
+    .breadcrumb {
+        font-size: 13px;
+        color: var(--gray-500);
+        margin-bottom: 30px;
+        text-align: left;
+    }
+
+    .breadcrumb a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+        .container {
+            padding: 20px 16px;
+        }
+
+        header h1 {
+            font-size: 20px;
+        }
+
+        table {
+            font-size: 12px;
+        }
+
+        th, td {
+            padding: 8px;
+        }
+    }
+
     </style>
 </head>
 <body>
@@ -101,30 +307,155 @@
         <span class="nav-divider">|</span>
         <a href="../index.html#research-questions">Research Questions</a>
     </nav>
+
     <div class="container">
+        <nav class="breadcrumb">
+            <a href="../index.html#research-questions">Research Questions</a> /
+            RQ-004
+        </nav>
+
         <header>
-            <nav class="breadcrumb"><a href="../index.html#research-questions">Research Questions</a> / RQ-004</nav>
-            <h1>What did the US government do to prevent Allende from being elected?</h1>
-            <div class="meta-badges">
-                <span class="badge" style="background-color: #16A34A20; color: #16A34A; border: 1px solid #16A34A40;">✅ Answered</span>
-                <span class="badge" style="background-color: #1E40AF20; color: #1E40AF; border: 1px solid #1E40AF40;">TRACK II</span>
-            </div>
-            <div class="meta-info">Asked on 2025-12-20 | Relevance: 46.0%</div>
+            <h1>US Government Actions to Prevent Allende's Election (1964-1970)</h1>
+            <p class="subtitle">Track I and Track II Operations from Declassified CIA Documents</p>
+            <p class="meta">Generated: December 20, 2025 | Source: RAG v1.0.0 (5666 documents, 12811 chunks)</p>
         </header>
-        <section><h2>Summary of Findings</h2><div class="summary-box">Found extensive documentation on Track I/II operations, propaganda campaigns, funding to opposition parties, and covert actions from 1964-1970</div></section>
-        <section><h2>Source Documents</h2><p style="margin-bottom:16px;color:var(--gray-600);">10 document(s) identified as relevant.</p><div class="documents-grid"><div class="doc-card"><div class="doc-id">Document 24916</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24916" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 24918</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24918" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 24738</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24738" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 24828</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24828" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 24885</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24885" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 24935</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24935" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 25035</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=25035" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 24842</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24842" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 24884</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24884" class="pdf-link external">View Document</a></div></div><div class="doc-card"><div class="doc-id">Document 24776</div><div><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24776" class="pdf-link external">View Document</a></div></div></div></section>
-        
-        <section><h2>Methodology</h2><div class="methodology"><dl>
-        <dt>Question ID</dt><dd>RQ-004</dd>
-        <dt>Date Asked</dt><dd>2025-12-20</dd>
-        <dt>Category</dt><dd>TRACK II</dd>
-        <dt>Status</dt><dd>Answered</dd>
-        <dt>Relevance Score</dt><dd>46.0%</dd>
-        <dt>Documents</dt><dd>10</dd>
-    </dl></div></section>
-        <footer><p>Part of the <a href="../index.html">Desclasificados</a> research project.<br>Generated on 2025-12-20 02:02</p></footer>
+
+        <h2 class="section-heading">Research Question</h2>
+        <p class="intro-text">What did the US government do to prevent Salvador Allende from being elected president of Chile?</p>
+        <p>This report examines declassified CIA documents revealing US covert operations to prevent Allende's election, including propaganda campaigns, funding to opposition parties, and the secret Track II operation initiated by President Nixon.</p>
+
+        <h2 class="section-heading">1. Track I: Covert Political Action (1964-1970)</h2>
+<p>The US government conducted extensive covert operations through the 40 Committee (the interagency group that authorized covert actions) to influence Chilean elections:</p>
+
+<h4 class="subheading">1964 Presidential Election</h4>
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24828" class="pdf-link external">Document 24828</a> (UNCLASSIFIED, 1969) details prior CIA operations:</p>
+<blockquote>"U.S. had already engaged in covert operations to support candidates against Allende, including financial assistance to President Frei during the 1964 elections and ongoing support to selected Congressional candidates."</blockquote>
+<p>The CIA provided approximately $3 million to Eduardo Frei's 1964 campaign - one of the largest covert electoral interventions in CIA history at the time.</p>
+<p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24828" class="pdf-link external">Doc 24828</a>, CIA Operations Report</p>
+
+<h4 class="subheading">1970 Presidential Election</h4>
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24916" class="pdf-link external">Document 24916</a> (UNCLASSIFIED, October 1970) outlines planned actions:</p>
+<blockquote>"The courses of action recommended are posited on the following assumptions: Salvador Allende will be elected October 24th by the Chilean Congress..."</blockquote>
+<p>This memorandum details CIA plans to provide financial support to anti-Allende forces, including funding for radio stations, newspapers, and direct assistance to opposition parties.</p>
+<p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24916" class="pdf-link external">Doc 24916</a>, October 16, 1970 Memorandum</p>
+
+        <h2 class="section-heading">2. Propaganda Campaign</h2>
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24935" class="pdf-link external">Document 24935</a> (UNCLASSIFIED, August 1970) from Charles A. Meyer outlines propaganda options:</p>
+<blockquote>"Limited actions such as a propaganda campaign to sway the congressional vote if Allende was a close contender... a propaganda campaign as a secure method to influence public opinion and political outcomes in Chile, which would be less risky than more direct actions."</blockquote>
+<p>The propaganda campaign was considered the safest approach because it could influence public opinion while maintaining plausible deniability. This included funding to El Mercurio newspaper and other media outlets.</p>
+<p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24935" class="pdf-link external">Doc 24935</a>, August 31, 1970 Memorandum by Charles A. Meyer</p>
+
+        <h2 class="section-heading">3. Track II: Nixon's Secret Coup Order</h2>
+<p>After Allende won a plurality in the September 4, 1970 election, President Nixon initiated a secret parallel operation that bypassed normal policy channels:</p>
+
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24885" class="pdf-link external">Document 24885</a> (SECRET, August 1975) by William G. Hyland explicitly references Track II:</p>
+<blockquote>"A covert operation known as 'Track II' was initiated following President Nixon's instructions on September 15, 1970, to prevent Allende from taking power. This operation was not discussed with the 40 Committee and involved clandestine efforts to undermine Allende's presidency."</blockquote>
+
+<p>Key characteristics of Track II:</p>
+<ul>
+    <li><strong>Bypassed normal channels</strong> - Hidden from the 40 Committee, State Department, and US Ambassador to Chile</li>
+    <li><strong>Direct presidential order</strong> - Nixon instructed CIA Director Richard Helms on September 15, 1970</li>
+    <li><strong>Military coup objective</strong> - Aimed to promote a military coup before the October 24 Congressional vote</li>
+    <li><strong>Weapons transfers</strong> - Involved passing weapons to Chilean conspirators</li>
+</ul>
+<p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24885" class="pdf-link external">Doc 24885</a>, SECRET Memorandum by William G. Hyland</p>
+
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24776" class="pdf-link external">Document 24776</a> (UNCLASSIFIED, May 1976) provides testimony from Charles A. Meyer:</p>
+<blockquote>"Mr. Broe has testified that he was exploring the feasibility of possible actions — the October 24 runoff..."</blockquote>
+<p>This confirms that CIA official William Broe was actively exploring options to prevent Allende from taking office before the Congressional confirmation vote.</p>
+<p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24776" class="pdf-link external">Doc 24776</a>, Report dated May 8, 1976</p>
+
+        <h2 class="section-heading">4. The "Alessandri Gambit"</h2>
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24844" class="pdf-link external">Document 24844</a> references a constitutional scheme to prevent Allende's confirmation:</p>
+<blockquote>"USG officials encourage, support, or suggest to Alessandri and/or Frei supporters that they put into operation a plan which would have Alessandri elected by the Chilean Congress on October 24 followed..."</blockquote>
+<p>The plan: Congress would elect runner-up Jorge Alessandri instead of Allende. Alessandri would then immediately resign, triggering new elections where incumbent Eduardo Frei (constitutionally barred from immediate re-election) could run again.</p>
+<p class="source">Source: <a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24844" class="pdf-link external">Doc 24844</a>, Memorandum</p>
+
+        <h2 class="section-heading">5. Official Denials and Gaps</h2>
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24884" class="pdf-link external">Document 24884</a> (SECRET, October 1981) compiles embassy responses to Senate inquiries:</p>
+<blockquote>"Many officials claimed they did not recall specific instructions from Nixon regarding promoting a coup or direct interference in the electoral process."</blockquote>
+
+<p><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24842" class="pdf-link external">Document 24842</a> documents the official public stance:</p>
+<blockquote>"Government and the Embassy at Santiago were very careful to avoid becoming involved in Chilean politics in order to avoid any charges of intervention in the internal affairs of Chile."</blockquote>
+<p>This reveals the deliberate disconnect between public denials and covert actions.</p>
+
+        <h2 class="section-heading">Scale of US Intervention</h2>
+
+    <table>
+        <thead><tr><th>Action</th><th>Amount/Scale</th><th>Period</th></tr></thead>
+        <tbody>
+            <tr><td>Support for Frei campaign</td><td>$3 million</td><td>1964</td></tr>
+            <tr><td>Funding to anti-Allende media</td><td>Confirmed (amounts redacted)</td><td>1964-1970</td></tr>
+            <tr><td>Support to Congressional candidates</td><td>Ongoing</td><td>1964-1970</td></tr>
+            <tr><td>Track II covert operation</td><td>Classified</td><td>Sept-Oct 1970</td></tr>
+            <tr><td>Propaganda campaigns</td><td>Extensive</td><td>1970</td></tr>
+        </tbody>
+    </table>
+
+    <h2 class="section-heading">Key Source Documents</h2>
+    <p>Click document IDs to view original declassified documents:</p>
+    <table>
+        <thead><tr><th>Document</th><th>Date</th><th>Classification</th><th>Type</th></tr></thead>
+        <tbody>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24916" class="pdf-link external">24916</a></td><td>Oct 1970</td><td>UNCLASSIFIED</td><td>Memorandum</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24918" class="pdf-link external">24918</a></td><td>Oct 1970</td><td>SECRET</td><td>Report</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24935" class="pdf-link external">24935</a></td><td>Aug 1970</td><td>UNCLASSIFIED</td><td>Memorandum</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24885" class="pdf-link external">24885</a></td><td>Aug 1975</td><td>SECRET</td><td>Memorandum</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24828" class="pdf-link external">24828</a></td><td>1969</td><td>UNCLASSIFIED</td><td>Report</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24776" class="pdf-link external">24776</a></td><td>May 1976</td><td>UNCLASSIFIED</td><td>Report</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=25035" class="pdf-link external">25035</a></td><td>Nov 1975</td><td>UNCLASSIFIED</td><td>Report</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24842" class="pdf-link external">24842</a></td><td>Unknown</td><td>UNCLASSIFIED</td><td>Memorandum</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24884" class="pdf-link external">24884</a></td><td>Oct 1981</td><td>SECRET</td><td>Telegram</td></tr>
+            <tr><td><a href="https://declasseuucl.vercel.app/?currentPage=1&documentId=24738" class="pdf-link external">24738</a></td><td>Nov 1970</td><td>SECRET</td><td>Memorandum</td></tr>
+        </tbody>
+    </table>
+
+        <h2 class="section-heading">Conclusions</h2>
+<h4 class="subheading">What the Documents Prove</h4>
+<ul>
+    <li class="conclusion-item"><strong>Electoral intervention was systematic</strong> - The US funded opposition candidates, media outlets, and political parties across multiple Chilean elections from 1964-1970.</li>
+    <li class="conclusion-item"><strong>Track II was a secret coup operation</strong> - President Nixon ordered the CIA to prevent Allende from taking power through any means, bypassing normal policy channels and hiding the operation from the State Department and US Ambassador.</li>
+    <li class="conclusion-item"><strong>Weapons were transferred</strong> - Documents confirm that weapons were passed to Chilean conspirators as part of Track II.</li>
+    <li class="conclusion-item"><strong>Constitutional schemes were explored</strong> - The US actively promoted the "Alessandri gambit" to manipulate the Congressional confirmation vote.</li>
+    <li class="conclusion-item"><strong>Public denials were deliberate deception</strong> - While publicly claiming non-interference, the US conducted extensive covert operations.</li>
+</ul>
+
+<h4 class="subheading">Historical Context</h4>
+<p>The declassified documents reveal that US intervention in Chilean elections was not limited to 1970, but was part of a sustained campaign dating back to at least 1964. The distinction between Track I (approved covert action) and Track II (secret presidential directive) became central to the Church Committee investigations in 1975-1976.</p>
+
+<p>Track II ultimately failed to prevent Allende's confirmation on October 24, 1970. However, it set the stage for continued US hostility toward the Allende government, including economic pressure and support for opposition forces that culminated in the September 11, 1973 military coup.</p>
+
+<h4 class="subheading">Limitations</h4>
+<p>Many documents remain partially redacted or classified. Some officials' testimonies contain claims of not recalling specific events, and the full scope of Track II operations may not be fully documented in available records.</p>
+
+    <h2 class="section-heading">Methodology</h2>
+    <p>This analysis was conducted using semantic search (RAG - Retrieval Augmented Generation) on the Desclasificados archive of declassified CIA documents related to Chile.</p>
+    <ul class="methodology-list">
+        <li><strong>Index:</strong> RAG v1.0.0 (created December 18, 2025)</li>
+        <li><strong>Documents:</strong> 5666 transcribed documents (12811 text chunks)</li>
+        <li><strong>Sources:</strong> gpt-5-mini-v2.2.0 (4,206 docs) + gpt-5-mini-v2.0.0 (1,460 docs)</li>
+        <li><strong>Embedding Model:</strong> OpenAI text-embedding-3-small</li>
+        <li><strong>LLM:</strong> OpenAI GPT-4o-mini for answer synthesis</li>
+        <li><strong>Query:</strong> Semantic search with top-15 retrieval (46% max relevance)</li>
+    </ul>
+    <p style="margin-top: 16px;">
+        <strong>Document Viewer:</strong>
+        <a href="https://declasseuucl.vercel.app" target="_blank">https://declasseuucl.vercel.app</a>
+    </p>
+    <p class="source">
+        All document links open in the Desclasificados document viewer where you can browse the original declassified PDFs.
+    </p>
+
+
+        <footer>
+            <p>
+                This report was generated from the <a href="../index.html">Desclasificados</a> project archive.<br>
+                All cited documents are from declassified US government records.
+            </p>
+        </footer>
     </div>
-    
+
+
 <!-- External PDF Viewer Modal -->
 <div id="external-viewer-modal" class="external-modal" style="display: none;">
     <div class="external-modal-backdrop" onclick="closeExternalViewer()"></div>
@@ -134,8 +465,8 @@
                 <span id="external-viewer-title">Document Viewer</span>
             </div>
             <div class="external-modal-controls">
-                <a id="external-viewer-newwindow" href="#" target="_blank" class="external-btn" title="Open in new window">↗ New Window</a>
-                <button onclick="closeExternalViewer()" class="external-btn external-btn-close" title="Close (ESC)">✕ Close</button>
+                <a id="external-viewer-newwindow" href="#" target="_blank" class="external-btn" title="Open in new window">&#8599; New Window</a>
+                <button onclick="closeExternalViewer()" class="external-btn external-btn-close" title="Close (ESC)">&#10005; Close</button>
             </div>
         </div>
         <div class="external-modal-body">
@@ -276,10 +607,6 @@
     const titleEl = document.getElementById('external-viewer-title');
     const newWindowLink = document.getElementById('external-viewer-newwindow');
 
-    // Open external viewer in modal
-    // viewerUrl: URL to load in iframe (e.g., Google Docs Viewer)
-    // title: Display title for the modal
-    // originalUrl: Original link URL for "New Window" button (optional, defaults to viewerUrl)
     window.openExternalViewer = function(viewerUrl, title, originalUrl) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -296,14 +623,12 @@
         };
     };
 
-    // Close the modal
     window.closeExternalViewer = function() {
         modal.style.display = 'none';
         document.body.style.overflow = '';
         iframe.src = '';
     };
 
-    // ESC key to close
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && modal.style.display === 'flex') {
             closeExternalViewer();
@@ -312,24 +637,17 @@
 })();
 </script>
 
-    
+
 <script>
 (function() {
-    // Intercept clicks on external PDF links
     document.addEventListener('click', function(e) {
         const link = e.target.closest('a.pdf-link.external');
         if (link) {
             e.preventDefault();
-            // Extract document ID from URL
             const url = new URL(link.href);
             const docId = url.searchParams.get('documentId') || 'Document';
-
-            // Construct direct PDF URL for embedding
             const pdfUrl = url.origin + '/api/' + docId + '/download/pdf';
-
-            // Use Google Docs Viewer to embed the PDF
             const viewerUrl = 'https://docs.google.com/viewer?url=' + encodeURIComponent(pdfUrl) + '&embedded=true';
-
             openExternalViewer(viewerUrl, 'Document ' + docId, link.href);
         }
     });
