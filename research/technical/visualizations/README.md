@@ -48,7 +48,6 @@ uv run python -m app.analyze_documents data/generated_transcripts/chatgpt-5-1
 
 - `app/visualize_transcripts.py` - Current matplotlib-based visualizations
 - `app/analyze_documents.py` - HTML report generation with timeline
-- `tests/test_app.py` - Streamlit document explorer
 
 ## Research Log
 

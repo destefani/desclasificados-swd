@@ -399,7 +399,7 @@ def run_batch_transcription(...):
 
 | Feature | Priority | Description |
 |---------|----------|-------------|
-| Unit Tests | High | Only Streamlit test app exists |
+| Unit Tests | High | Limited test coverage |
 | Dry Run Mode | Medium | Preview processing without API calls |
 | Quality Sampling | Medium | Random sample validation during processing |
 | Webhook Notifications | Low | Alert when batch completes |

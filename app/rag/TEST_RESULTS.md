@@ -117,7 +117,7 @@
 **Results:**
 ```
 Total chunks: 6929
-Database location: /Users/marcelo/code/documents/desclasificados/data/vector_db
+Database location: <project_root>/data/vector_db
 ```
 
 **Status:** ✅ **PASS** - Database correctly initialized and accessible

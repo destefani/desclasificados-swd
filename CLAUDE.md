@@ -61,7 +61,6 @@ The US government declassified ~20,000 CIA documents about the Chilean dictators
 - **`app/visualize_transcripts.py`** - Creates matplotlib visualizations (classification distribution, timeline, keywords)
 - **`app/config.py`** - Centralized configuration for paths and logging
 - **`app/data/pdf_extractor.py`** - Extracts text from PDFs using PyPDF2
-- **`tests/streamlit_app.py`** - Streamlit app for interactive document exploration
 
 ### Data Structure
 
@@ -269,7 +268,7 @@ See the full prompt in `app/transcribe.py:20-89` or `app/transcribe_v2.py:173-17
 
 ## Testing
 
-The project uses pytest. Test files are in `tests/`. Currently contains a Streamlit app (`test_app.py`) for interactive testing.
+The project uses pytest. Test files are in `tests/`.
 
 Run all tests:
 ```bash
@@ -283,7 +282,7 @@ uv run pytest tests/
 All scripts can be run as modules with UV:
 ```bash
 # Transcription
-uv run python -m app.transcribe --max-files 5 --resume --max-workers 10
+uv run python -m app.transcribe -n 5 --workers 10
 
 # Analysis
 uv run python -m app.analyze_documents data/generated_transcripts --output report.html
@@ -464,7 +463,6 @@ Use one of: `OPERATION CONDOR`, `HUMAN RIGHTS`, `LETELIER ASSASSINATION`, `COUP 
 - The `main.py` file in the root is a placeholder and not actively used
 - Multiple virtual environments exist (`.venv/` and `app/.venv/`) - the root `.venv/` is the primary one
 - Legacy transcripts in `archive/generated_transcripts_v1/` are from JPEG processing and are **incomplete**
-- The Streamlit app in `tests/streamlit_app.py` uses a hardcoded path - update `TRANSCRIPTS_DIR` constant if needed
 - Always use uv to manage environments
 - After every new feature implementation, make it easy for the reviewer to test it
 - Always work on a new branch and create a PR when finished. PRs have to be manually accepted by a human in github
