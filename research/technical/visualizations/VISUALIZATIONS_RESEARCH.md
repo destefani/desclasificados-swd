@@ -351,5 +351,4 @@ m.save('document_map.html')
 
 - `app/visualize_transcripts.py` - Current matplotlib visualizations
 - `app/analyze_documents.py` - HTML report generation
-- `tests/test_app.py` - Existing Streamlit exploration app
 - `data/generated_transcripts/` - Source data for visualizations
