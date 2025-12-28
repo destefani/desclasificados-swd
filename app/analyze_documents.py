@@ -908,6 +908,13 @@ def generate_html_report(
                     <li><a href="#confidence">Confidence Scores</a></li>
                 </ul>
             </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Project</div>
+                <ul>
+                    <li><a href="about.html">About</a></li>
+                </ul>
+            </div>
         </nav>
 
         <main>
@@ -1879,6 +1886,14 @@ def generate_full_html_report(
                 <ul>
                     <li><a href="#financial">Financial</a></li>
                     <li><a href="#confidence">Confidence</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Project</div>
+                <ul>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="explorer/">Document Explorer</a></li>
                 </ul>
             </div>
         </nav>

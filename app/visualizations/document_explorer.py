@@ -39,6 +39,7 @@ def generate_explorer_html(
             </div>
             <div class="header-right">
                 <span id="stats-text">Loading...</span>
+                <a href="../about.html" class="about-link">About</a>
             </div>
         </header>
 
@@ -210,8 +211,26 @@ def _get_css() -> str:
         }
 
         .header-right {
+            display: flex;
+            align-items: center;
+            gap: 24px;
             color: var(--gray-400);
             font-size: 14px;
+        }
+
+        .about-link {
+            color: var(--gray-300);
+            text-decoration: none;
+            padding: 6px 12px;
+            border: 1px solid var(--gray-600);
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .about-link:hover {
+            color: white;
+            border-color: var(--gray-400);
+            background: rgba(255,255,255,0.1);
         }
 
         /* Main Layout */

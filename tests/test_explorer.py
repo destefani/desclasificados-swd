@@ -283,6 +283,13 @@ class TestGenerateExplorerHtml:
 
         assert 'href="../"' in html or "Back to Dashboard" in html
 
+    def test_includes_about_link(self) -> None:
+        """Test that about link is included in header."""
+        html = generate_explorer_html()
+
+        assert 'href="../about.html"' in html
+        assert 'class="about-link"' in html
+
 
 class TestGenerateExplorerPage:
     """Tests for generate_explorer_page function."""
