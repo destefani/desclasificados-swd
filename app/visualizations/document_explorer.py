@@ -1,0 +1,1156 @@
+"""Document Explorer HTML template generator.
+
+Generates a standalone HTML page with embedded CSS and JavaScript for
+browsing, searching, and filtering declassified documents.
+"""
+
+from typing import Any
+
+
+def generate_explorer_html(
+    external_pdf_viewer: str = "https://declasseuucl.vercel.app",
+) -> str:
+    """Generate the complete explorer HTML page.
+
+    Args:
+        external_pdf_viewer: Base URL for external PDF viewer
+
+    Returns:
+        Complete HTML string
+    """
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Explorer - Declassified CIA Documents</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.css">
+    <style>
+{_get_css()}
+    </style>
+</head>
+<body>
+    <div class="explorer-container">
+        <!-- Header -->
+        <header class="explorer-header">
+            <div class="header-left">
+                <a href="../" class="back-link">&larr; Back to Dashboard</a>
+                <h1>Document Explorer</h1>
+            </div>
+            <div class="header-right">
+                <span id="stats-text">Loading...</span>
+            </div>
+        </header>
+
+        <div class="explorer-main">
+            <!-- Sidebar Filters -->
+            <aside class="filter-sidebar">
+                <div class="filter-header">
+                    <h2>Filters</h2>
+                    <button id="clear-filters" class="btn-clear">Clear All</button>
+                </div>
+
+                <!-- Search -->
+                <div class="filter-section">
+                    <label for="search-input">Search</label>
+                    <input type="text" id="search-input" placeholder="Search title, ID, summary...">
+                </div>
+
+                <!-- Date Range -->
+                <div class="filter-section">
+                    <label>Date Range</label>
+                    <div class="date-range">
+                        <select id="year-start">
+                            <option value="">From...</option>
+                        </select>
+                        <span>to</span>
+                        <select id="year-end">
+                            <option value="">To...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Classification -->
+                <div class="filter-section">
+                    <label>Classification</label>
+                    <div id="classification-filters" class="checkbox-group">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Document Type -->
+                <div class="filter-section">
+                    <label>Document Type</label>
+                    <div id="type-filters" class="checkbox-group">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Sort -->
+                <div class="filter-section">
+                    <label for="sort-select">Sort By</label>
+                    <select id="sort-select">
+                        <option value="date-desc">Date (Newest First)</option>
+                        <option value="date-asc">Date (Oldest First)</option>
+                        <option value="title-asc">Title (A-Z)</option>
+                        <option value="pages-desc">Pages (Most First)</option>
+                    </select>
+                </div>
+            </aside>
+
+            <!-- Document List -->
+            <main class="document-list">
+                <!-- Loading State -->
+                <div id="loading-state" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading documents...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="error-state" class="error-state" style="display: none;">
+                    <p>Error loading documents. <button onclick="location.reload()">Retry</button></p>
+                </div>
+
+                <!-- Document Cards -->
+                <div id="document-cards" class="document-cards">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Pagination -->
+                <div id="pagination" class="pagination">
+                    <!-- Populated by JS -->
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Fuse.js for fuzzy search -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+
+    <script>
+{_get_javascript(external_pdf_viewer)}
+    </script>
+</body>
+</html>'''
+
+
+def _get_css() -> str:
+    """Return the CSS styles for the explorer."""
+    return '''
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --top-secret: #dc2626;
+            --secret: #ea580c;
+            --confidential: #ca8a04;
+            --unclassified: #16a34a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.5;
+        }
+
+        .explorer-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .explorer-header {
+            background: var(--gray-800);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .back-link {
+            color: var(--gray-300);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+
+        .explorer-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            color: var(--gray-400);
+            font-size: 14px;
+        }
+
+        /* Main Layout */
+        .explorer-main {
+            display: flex;
+            flex: 1;
+        }
+
+        /* Sidebar */
+        .filter-sidebar {
+            width: 280px;
+            background: white;
+            padding: 20px;
+            border-right: 1px solid var(--gray-200);
+            overflow-y: auto;
+            position: sticky;
+            top: 60px;
+            height: calc(100vh - 60px);
+        }
+
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .filter-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .btn-clear {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .btn-clear:hover {
+            text-decoration: underline;
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+        }
+
+        .filter-section label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .filter-section input[type="text"],
+        .filter-section select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .filter-section input[type="text"]:focus,
+        .filter-section select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .date-range {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-range select {
+            flex: 1;
+        }
+
+        .date-range span {
+            color: var(--gray-500);
+            font-size: 13px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .checkbox-item input {
+            cursor: pointer;
+        }
+
+        .checkbox-item .count {
+            color: var(--gray-400);
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        /* Document List */
+        .document-list {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .loading-state,
+        .error-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--gray-500);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-state button {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Document Cards */
+        .document-cards {
+            display: grid;
+            gap: 16px;
+        }
+
+        .doc-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: box-shadow 0.2s;
+        }
+
+        .doc-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .doc-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .doc-date {
+            font-size: 13px;
+            color: var(--gray-500);
+            font-family: monospace;
+        }
+
+        .doc-type {
+            font-size: 12px;
+            color: var(--gray-600);
+            background: var(--gray-100);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .doc-classification {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .doc-classification.top-secret {
+            background: #fee2e2;
+            color: var(--top-secret);
+        }
+
+        .doc-classification.secret {
+            background: #ffedd5;
+            color: var(--secret);
+        }
+
+        .doc-classification.confidential {
+            background: #fef3c7;
+            color: var(--confidential);
+        }
+
+        .doc-classification.unclassified {
+            background: #dcfce7;
+            color: var(--unclassified);
+        }
+
+        .doc-classification.unknown {
+            background: var(--gray-100);
+            color: var(--gray-500);
+        }
+
+        .doc-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .doc-id {
+            font-size: 12px;
+            color: var(--gray-400);
+            font-family: monospace;
+            margin-bottom: 8px;
+        }
+
+        .doc-summary {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .doc-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid var(--gray-100);
+        }
+
+        .doc-pages {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        .pdf-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .pdf-link:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 32px;
+            padding: 16px 0;
+        }
+
+        .pagination button {
+            padding: 8px 14px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .pagination .page-info {
+            color: var(--gray-500);
+            font-size: 14px;
+            margin: 0 12px;
+        }
+
+        /* No Results */
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-500);
+        }
+
+        .no-results h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--gray-700);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .explorer-main {
+                flex-direction: column;
+            }
+
+            .filter-sidebar {
+                width: 100%;
+                position: static;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--gray-200);
+            }
+
+            .explorer-header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .document-list {
+                padding: 16px;
+            }
+        }
+'''
+
+
+def _get_javascript(external_pdf_viewer: str) -> str:
+    """Return the JavaScript for the explorer."""
+    return f'''
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+const CONFIG = {{
+    dataUrl: '../data/documents.json',
+    externalPdfViewer: '{external_pdf_viewer}',
+    pageSize: 25,
+    searchDebounceMs: 300
+}};
+
+// =============================================================================
+// EVENT BUS
+// =============================================================================
+const Events = (function() {{
+    const listeners = {{}};
+
+    return {{
+        on(event, callback) {{
+            if (!listeners[event]) listeners[event] = [];
+            listeners[event].push(callback);
+        }},
+        emit(event, data) {{
+            if (listeners[event]) {{
+                listeners[event].forEach(cb => cb(data));
+            }}
+        }}
+    }};
+}})();
+
+// =============================================================================
+// DATA STORE
+// =============================================================================
+const DataStore = (function() {{
+    let documents = [];
+    let facets = {{}};
+    let isLoaded = false;
+
+    return {{
+        async load() {{
+            try {{
+                const response = await fetch(CONFIG.dataUrl);
+                if (!response.ok) throw new Error('Failed to load data');
+                const data = await response.json();
+                documents = data.documents || [];
+                facets = data.facets || {{}};
+                isLoaded = true;
+                Events.emit('data:loaded', {{ count: documents.length, facets }});
+                return true;
+            }} catch (error) {{
+                console.error('Error loading data:', error);
+                Events.emit('data:error', error);
+                return false;
+            }}
+        }},
+        getDocuments() {{ return documents; }},
+        getFacets() {{ return facets; }},
+        isLoaded() {{ return isLoaded; }}
+    }};
+}})();
+
+// =============================================================================
+// FILTER STATE
+// =============================================================================
+const FilterState = (function() {{
+    const state = {{
+        search: '',
+        yearStart: null,
+        yearEnd: null,
+        classifications: new Set(),
+        types: new Set(),
+        sort: 'date-desc'
+    }};
+
+    function toURL() {{
+        const params = new URLSearchParams();
+        if (state.search) params.set('q', state.search);
+        if (state.yearStart) params.set('from', state.yearStart);
+        if (state.yearEnd) params.set('to', state.yearEnd);
+        if (state.classifications.size) params.set('class', [...state.classifications].join(','));
+        if (state.types.size) params.set('type', [...state.types].join(','));
+        if (state.sort !== 'date-desc') params.set('sort', state.sort);
+        const queryString = params.toString();
+        const newUrl = queryString ? `?${{queryString}}` : window.location.pathname;
+        history.replaceState(null, '', newUrl);
+    }}
+
+    function fromURL() {{
+        const params = new URLSearchParams(window.location.search);
+        state.search = params.get('q') || '';
+        state.yearStart = params.get('from') ? parseInt(params.get('from')) : null;
+        state.yearEnd = params.get('to') ? parseInt(params.get('to')) : null;
+        state.classifications = new Set(params.get('class')?.split(',').filter(Boolean) || []);
+        state.types = new Set(params.get('type')?.split(',').filter(Boolean) || []);
+        state.sort = params.get('sort') || 'date-desc';
+    }}
+
+    return {{
+        get() {{ return state; }},
+        set(key, value) {{
+            state[key] = value;
+            toURL();
+            Events.emit('filter:changed', state);
+        }},
+        toggleSet(key, value) {{
+            if (state[key].has(value)) {{
+                state[key].delete(value);
+            }} else {{
+                state[key].add(value);
+            }}
+            toURL();
+            Events.emit('filter:changed', state);
+        }},
+        clear() {{
+            state.search = '';
+            state.yearStart = null;
+            state.yearEnd = null;
+            state.classifications.clear();
+            state.types.clear();
+            state.sort = 'date-desc';
+            toURL();
+            Events.emit('filter:changed', state);
+            Events.emit('filter:cleared');
+        }},
+        fromURL,
+        toURL
+    }};
+}})();
+
+// =============================================================================
+// DOCUMENT FILTER
+// =============================================================================
+const DocumentFilter = (function() {{
+    let fuse = null;
+
+    function init(documents) {{
+        fuse = new Fuse(documents, {{
+            keys: [
+                {{ name: 'title', weight: 0.4 }},
+                {{ name: 'doc_id', weight: 0.3 }},
+                {{ name: 'summary', weight: 0.2 }},
+                {{ name: 'people', weight: 0.05 }},
+                {{ name: 'keywords', weight: 0.05 }}
+            ],
+            threshold: 0.4,
+            ignoreLocation: true,
+            includeScore: true
+        }});
+    }}
+
+    function filter(documents, state) {{
+        let results = documents;
+
+        // Text search with Fuse.js
+        if (state.search && state.search.trim()) {{
+            const searchResults = fuse.search(state.search.trim());
+            results = searchResults.map(r => r.item);
+        }}
+
+        // Date range filter
+        if (state.yearStart || state.yearEnd) {{
+            results = results.filter(doc => {{
+                if (!doc.year) return false;
+                if (state.yearStart && doc.year < state.yearStart) return false;
+                if (state.yearEnd && doc.year > state.yearEnd) return false;
+                return true;
+            }});
+        }}
+
+        // Classification filter
+        if (state.classifications.size > 0) {{
+            results = results.filter(doc =>
+                state.classifications.has(doc.classification)
+            );
+        }}
+
+        // Type filter
+        if (state.types.size > 0) {{
+            results = results.filter(doc =>
+                state.types.has(doc.type)
+            );
+        }}
+
+        // Sorting
+        results = sortDocuments(results, state.sort);
+
+        return results;
+    }}
+
+    function sortDocuments(docs, sortKey) {{
+        const sorted = [...docs];
+        switch (sortKey) {{
+            case 'date-desc':
+                sorted.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+                break;
+            case 'date-asc':
+                sorted.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+                break;
+            case 'title-asc':
+                sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+                break;
+            case 'pages-desc':
+                sorted.sort((a, b) => (b.pages || 0) - (a.pages || 0));
+                break;
+        }}
+        return sorted;
+    }}
+
+    return {{ init, filter }};
+}})();
+
+// =============================================================================
+// PAGINATION
+// =============================================================================
+const Pagination = (function() {{
+    let currentPage = 1;
+    let totalItems = 0;
+    const pageSize = CONFIG.pageSize;
+
+    function getPageData(items) {{
+        totalItems = items.length;
+        const start = (currentPage - 1) * pageSize;
+        return items.slice(start, start + pageSize);
+    }}
+
+    function getTotalPages() {{
+        return Math.ceil(totalItems / pageSize);
+    }}
+
+    function setPage(page) {{
+        const total = getTotalPages();
+        if (page >= 1 && page <= total) {{
+            currentPage = page;
+            Events.emit('page:changed', currentPage);
+        }}
+    }}
+
+    function reset() {{
+        currentPage = 1;
+    }}
+
+    function render(container) {{
+        const totalPages = getTotalPages();
+        if (totalPages <= 1) {{
+            container.innerHTML = '';
+            return;
+        }}
+
+        let html = '';
+        html += `<button onclick="Pagination.setPage(${{currentPage - 1}})" ${{currentPage === 1 ? 'disabled' : ''}}>&laquo; Prev</button>`;
+
+        // Show page numbers
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        if (endPage - startPage < maxVisible - 1) {{
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }}
+
+        if (startPage > 1) {{
+            html += `<button onclick="Pagination.setPage(1)">1</button>`;
+            if (startPage > 2) html += `<span class="page-info">...</span>`;
+        }}
+
+        for (let i = startPage; i <= endPage; i++) {{
+            html += `<button onclick="Pagination.setPage(${{i}})" class="${{i === currentPage ? 'active' : ''}}">${{i}}</button>`;
+        }}
+
+        if (endPage < totalPages) {{
+            if (endPage < totalPages - 1) html += `<span class="page-info">...</span>`;
+            html += `<button onclick="Pagination.setPage(${{totalPages}})">${{totalPages}}</button>`;
+        }}
+
+        html += `<button onclick="Pagination.setPage(${{currentPage + 1}})" ${{currentPage === totalPages ? 'disabled' : ''}}">Next &raquo;</button>`;
+
+        container.innerHTML = html;
+    }}
+
+    // Expose globally for onclick handlers
+    window.Pagination = {{ setPage, reset, render, getPageData, getTotalPages, getCurrentPage: () => currentPage }};
+
+    return window.Pagination;
+}})();
+
+// =============================================================================
+// DOCUMENT RENDERER
+// =============================================================================
+const DocumentRenderer = (function() {{
+    function getClassificationClass(classification) {{
+        const lower = (classification || '').toLowerCase().replace(/\\s+/g, '-');
+        if (lower.includes('top-secret')) return 'top-secret';
+        if (lower.includes('secret')) return 'secret';
+        if (lower.includes('confidential')) return 'confidential';
+        if (lower.includes('unclassified')) return 'unclassified';
+        return 'unknown';
+    }}
+
+    function renderCard(doc) {{
+        const pdfUrl = `${{CONFIG.externalPdfViewer}}/?currentPage=1&documentId=${{doc.id}}`;
+        const classClass = getClassificationClass(doc.classification);
+
+        return `
+            <div class="doc-card" data-id="${{doc.id}}">
+                <div class="doc-card-header">
+                    <span class="doc-date">${{doc.date || 'Unknown date'}}</span>
+                    <span class="doc-type">${{doc.type || 'Unknown'}}</span>
+                    <span class="doc-classification ${{classClass}}">${{doc.classification || 'Unknown'}}</span>
+                </div>
+                <h3 class="doc-title">${{escapeHtml(doc.title) || 'Untitled'}}</h3>
+                <div class="doc-id">${{escapeHtml(doc.doc_id) || doc.id}}</div>
+                ${{doc.summary ? `<p class="doc-summary">${{escapeHtml(doc.summary)}}</p>` : ''}}
+                <div class="doc-footer">
+                    <span class="doc-pages">${{doc.pages || 0}} page(s)</span>
+                    <a href="${{pdfUrl}}" target="_blank" rel="noopener" class="pdf-link">View PDF &rarr;</a>
+                </div>
+            </div>
+        `;
+    }}
+
+    function escapeHtml(text) {{
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }}
+
+    function renderList(docs, container) {{
+        if (docs.length === 0) {{
+            container.innerHTML = `
+                <div class="no-results">
+                    <h3>No documents found</h3>
+                    <p>Try adjusting your search or filters.</p>
+                </div>
+            `;
+            return;
+        }}
+        container.innerHTML = docs.map(renderCard).join('');
+    }}
+
+    return {{ renderCard, renderList }};
+}})();
+
+// =============================================================================
+// UI CONTROLLER
+// =============================================================================
+const UIController = (function() {{
+    // DOM elements
+    const elements = {{}};
+
+    function cacheElements() {{
+        elements.loading = document.getElementById('loading-state');
+        elements.error = document.getElementById('error-state');
+        elements.cards = document.getElementById('document-cards');
+        elements.pagination = document.getElementById('pagination');
+        elements.statsText = document.getElementById('stats-text');
+        elements.searchInput = document.getElementById('search-input');
+        elements.yearStart = document.getElementById('year-start');
+        elements.yearEnd = document.getElementById('year-end');
+        elements.classificationFilters = document.getElementById('classification-filters');
+        elements.typeFilters = document.getElementById('type-filters');
+        elements.sortSelect = document.getElementById('sort-select');
+        elements.clearButton = document.getElementById('clear-filters');
+    }}
+
+    function showLoading() {{
+        elements.loading.style.display = 'flex';
+        elements.error.style.display = 'none';
+        elements.cards.style.display = 'none';
+    }}
+
+    function showError() {{
+        elements.loading.style.display = 'none';
+        elements.error.style.display = 'flex';
+        elements.cards.style.display = 'none';
+    }}
+
+    function showContent() {{
+        elements.loading.style.display = 'none';
+        elements.error.style.display = 'none';
+        elements.cards.style.display = 'grid';
+    }}
+
+    function updateStats(filtered, total) {{
+        if (filtered === total) {{
+            elements.statsText.textContent = `${{total.toLocaleString()}} documents`;
+        }} else {{
+            elements.statsText.textContent = `Showing ${{filtered.toLocaleString()}} of ${{total.toLocaleString()}} documents`;
+        }}
+    }}
+
+    function renderFilters(facets) {{
+        // Year dropdowns
+        const minYear = facets.year_range?.min || 1963;
+        const maxYear = facets.year_range?.max || 1993;
+
+        let yearOptions = '<option value="">Any</option>';
+        for (let y = minYear; y <= maxYear; y++) {{
+            yearOptions += `<option value="${{y}}">${{y}}</option>`;
+        }}
+        elements.yearStart.innerHTML = yearOptions;
+        elements.yearEnd.innerHTML = yearOptions;
+
+        // Classification checkboxes
+        const classifications = facets.classifications || [];
+        elements.classificationFilters.innerHTML = classifications.map(c => `
+            <label class="checkbox-item">
+                <input type="checkbox" value="${{c}}" data-filter="classification">
+                ${{c}}
+            </label>
+        `).join('');
+
+        // Type checkboxes
+        const types = facets.types || [];
+        elements.typeFilters.innerHTML = types.map(t => `
+            <label class="checkbox-item">
+                <input type="checkbox" value="${{t}}" data-filter="type">
+                ${{t}}
+            </label>
+        `).join('');
+    }}
+
+    function syncFiltersFromState() {{
+        const state = FilterState.get();
+
+        elements.searchInput.value = state.search;
+        elements.yearStart.value = state.yearStart || '';
+        elements.yearEnd.value = state.yearEnd || '';
+        elements.sortSelect.value = state.sort;
+
+        // Sync checkboxes
+        elements.classificationFilters.querySelectorAll('input').forEach(cb => {{
+            cb.checked = state.classifications.has(cb.value);
+        }});
+        elements.typeFilters.querySelectorAll('input').forEach(cb => {{
+            cb.checked = state.types.has(cb.value);
+        }});
+    }}
+
+    function bindEvents() {{
+        // Search input with debounce
+        let searchTimeout;
+        elements.searchInput.addEventListener('input', (e) => {{
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {{
+                FilterState.set('search', e.target.value);
+            }}, CONFIG.searchDebounceMs);
+        }});
+
+        // Year selects
+        elements.yearStart.addEventListener('change', (e) => {{
+            FilterState.set('yearStart', e.target.value ? parseInt(e.target.value) : null);
+        }});
+        elements.yearEnd.addEventListener('change', (e) => {{
+            FilterState.set('yearEnd', e.target.value ? parseInt(e.target.value) : null);
+        }});
+
+        // Classification checkboxes
+        elements.classificationFilters.addEventListener('change', (e) => {{
+            if (e.target.type === 'checkbox') {{
+                FilterState.toggleSet('classifications', e.target.value);
+            }}
+        }});
+
+        // Type checkboxes
+        elements.typeFilters.addEventListener('change', (e) => {{
+            if (e.target.type === 'checkbox') {{
+                FilterState.toggleSet('types', e.target.value);
+            }}
+        }});
+
+        // Sort select
+        elements.sortSelect.addEventListener('change', (e) => {{
+            FilterState.set('sort', e.target.value);
+        }});
+
+        // Clear button
+        elements.clearButton.addEventListener('click', () => {{
+            FilterState.clear();
+        }});
+    }}
+
+    return {{
+        cacheElements,
+        showLoading,
+        showError,
+        showContent,
+        updateStats,
+        renderFilters,
+        syncFiltersFromState,
+        bindEvents,
+        elements
+    }};
+}})();
+
+// =============================================================================
+// APPLICATION CONTROLLER
+// =============================================================================
+(function() {{
+    let allDocuments = [];
+    let filteredDocuments = [];
+
+    async function init() {{
+        UIController.cacheElements();
+        UIController.showLoading();
+
+        // Load filter state from URL
+        FilterState.fromURL();
+
+        // Load data
+        const success = await DataStore.load();
+        if (!success) {{
+            UIController.showError();
+            return;
+        }}
+
+        allDocuments = DataStore.getDocuments();
+        const facets = DataStore.getFacets();
+
+        // Initialize filter and search
+        DocumentFilter.init(allDocuments);
+
+        // Render filter UI
+        UIController.renderFilters(facets);
+        UIController.syncFiltersFromState();
+        UIController.bindEvents();
+
+        // Initial render
+        applyFiltersAndRender();
+
+        // Listen for filter changes
+        Events.on('filter:changed', () => {{
+            Pagination.reset();
+            applyFiltersAndRender();
+        }});
+
+        Events.on('filter:cleared', () => {{
+            UIController.syncFiltersFromState();
+        }});
+
+        Events.on('page:changed', () => {{
+            renderCurrentPage();
+            window.scrollTo({{ top: 0, behavior: 'smooth' }});
+        }});
+    }}
+
+    function applyFiltersAndRender() {{
+        const state = FilterState.get();
+        filteredDocuments = DocumentFilter.filter(allDocuments, state);
+        UIController.updateStats(filteredDocuments.length, allDocuments.length);
+        renderCurrentPage();
+    }}
+
+    function renderCurrentPage() {{
+        const pageData = Pagination.getPageData(filteredDocuments);
+        DocumentRenderer.renderList(pageData, UIController.elements.cards);
+        Pagination.render(UIController.elements.pagination);
+        UIController.showContent();
+    }}
+
+    // Start application
+    document.addEventListener('DOMContentLoaded', init);
+}})();
+'''
+
+
+if __name__ == "__main__":
+    # Test generation
+    html = generate_explorer_html()
+    print(f"Generated HTML: {len(html)} characters")

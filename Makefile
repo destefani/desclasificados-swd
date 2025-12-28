@@ -184,6 +184,24 @@ visualize:
 	uv run python -m app.visualize_transcripts
 
 # =============================================================================
+# DOCUMENT EXPLORER
+# =============================================================================
+
+# Generate explorer data and page
+explorer:
+	uv run python -m app.explorer generate
+
+# Regenerate only the documents.json data file
+explorer-data:
+	uv run python -m app.explorer data
+
+# Local development server for explorer (serves docs/ directory)
+explorer-serve:
+	@echo "Starting local server at http://localhost:8000"
+	@echo "Open http://localhost:8000/explorer/ to view the explorer"
+	cd docs && python -m http.server 8000
+
+# =============================================================================
 # TESTING & CODE QUALITY
 # =============================================================================
 
@@ -332,6 +350,11 @@ help:
 	@echo "  serve            Start report server with PDF viewer"
 	@echo "  visualize        Create visualizations"
 	@echo ""
+	@echo "Document Explorer:"
+	@echo "  explorer         Generate explorer data and page"
+	@echo "  explorer-data    Generate only documents.json"
+	@echo "  explorer-serve   Start local server for explorer"
+	@echo ""
 	@echo "Testing:"
 	@echo "  test             Run all tests"
 	@echo "  test-unit        Run unit tests only"
@@ -362,6 +385,7 @@ help:
         rag-build rag-rebuild rag-stats rag-interactive rag-query \
         eval-stats eval-validate eval-sample eval-report progress \
         analyze analyze-full github-pages github-pages-external deploy serve visualize \
+        explorer explorer-data explorer-serve \
         test test-unit lint format typecheck \
         rq-list rq-add rq-show rq-update rq-generate-md rq-reports rq-report rq-reports-list \
         clean update lock run shell help

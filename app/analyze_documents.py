@@ -55,6 +55,7 @@ from app.visualizations.research_questions import (
     generate_research_questions_section,
     generate_research_questions_css,
 )
+from app.visualizations.document_explorer import generate_explorer_html
 
 
 def image_to_base64(image_path: str) -> str:
@@ -1831,7 +1832,7 @@ def generate_full_html_report(
             <h2>Navigation</h2>
             <ul>
                 <li><a href="#overview">Overview</a></li>
-                <li><a href="#documents">Document Index</a></li>
+                <li><a href="#documents">Document Explorer</a></li>
                 <li><a href="#research-questions">Research Questions</a></li>
                 <li><a href="#timeline">Timeline</a></li>
                 <li><a href="#classification">Classification</a></li>
@@ -1927,9 +1928,23 @@ def generate_full_html_report(
             </section>
 
             <section id="documents">
-                <h2>Document Index</h2>
+                <h2>Document Explorer</h2>
+                {f'''
+                <div class="explorer-teaser" style="background: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+                    <p style="font-size: 18px; margin-bottom: 16px;">
+                        Browse, search, and filter all <strong>{format_number(total)}</strong> declassified documents.
+                    </p>
+                    <a href="explorer/" class="btn" style="display: inline-block; background: var(--primary); color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                        Open Document Explorer &rarr;
+                    </a>
+                </div>
+                <h3>Recent Documents</h3>
+                <p>Showing the 10 most recent documents:</p>
+                {create_document_index(results.get('all_documents', []), limit=10)}
+                ''' if github_pages_mode else f'''
                 <p>Browse all processed documents. Click "View PDF" to open the source document.</p>
                 {create_document_index(results.get('all_documents', []))}
+                '''}
             </section>
 
             {research_questions_html}
@@ -2188,6 +2203,122 @@ def generate_full_html_report(
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     print(f"Full report saved to {output_path}")
+
+    # Generate document explorer for GitHub Pages
+    if github_pages_mode:
+        _generate_explorer_files(results, output_dir, external_pdf_viewer)
+
+
+def _generate_explorer_files(
+    results: dict,
+    output_dir: str,
+    external_pdf_viewer: str | None = None,
+) -> None:
+    """Generate document explorer data and HTML page.
+
+    Args:
+        results: Processing results containing all_documents
+        output_dir: Base output directory (e.g., 'docs')
+        external_pdf_viewer: Base URL for external PDF viewer
+    """
+    all_documents = results.get("all_documents", [])
+    if not all_documents:
+        print("Warning: No documents to export for explorer")
+        return
+
+    # Generate documents.json
+    data_dir = os.path.join(output_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
+
+    docs_json = []
+    classifications_set: set[str] = set()
+    types_set: set[str] = set()
+    years: list[int] = []
+
+    for doc in all_documents:
+        date_str = doc.get("date", "") or ""
+        year = None
+        if date_str and len(date_str) >= 4:
+            try:
+                year_str = date_str[:4]
+                if year_str != "0000" and year_str.isdigit():
+                    year = int(year_str)
+                    years.append(year)
+            except ValueError:
+                pass
+
+        classification = doc.get("classification", "Unknown") or "Unknown"
+        classifications_set.add(classification)
+
+        doc_type = doc.get("doc_type", "Unknown") or "Unknown"
+        types_set.add(doc_type)
+
+        keywords = doc.get("keywords", []) or []
+        keywords = keywords[:5] if isinstance(keywords, list) else []
+
+        people = doc.get("people", []) or []
+        people = people[:5] if isinstance(people, list) else []
+
+        title = doc.get("title", "") or ""
+        if len(title) > 100:
+            title = title[:97] + "..."
+
+        summary = doc.get("summary", "") or ""
+        if len(summary) > 200:
+            summary = summary[:197] + "..."
+
+        docs_json.append({
+            "id": doc.get("basename", ""),
+            "doc_id": doc.get("doc_id", ""),
+            "date": date_str,
+            "year": year,
+            "classification": classification,
+            "type": doc_type,
+            "title": title,
+            "summary": summary,
+            "pages": doc.get("page_count", 0) or 0,
+            "keywords": keywords,
+            "people": people,
+        })
+
+    # Sort by date descending
+    docs_json.sort(key=lambda d: (d["date"] or "0000-00-00", d["id"]), reverse=True)
+
+    facets = {
+        "classifications": sorted(classifications_set),
+        "types": sorted(types_set),
+        "year_range": {
+            "min": min(years) if years else 1963,
+            "max": max(years) if years else 1993,
+        },
+    }
+
+    output_data = {
+        "generated": datetime.now().isoformat(),
+        "total_count": len(docs_json),
+        "schema_version": "1.0.0",
+        "documents": docs_json,
+        "facets": facets,
+    }
+
+    json_path = os.path.join(data_dir, "documents.json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(output_data, f, ensure_ascii=False)
+    json_size = os.path.getsize(json_path) / 1024 / 1024
+    print(f"Explorer data saved to {json_path} ({json_size:.2f} MB)")
+
+    # Generate explorer HTML
+    explorer_dir = os.path.join(output_dir, "explorer")
+    os.makedirs(explorer_dir, exist_ok=True)
+
+    explorer_html = generate_explorer_html(
+        external_pdf_viewer=external_pdf_viewer or "https://declasseuucl.vercel.app"
+    )
+    explorer_path = os.path.join(explorer_dir, "index.html")
+    with open(explorer_path, "w", encoding="utf-8") as f:
+        f.write(explorer_html)
+    explorer_size = os.path.getsize(explorer_path) / 1024
+    print(f"Explorer page saved to {explorer_path} ({explorer_size:.1f} KB)")
 
 
 def main():
