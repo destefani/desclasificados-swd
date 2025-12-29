@@ -44,6 +44,7 @@ from app.visualizations.financial_dashboard import (
     generate_financial_flow_network,
     generate_financial_purposes_chart,
     generate_financial_actors_chart,
+    generate_financial_category_cards,
 )
 from app.visualizations.pdf_viewer import (
     generate_pdf_viewer_modal,
@@ -56,6 +57,15 @@ from app.visualizations.research_questions import (
     generate_research_questions_css,
 )
 from app.visualizations.document_explorer import generate_explorer_html
+
+
+# Financial categorization constants for separating covert ops from macro-economic data
+COVERT_OPS_PURPOSES = {
+    "ELECTION SUPPORT", "OPPOSITION SUPPORT", "PROPAGANDA",
+    "MEDIA FUNDING", "INTELLIGENCE OPERATIONS", "POLITICAL ACTION"
+}
+COVERT_OPS_ACTORS = {"CIA", "40 COMMITTEE", "NSC", "STATE DEPARTMENT"}
+MACRO_THRESHOLD = 100_000_000  # $100M - amounts above this without covert markers are macro
 
 
 def image_to_base64(image_path: str) -> str:
@@ -113,6 +123,11 @@ def process_documents(
     financial_actors_count = collections.Counter()
     financial_amounts: list[dict] = []
     docs_with_financial = 0
+
+    # Categorized financial data for separating covert ops from macro-economic
+    financial_amounts_by_year: dict[str, list[dict]] = collections.defaultdict(list)
+    covert_ops_amounts: list[dict] = []
+    macro_economic_amounts: list[dict] = []
 
     # Sensitive content counters
     violence_incident_types = collections.Counter()
@@ -272,19 +287,50 @@ def process_documents(
                 if org_country:
                     org_country_count[org_country] += 1
 
-        # Financial references
+        # Financial references with categorization
         fin_refs = metadata.get("financial_references", {})
         if isinstance(fin_refs, dict) and fin_refs.get("has_financial_content"):
             docs_with_financial += 1
-            for purpose in fin_refs.get("purposes", []):
+            doc_purposes = set(fin_refs.get("purposes", []))
+            doc_actors = set(fin_refs.get("financial_actors", []))
+
+            for purpose in doc_purposes:
                 if purpose:
                     financial_purposes_count[purpose] += 1
-            for actor in fin_refs.get("financial_actors", []):
+            for actor in doc_actors:
                 if actor:
                     financial_actors_count[actor] += 1
+
+            # Get document ID for enrichment
+            file_doc_id = os.path.splitext(os.path.basename(file))[0]
+
             for amount in fin_refs.get("amounts", []):
                 if isinstance(amount, dict):
-                    financial_amounts.append(amount)
+                    # Enrich amount with document context
+                    enriched = {
+                        **amount,
+                        "doc_id": file_doc_id,
+                        "doc_year": doc_year,
+                    }
+                    financial_amounts.append(enriched)
+
+                    # Add to timeline by year
+                    if doc_year != "Unknown":
+                        financial_amounts_by_year[doc_year].append(enriched)
+
+                    # Categorize: Covert Ops vs Macro-Economic
+                    is_covert = (
+                        bool(doc_purposes & COVERT_OPS_PURPOSES) or
+                        bool(doc_actors & COVERT_OPS_ACTORS)
+                    )
+                    normalized = amount.get("normalized_usd")
+
+                    if normalized and normalized > MACRO_THRESHOLD and not is_covert:
+                        macro_economic_amounts.append(enriched)
+                    elif is_covert or (normalized and normalized < MACRO_THRESHOLD):
+                        covert_ops_amounts.append(enriched)
+                    else:
+                        macro_economic_amounts.append(enriched)
 
         # Violence references
         vio_refs = metadata.get("violence_references", {})
@@ -400,6 +446,9 @@ def process_documents(
         "financial_actors_count": financial_actors_count,
         "financial_amounts": financial_amounts,
         "docs_with_financial": docs_with_financial,
+        "financial_amounts_by_year": dict(financial_amounts_by_year),
+        "covert_ops_amounts": covert_ops_amounts,
+        "macro_economic_amounts": macro_economic_amounts,
         "violence_incident_types": violence_incident_types,
         "violence_victims": violence_victims,
         "violence_perpetrators": violence_perpetrators,
@@ -563,13 +612,24 @@ def generate_html_report(
         doc_types_src = "doc_types.png"
         confidence_src = "confidence.png"
 
-    def create_table(counter: dict, limit: int = 50, id_prefix: str = "") -> str:
-        """Create an HTML table from a Counter, with optional collapsible rows."""
+    def create_table(counter: dict, limit: int = 50, id_prefix: str = "", show_all: bool = True) -> str:
+        """Create an HTML table from a Counter, with optional collapsible rows.
+
+        Args:
+            counter: Dict of item -> count
+            limit: Number of items to show initially
+            id_prefix: Unique prefix for table IDs
+            show_all: If False, never show "Show all X items" button (prevents DOM bloat)
+        """
         if not counter:
             return "<p><em>No data available</em></p>"
 
         sorted_items = sorted(counter.items(), key=lambda x: x[1], reverse=True)
         total_items = len(sorted_items)
+
+        # When show_all is False, only include visible rows (no hidden section)
+        if not show_all:
+            sorted_items = sorted_items[:limit]
 
         rows_visible = []
         rows_hidden = []
@@ -589,7 +649,7 @@ def generate_html_report(
             <tbody id="{table_id}_visible">{''.join(rows_visible)}</tbody>
         """
 
-        if rows_hidden:
+        if rows_hidden and show_all:
             html += f"""
             <tbody id="{table_id}_hidden" class="hidden">{''.join(rows_hidden)}</tbody>
             </table>
@@ -599,8 +659,77 @@ def generate_html_report(
             """
         else:
             html += "</table>"
+            # Show count of hidden items when show_all is False
+            if total_items > limit and not show_all:
+                html += f"<p class='table-note'><em>Showing top {limit} of {total_items:,} items</em></p>"
 
         return html
+
+    def create_financial_summary_section(results: dict) -> str:
+        """Create a compact financial summary section with two cards."""
+
+        def get_top_items(counter: dict, n: int = 5) -> list:
+            """Get top N items from a counter."""
+            if not counter:
+                return []
+            return sorted(counter.items(), key=lambda x: x[1], reverse=True)[:n]
+
+        def format_item_list(items: list) -> str:
+            """Format items as a compact list."""
+            if not items:
+                return "<p class='no-data'>No data</p>"
+            html = "<ul class='entity-top-list'>"
+            for name, count in items:
+                # Truncate long names
+                display_name = name[:35] + "..." if len(name) > 35 else name
+                html += f"<li><span class='entity-name' title='{name}'>{display_name}</span> <span class='entity-count'>({count:,})</span></li>"
+            html += "</ul>"
+            return html
+
+        # Get counts
+        purposes = results.get('financial_purposes_count', {})
+        actors = results.get('financial_actors_count', {})
+        purposes_total = len(purposes)
+        purposes_mentions = sum(purposes.values())
+        actors_total = len(actors)
+        actors_mentions = sum(actors.values())
+
+        # Get top items
+        top_purposes = get_top_items(purposes, 5)
+        top_actors = get_top_items(actors, 5)
+
+        return f"""
+        <div class="financial-cards">
+            <div class="financial-card">
+                <div class="entity-card-header">
+                    <span class="entity-icon">💰</span>
+                    <h3>Funding Purposes</h3>
+                </div>
+                <div class="entity-stats">
+                    <span class="stat-number">{purposes_total:,}</span>
+                    <span class="stat-label">purpose categories</span>
+                </div>
+                <div class="entity-mentions">{purposes_mentions:,} total references</div>
+                <h4>Most Common</h4>
+                {format_item_list(top_purposes)}
+            </div>
+
+            <div class="financial-card">
+                <div class="entity-card-header">
+                    <span class="entity-icon">🏛️</span>
+                    <h3>Financial Actors</h3>
+                </div>
+                <div class="entity-stats">
+                    <span class="stat-number">{actors_total:,}</span>
+                    <span class="stat-label">entities mentioned</span>
+                </div>
+                <div class="entity-mentions">{actors_mentions:,} total mentions</div>
+                <h4>Top Actors</h4>
+                {format_item_list(top_actors)}
+                <a href="entities/?type=organization" class="entity-card-link">View in Entity Explorer →</a>
+            </div>
+        </div>
+        """
 
     def format_number(n: int) -> str:
         return f"{n:,}"
@@ -830,6 +959,125 @@ def generate_html_report(
             background: var(--primary-dark);
         }}
 
+        .table-note {{
+            color: var(--gray-600);
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }}
+
+        /* Financial summary cards */
+        .financial-cards {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }}
+
+        .financial-card {{
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }}
+
+        .entity-card-header {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }}
+
+        .entity-icon {{
+            font-size: 1.5rem;
+        }}
+
+        .entity-card-header h3 {{
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--gray-800);
+        }}
+
+        .entity-stats {{
+            text-align: center;
+            padding: 15px 0;
+            background: var(--gray-100);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }}
+
+        .entity-stats .stat-number {{
+            display: block;
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }}
+
+        .entity-stats .stat-label {{
+            font-size: 0.85rem;
+            color: var(--gray-600);
+        }}
+
+        .entity-mentions {{
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-bottom: 15px;
+        }}
+
+        .financial-card h4 {{
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin: 15px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }}
+
+        .entity-top-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+        }}
+
+        .entity-top-list li {{
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: 0.9rem;
+        }}
+
+        .entity-top-list li:last-child {{
+            border-bottom: none;
+        }}
+
+        .entity-count {{
+            color: var(--gray-600);
+            font-weight: 500;
+        }}
+
+        .entity-card-link {{
+            display: block;
+            text-align: center;
+            padding: 10px;
+            background: var(--gray-100);
+            border-radius: 6px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.2s;
+        }}
+
+        .entity-card-link:hover {{
+            background: var(--gray-200);
+        }}
+
+        @media (max-width: 768px) {{
+            .financial-cards {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+
         .sensitive-warning {{
             background: #fef2f2;
             border: 1px solid #fecaca;
@@ -885,10 +1133,7 @@ def generate_html_report(
             <div class="nav-section">
                 <div class="nav-section-title">Entities</div>
                 <ul>
-                    <li><a href="#people">People Mentioned</a></li>
-                    <li><a href="#organizations">Organizations</a></li>
-                    <li><a href="#locations">Locations</a></li>
-                    <li><a href="#keywords">Keywords</a></li>
+                    <li><a href="#entity-summary">Entity Summary</a></li>
                 </ul>
             </div>
 
@@ -992,54 +1237,31 @@ def generate_html_report(
                 {create_table(results['language_count'], limit=10, id_prefix='languages')}
             </section>
 
-            <section id="people">
-                <h2>People Mentioned</h2>
-                <p>Individuals mentioned in document bodies (excluding authors/recipients).</p>
-                {create_table(results['people_count'], limit=50, id_prefix='people')}
-
-                <h3>Recipients</h3>
-                {create_table(results['recipients_count'], limit=50, id_prefix='recipients')}
-            </section>
-
-            <section id="organizations">
-                <h2>Organizations</h2>
-
-                <h3>All Organizations</h3>
-                {create_table(results['org_count'], limit=50, id_prefix='orgs')}
+            <section id="entity-summary">
+                <h2>Entity Summary</h2>
+                <p>Top entities extracted from documents. For full entity browsing, use the GitHub Pages version with the Entity Explorer.</p>
 
                 <div class="two-col">
                     <div>
-                        <h3>By Type</h3>
-                        {create_table(results['org_type_count'], limit=20, id_prefix='org_types')}
+                        <h3>Top People ({len(results['people_count']):,} total)</h3>
+                        {create_table(results['people_count'], limit=15, id_prefix='people')}
                     </div>
                     <div>
-                        <h3>By Country</h3>
-                        {create_table(results['org_country_count'], limit=20, id_prefix='org_countries')}
+                        <h3>Top Organizations ({len(results['org_count']):,} total)</h3>
+                        {create_table(results['org_count'], limit=15, id_prefix='orgs')}
                     </div>
                 </div>
-            </section>
-
-            <section id="locations">
-                <h2>Locations</h2>
 
                 <div class="two-col">
                     <div>
-                        <h3>Countries</h3>
-                        {create_table(results['country_count'], limit=30, id_prefix='countries')}
+                        <h3>Top Keywords ({len(results['keywords_count']):,} total)</h3>
+                        {create_table(results['keywords_count'], limit=15, id_prefix='keywords')}
                     </div>
                     <div>
-                        <h3>Cities</h3>
-                        {create_table(results['city_count'], limit=30, id_prefix='cities')}
+                        <h3>Top Countries ({len(results['country_count']):,} total)</h3>
+                        {create_table(results['country_count'], limit=15, id_prefix='countries')}
                     </div>
                 </div>
-
-                <h3>Other Places</h3>
-                {create_table(results['other_place_count'], limit=30, id_prefix='other_places')}
-            </section>
-
-            <section id="keywords">
-                <h2>Keywords</h2>
-                {create_table(results['keywords_count'], limit=50, id_prefix='keywords')}
             </section>
 
             <section id="violence">
@@ -1125,11 +1347,7 @@ def generate_html_report(
 
                 <p><strong>{format_number(results['docs_with_financial'])} documents</strong> ({pct(results['docs_with_financial'], total)}) contain financial references.</p>
 
-                <h3>Purposes</h3>
-                {create_table(results['financial_purposes_count'], limit=20, id_prefix='financial_purposes')}
-
-                <h3>Financial Actors</h3>
-                {create_table(results['financial_actors_count'], limit=30, id_prefix='financial_actors')}
+                {create_financial_summary_section(results)}
             </section>
 
             <section id="confidence">
@@ -1139,7 +1357,7 @@ def generate_html_report(
 
                 <h3>Common Concerns</h3>
                 <p>Issues flagged during transcription that may require human review.</p>
-                {create_table(results['confidence_concerns'], limit=30, id_prefix='concerns')}
+                {create_table(results['confidence_concerns'], limit=10, id_prefix='concerns', show_all=False)}
             </section>
 
             <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--gray-200); color: var(--gray-600); font-size: 0.85rem;">
@@ -1344,6 +1562,19 @@ def generate_full_html_report(
         max_items=15,
     )
 
+    # NEW: Category cards showing covert ops vs macro-economic
+    financial_category_html = generate_financial_category_cards(
+        covert_ops_amounts=results.get("covert_ops_amounts", []),
+        macro_economic_amounts=results.get("macro_economic_amounts", []),
+    )
+
+    # NEW: Timeline chart
+    financial_timeline_html = generate_financial_timeline(
+        financial_amounts_by_year=results.get("financial_amounts_by_year", {}),
+        container_id="financial-timeline",
+        height="350px",
+    )
+
     # Generate static plots for other charts
     classification_path = os.path.join(output_dir, "classification.png")
     doc_types_path = os.path.join(output_dir, "doc_types.png")
@@ -1409,13 +1640,24 @@ def generate_full_html_report(
                 return f'<a href="file://{os.path.abspath(pdf_path)}" target="_blank">{label}</a>'
         return label
 
-    def create_table(counter: dict, limit: int = 50, id_prefix: str = "") -> str:
-        """Create an HTML table from a Counter, with optional collapsible rows."""
+    def create_table(counter: dict, limit: int = 50, id_prefix: str = "", show_all: bool = True) -> str:
+        """Create an HTML table from a Counter, with optional collapsible rows.
+
+        Args:
+            counter: Dict of item -> count
+            limit: Number of items to show initially
+            id_prefix: Unique prefix for table IDs
+            show_all: If False, never show "Show all X items" button (prevents DOM bloat)
+        """
         if not counter:
             return "<p><em>No data available</em></p>"
 
         sorted_items = sorted(counter.items(), key=lambda x: x[1], reverse=True)
         total_items = len(sorted_items)
+
+        # When show_all is False, only include visible rows (no hidden section)
+        if not show_all:
+            sorted_items = sorted_items[:limit]
 
         rows_visible = []
         rows_hidden = []
@@ -1435,7 +1677,7 @@ def generate_full_html_report(
             <tbody id="{table_id}_visible">{''.join(rows_visible)}</tbody>
         """
 
-        if rows_hidden:
+        if rows_hidden and show_all:
             html += f"""
             <tbody id="{table_id}_hidden" class="hidden">{''.join(rows_hidden)}</tbody>
             </table>
@@ -1445,6 +1687,9 @@ def generate_full_html_report(
             """
         else:
             html += "</table>"
+            # Show count of hidden items when show_all is False
+            if total_items > limit and not show_all:
+                html += f"<p class='table-note'><em>Showing top {limit} of {total_items:,} items</em></p>"
 
         return html
 
@@ -1493,6 +1738,186 @@ def generate_full_html_report(
             <thead><tr><th>Item</th><th>Documents</th></tr></thead>
             <tbody>{"".join(rows)}{more_rows}</tbody>
         </table>
+        """
+
+    def create_entity_summary_section(results: dict) -> str:
+        """Create a compact entity summary section with cards linking to Entity Explorer."""
+
+        def get_top_items(counter: dict, n: int = 5) -> list:
+            """Get top N items from a counter."""
+            if not counter:
+                return []
+            return sorted(counter.items(), key=lambda x: x[1], reverse=True)[:n]
+
+        def format_item_list(items: list) -> str:
+            """Format items as a compact list."""
+            if not items:
+                return "<p class='no-data'>No data</p>"
+            html = "<ul class='entity-top-list'>"
+            for name, count in items:
+                # Truncate long names
+                display_name = name[:30] + "..." if len(name) > 30 else name
+                html += f"<li><span class='entity-name' title='{name}'>{display_name}</span> <span class='entity-count'>({count:,})</span></li>"
+            html += "</ul>"
+            return html
+
+        # Get counts
+        people_total = len(results.get('people_count', {}))
+        people_mentions = sum(results.get('people_count', {}).values())
+        orgs_total = len(results.get('org_count', {}))
+        orgs_mentions = sum(results.get('org_count', {}).values())
+        keywords_total = len(results.get('keywords_count', {}))
+        keywords_mentions = sum(results.get('keywords_count', {}).values())
+        places_total = (
+            len(results.get('country_count', {})) +
+            len(results.get('city_count', {})) +
+            len(results.get('other_place_count', {}))
+        )
+        places_mentions = (
+            sum(results.get('country_count', {}).values()) +
+            sum(results.get('city_count', {}).values()) +
+            sum(results.get('other_place_count', {}).values())
+        )
+
+        # Get top items
+        top_people = get_top_items(results.get('people_count', {}), 5)
+        top_orgs = get_top_items(results.get('org_count', {}), 5)
+        top_keywords = get_top_items(results.get('keywords_count', {}), 5)
+        top_countries = get_top_items(results.get('country_count', {}), 5)
+
+        return f"""
+        <div class="entity-summary-header">
+            <p>Explore all entities extracted from {results.get('total_docs', 0):,} declassified documents.</p>
+            <a href="entities/" class="btn btn-primary">Open Entity Explorer →</a>
+        </div>
+
+        <div class="entity-cards">
+            <div class="entity-card">
+                <div class="entity-card-header">
+                    <span class="entity-icon">👤</span>
+                    <h3>People</h3>
+                </div>
+                <div class="entity-stats">
+                    <span class="stat-number">{people_total:,}</span>
+                    <span class="stat-label">unique individuals</span>
+                </div>
+                <div class="entity-mentions">{people_mentions:,} total mentions</div>
+                <h4>Most Mentioned</h4>
+                {format_item_list(top_people)}
+                <a href="entities/?type=person" class="entity-card-link">View all people →</a>
+            </div>
+
+            <div class="entity-card">
+                <div class="entity-card-header">
+                    <span class="entity-icon">🏢</span>
+                    <h3>Organizations</h3>
+                </div>
+                <div class="entity-stats">
+                    <span class="stat-number">{orgs_total:,}</span>
+                    <span class="stat-label">unique organizations</span>
+                </div>
+                <div class="entity-mentions">{orgs_mentions:,} total mentions</div>
+                <h4>Most Mentioned</h4>
+                {format_item_list(top_orgs)}
+                <a href="entities/?type=organization" class="entity-card-link">View all organizations →</a>
+            </div>
+
+            <div class="entity-card">
+                <div class="entity-card-header">
+                    <span class="entity-icon">🏷️</span>
+                    <h3>Keywords</h3>
+                </div>
+                <div class="entity-stats">
+                    <span class="stat-number">{keywords_total:,}</span>
+                    <span class="stat-label">unique keywords</span>
+                </div>
+                <div class="entity-mentions">{keywords_mentions:,} total mentions</div>
+                <h4>Most Used</h4>
+                {format_item_list(top_keywords)}
+                <a href="entities/?type=keyword" class="entity-card-link">View all keywords →</a>
+            </div>
+
+            <div class="entity-card">
+                <div class="entity-card-header">
+                    <span class="entity-icon">📍</span>
+                    <h3>Places</h3>
+                </div>
+                <div class="entity-stats">
+                    <span class="stat-number">{places_total:,}</span>
+                    <span class="stat-label">unique locations</span>
+                </div>
+                <div class="entity-mentions">{places_mentions:,} total mentions</div>
+                <h4>Top Countries</h4>
+                {format_item_list(top_countries)}
+                <a href="entities/?type=place" class="entity-card-link">View all places →</a>
+            </div>
+        </div>
+        """
+
+    def create_financial_summary_section(results: dict) -> str:
+        """Create a compact financial summary section with two cards."""
+
+        def get_top_items(counter: dict, n: int = 5) -> list:
+            """Get top N items from a counter."""
+            if not counter:
+                return []
+            return sorted(counter.items(), key=lambda x: x[1], reverse=True)[:n]
+
+        def format_item_list(items: list) -> str:
+            """Format items as a compact list."""
+            if not items:
+                return "<p class='no-data'>No data</p>"
+            html = "<ul class='entity-top-list'>"
+            for name, count in items:
+                # Truncate long names
+                display_name = name[:35] + "..." if len(name) > 35 else name
+                html += f"<li><span class='entity-name' title='{name}'>{display_name}</span> <span class='entity-count'>({count:,})</span></li>"
+            html += "</ul>"
+            return html
+
+        # Get counts
+        purposes = results.get('financial_purposes_count', {})
+        actors = results.get('financial_actors_count', {})
+        purposes_total = len(purposes)
+        purposes_mentions = sum(purposes.values())
+        actors_total = len(actors)
+        actors_mentions = sum(actors.values())
+
+        # Get top items
+        top_purposes = get_top_items(purposes, 5)
+        top_actors = get_top_items(actors, 5)
+
+        return f"""
+        <div class="financial-cards">
+            <div class="financial-card">
+                <div class="entity-card-header">
+                    <span class="entity-icon">💰</span>
+                    <h3>Funding Purposes</h3>
+                </div>
+                <div class="entity-stats">
+                    <span class="stat-number">{purposes_total:,}</span>
+                    <span class="stat-label">purpose categories</span>
+                </div>
+                <div class="entity-mentions">{purposes_mentions:,} total references</div>
+                <h4>Most Common</h4>
+                {format_item_list(top_purposes)}
+            </div>
+
+            <div class="financial-card">
+                <div class="entity-card-header">
+                    <span class="entity-icon">🏛️</span>
+                    <h3>Financial Actors</h3>
+                </div>
+                <div class="entity-stats">
+                    <span class="stat-number">{actors_total:,}</span>
+                    <span class="stat-label">entities mentioned</span>
+                </div>
+                <div class="entity-mentions">{actors_mentions:,} total mentions</div>
+                <h4>Top Actors</h4>
+                {format_item_list(top_actors)}
+                <a href="entities/?type=organization" class="entity-card-link">View in Entity Explorer →</a>
+            </div>
+        </div>
         """
 
     def create_document_index(documents: list, limit: int = 500) -> str:
@@ -1708,6 +2133,184 @@ def generate_full_html_report(
             color: var(--gray-600);
         }}
 
+        /* Entity Summary Cards */
+        .entity-summary-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, var(--gray-100), white);
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+        }}
+
+        .entity-summary-header p {{
+            margin: 0;
+            color: var(--gray-600);
+        }}
+
+        .entity-cards {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }}
+
+        .entity-card {{
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid var(--gray-200);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }}
+
+        .entity-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }}
+
+        .entity-card-header {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }}
+
+        .entity-card-header .entity-icon {{
+            font-size: 1.5rem;
+        }}
+
+        .entity-card-header h3 {{
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--gray-800);
+        }}
+
+        .entity-stats {{
+            text-align: center;
+            padding: 15px 0;
+            background: var(--gray-100);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }}
+
+        .entity-stats .stat-number {{
+            display: block;
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }}
+
+        .entity-stats .stat-label {{
+            font-size: 0.85rem;
+            color: var(--gray-600);
+        }}
+
+        .entity-mentions {{
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-bottom: 15px;
+        }}
+
+        .entity-card h4 {{
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin: 15px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }}
+
+        .entity-top-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+        }}
+
+        .entity-top-list li {{
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: 0.9rem;
+        }}
+
+        .entity-top-list li:last-child {{
+            border-bottom: none;
+        }}
+
+        .entity-top-list .entity-name {{
+            color: var(--gray-800);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+
+        .entity-top-list .entity-count {{
+            color: var(--gray-600);
+            font-size: 0.85rem;
+            margin-left: 10px;
+        }}
+
+        .entity-card-link {{
+            display: block;
+            text-align: center;
+            padding: 10px;
+            background: var(--gray-100);
+            border-radius: 6px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.2s;
+        }}
+
+        .entity-card-link:hover {{
+            background: var(--gray-200);
+        }}
+
+        /* Financial summary cards (2-column) */
+        .financial-cards {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }}
+
+        .financial-card {{
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }}
+
+        @media (max-width: 768px) {{
+            .financial-cards {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+
+        .btn {{
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }}
+
+        .btn-primary {{
+            background: var(--primary);
+            color: white;
+        }}
+
+        .btn-primary:hover {{
+            background: var(--primary-dark);
+        }}
+
         .chart-container {{
             background: white;
             padding: 20px;
@@ -1795,6 +2398,27 @@ def generate_full_html_report(
             font-size: 0.8em;
         }}
 
+        .show-more-btn {{
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }}
+
+        .show-more-btn:hover {{
+            background: var(--primary-dark);
+        }}
+
+        .table-note {{
+            color: var(--gray-600);
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }}
+
         .sensitive-warning {{
             background: #fef2f2;
             border: 1px solid #fecaca;
@@ -1858,16 +2482,14 @@ def generate_full_html_report(
                 <div class="nav-section-title">Geographic</div>
                 <ul>
                     <li><a href="#geographic-map">Geographic Map</a></li>
-                    <li><a href="#locations">Locations</a></li>
                 </ul>
             </div>
 
             <div class="nav-section">
                 <div class="nav-section-title">Entities</div>
                 <ul>
-                    <li><a href="#people">People Mentioned</a></li>
-                    <li><a href="#organizations">Organizations</a></li>
-                    <li><a href="#keywords">Keywords</a></li>
+                    <li><a href="#entity-summary">Entity Summary</a></li>
+                    <li><a href="entities/">Entity Explorer</a></li>
                 </ul>
             </div>
 
@@ -1890,10 +2512,16 @@ def generate_full_html_report(
             </div>
 
             <div class="nav-section">
+                <div class="nav-section-title">Explorers</div>
+                <ul>
+                    <li><a href="explorer/">Document Explorer</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
                 <div class="nav-section-title">Project</div>
                 <ul>
                     <li><a href="about.html">About</a></li>
-                    <li><a href="explorer/">Document Explorer</a></li>
                 </ul>
             </div>
         </nav>
@@ -2018,48 +2646,17 @@ def generate_full_html_report(
                 </div>
             </section>
 
-            <section id="locations">
-                <h2>Locations</h2>
-                <div class="two-col">
-                    <div>
-                        <h3>Countries</h3>
-                        {create_table(results['country_count'], limit=30, id_prefix='countries')}
-                    </div>
-                    <div>
-                        <h3>Cities</h3>
-                        {create_table(results['city_count'], limit=30, id_prefix='cities')}
-                    </div>
-                </div>
+            <section id="entity-summary">
+                <h2>Entity Summary</h2>
+                <p>Overview of all people, organizations, keywords, and places extracted from documents.
+                Use the Entity Explorer for advanced search and filtering.</p>
+                {create_entity_summary_section(results)}
 
-                <h3>Other Places</h3>
-                {create_table(results['other_place_count'], limit=30, id_prefix='other_places')}
-            </section>
-
-            <section id="people">
-                <h2>People Mentioned</h2>
-                <p>Click on the document count to see source documents for each person.</p>
-                {create_table_with_docs(results['people_count'], results.get('people_docs', {}), limit=100, id_prefix='people')}
-
-                <h3>Recipients</h3>
-                <p>Document recipients (addressees).</p>
-                {create_table(results['recipients_count'], limit=50, id_prefix='recipients')}
-            </section>
-
-            <section id="organizations">
-                <h2>Organizations</h2>
-                <p>Click on the document count to see source documents for each organization.</p>
-                {create_table_with_docs(results['org_count'], results.get('org_docs', {}), limit=100, id_prefix='orgs')}
-            </section>
-
-            <section id="keywords">
-                <h2>Keywords</h2>
+                <h3>Keyword Cloud</h3>
                 <p>Visual representation of keyword frequency. Larger words appear more often in documents.</p>
                 <div class="chart-container">
                     {keyword_cloud_html}
                 </div>
-                <h3>Keyword Details</h3>
-                <p>Click on the document count to see source documents for each keyword.</p>
-                {create_table_with_docs(results['keywords_count'], results.get('keyword_docs', {}), limit=100, id_prefix='keywords')}
             </section>
 
             <section id="sensitive-dashboard">
@@ -2166,28 +2763,31 @@ def generate_full_html_report(
             <section id="financial">
                 <h2>Financial References</h2>
 
+                {financial_category_html}
+
                 {financial_summary_html}
+
+                {create_financial_summary_section(results)}
+
+                <h3>Financial Activity Timeline</h3>
+                <div class="chart-container">
+                    {financial_timeline_html}
+                </div>
 
                 <div class="two-col">
                     <div>
-                        <h3>Funding Purposes</h3>
+                        <h3>Funding Purposes Distribution</h3>
                         <div class="chart-container">
                             {financial_purposes_chart_html}
                         </div>
                     </div>
                     <div>
-                        <h3>Top Financial Actors</h3>
+                        <h3>Top Financial Actors Distribution</h3>
                         <div class="chart-container">
                             {financial_actors_chart_html}
                         </div>
                     </div>
                 </div>
-
-                <h3>Funding Purposes Details</h3>
-                {create_table(results['financial_purposes_count'], limit=20, id_prefix='financial_purposes')}
-
-                <h3>Financial Actors Details</h3>
-                {create_table(results['financial_actors_count'], limit=30, id_prefix='financial_actors')}
             </section>
 
             <section id="confidence">
@@ -2196,7 +2796,7 @@ def generate_full_html_report(
 
                 <h3>Common Concerns</h3>
                 <p>Issues flagged during transcription that may require human review.</p>
-                {create_table(results['confidence_concerns'], limit=30, id_prefix='concerns')}
+                {create_table(results['confidence_concerns'], limit=10, id_prefix='concerns', show_all=False)}
             </section>
 
             <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--gray-200); color: var(--gray-600); font-size: 0.85rem;">

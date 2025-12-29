@@ -286,6 +286,71 @@ def generate_financial_summary_cards(
     return html
 
 
+def generate_financial_category_cards(
+    covert_ops_amounts: list[dict],
+    macro_economic_amounts: list[dict],
+) -> str:
+    """
+    Generate two-column cards showing covert ops vs macro-economic totals.
+
+    This separates actual CIA/40 Committee covert funding from macro-economic
+    figures (like World Bank loans, foreign debt) that appear in intelligence reports.
+
+    Args:
+        covert_ops_amounts: List of amount dicts classified as covert operations
+        macro_economic_amounts: List of amount dicts classified as macro-economic
+
+    Returns:
+        HTML string with two gradient cards showing separated totals
+    """
+    def sum_usd(amounts: list[dict]) -> float:
+        total = 0.0
+        for a in amounts:
+            n = a.get("normalized_usd")
+            if n is not None and isinstance(n, (int, float)):
+                total += n
+        return total
+
+    def format_usd(amount: float) -> str:
+        if amount >= 1_000_000_000:
+            return f"${amount/1_000_000_000:.1f}B"
+        elif amount >= 1_000_000:
+            return f"${amount/1_000_000:.1f}M"
+        elif amount >= 1_000:
+            return f"${amount/1_000:.1f}K"
+        else:
+            return f"${amount:,.0f}"
+
+    covert_total = sum_usd(covert_ops_amounts)
+    macro_total = sum_usd(macro_economic_amounts)
+
+    html = f'''
+<div class="financial-category-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+    <div style="background: linear-gradient(135deg, #10B981, #059669); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h4 style="margin: 0 0 8px; font-size: 0.85rem; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Covert Operations Funding</h4>
+        <div style="font-size: 2.2rem; font-weight: bold; margin-bottom: 8px;">{format_usd(covert_total)}</div>
+        <div style="font-size: 0.85rem; opacity: 0.85;">
+            {len(covert_ops_amounts):,} amounts documented
+        </div>
+        <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 10px; line-height: 1.4;">
+            Election support, propaganda, opposition funding, intelligence operations
+        </div>
+    </div>
+    <div style="background: linear-gradient(135deg, #6B7280, #4B5563); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h4 style="margin: 0 0 8px; font-size: 0.85rem; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Macro-Economic References</h4>
+        <div style="font-size: 2.2rem; font-weight: bold; margin-bottom: 8px;">{format_usd(macro_total)}</div>
+        <div style="font-size: 0.85rem; opacity: 0.85;">
+            {len(macro_economic_amounts):,} amounts mentioned in reports
+        </div>
+        <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 10px; line-height: 1.4;">
+            World Bank loans, IMF packages, foreign debt figures from intelligence reporting
+        </div>
+    </div>
+</div>
+'''
+    return html
+
+
 def generate_financial_timeline(
     financial_amounts_by_year: dict[str, list[dict]],
     container_id: str = "financial-timeline",

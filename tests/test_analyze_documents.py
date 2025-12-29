@@ -577,8 +577,8 @@ class TestGenerateFullHtmlReport:
 
         assert os.path.exists(os.path.join(output_dir, "report_full.html"))
 
-    def test_full_report_contains_document_index(self, temp_dir_with_pdfs):
-        """Should include document index section with PDF links."""
+    def test_full_report_contains_entity_summary(self, temp_dir_with_pdfs):
+        """Should include entity summary section with explorer links."""
         from app.analyze_documents import generate_full_html_report
 
         results = process_documents(
@@ -593,9 +593,10 @@ class TestGenerateFullHtmlReport:
         with open(os.path.join(output_dir, "report_full.html"), "r") as f:
             content = f.read()
 
-        assert "Document Index" in content
-        assert "View PDF" in content
-        assert "file://" in content
+        # Entity Summary replaced Document Index
+        assert "Entity Summary" in content
+        # Should have links to Entity Explorer
+        assert "Entity Explorer" in content or "entities/" in content
 
     def test_full_report_contains_expandable_entity_lists(self, temp_dir_with_pdfs):
         """Should include expandable entity lists using details element."""

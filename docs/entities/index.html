@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entity Explorer - Declassified CIA Documents</title>
+    <style>
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --person: #8b5cf6;
+            --organization: #0891b2;
+            --keyword: #ea580c;
+            --place: #16a34a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.5;
+        }
+
+        .explorer-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .explorer-header {
+            background: var(--gray-800);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .back-link {
+            color: var(--gray-300);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+
+        .explorer-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: var(--gray-400);
+            font-size: 14px;
+        }
+
+        .nav-link,
+        .about-link {
+            color: var(--gray-300);
+            text-decoration: none;
+            padding: 6px 12px;
+            border: 1px solid var(--gray-600);
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover,
+        .about-link:hover {
+            color: white;
+            border-color: var(--gray-400);
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* Alphabetical Index */
+        .alpha-index {
+            background: white;
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .alpha-btn {
+            padding: 6px 10px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 32px;
+        }
+
+        .alpha-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .alpha-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .alpha-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Main Layout */
+        .explorer-main {
+            display: flex;
+            flex: 1;
+        }
+
+        /* Sidebar */
+        .filter-sidebar {
+            width: 280px;
+            background: white;
+            padding: 20px;
+            border-right: 1px solid var(--gray-200);
+            overflow-y: auto;
+            position: sticky;
+            top: 108px;
+            height: calc(100vh - 108px);
+        }
+
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .filter-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .btn-clear {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .btn-clear:hover {
+            text-decoration: underline;
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+        }
+
+        .filter-section label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .filter-section input[type="text"],
+        .filter-section input[type="number"],
+        .filter-section select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .filter-section input:focus,
+        .filter-section select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .count-range {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .count-range input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .count-range span {
+            color: var(--gray-500);
+            font-size: 13px;
+        }
+
+        .count-presets {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            padding: 4px 10px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .preset-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .checkbox-item input {
+            cursor: pointer;
+        }
+
+        .checkbox-item .count {
+            color: var(--gray-400);
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        .checkbox-item .type-icon {
+            font-size: 14px;
+        }
+
+        /* Entity List */
+        .entity-list {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .loading-state,
+        .error-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--gray-500);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-state button {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Entity Cards */
+        .entity-cards {
+            display: grid;
+            gap: 16px;
+        }
+
+        .entity-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: box-shadow 0.2s;
+            border-left: 4px solid var(--gray-300);
+        }
+
+        .entity-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .entity-card.person { border-left-color: var(--person); }
+        .entity-card.organization { border-left-color: var(--organization); }
+        .entity-card.keyword { border-left-color: var(--keyword); }
+        .entity-card.place { border-left-color: var(--place); }
+
+        .entity-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .entity-icon {
+            font-size: 20px;
+        }
+
+        .entity-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-800);
+            flex: 1;
+        }
+
+        .entity-type-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .entity-type-badge.person {
+            background: #ede9fe;
+            color: var(--person);
+        }
+
+        .entity-type-badge.organization {
+            background: #e0f2fe;
+            color: var(--organization);
+        }
+
+        .entity-type-badge.keyword {
+            background: #ffedd5;
+            color: var(--keyword);
+        }
+
+        .entity-type-badge.place {
+            background: #dcfce7;
+            color: var(--place);
+        }
+
+        .entity-subtype {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-left: 8px;
+        }
+
+        .entity-doc-count {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-bottom: 12px;
+        }
+
+        .entity-doc-count strong {
+            font-size: 18px;
+            color: var(--gray-800);
+        }
+
+        .entity-sample-docs {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-bottom: 12px;
+        }
+
+        .entity-sample-docs .doc-id {
+            font-family: monospace;
+            background: var(--gray-100);
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-right: 6px;
+        }
+
+        .entity-footer {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 12px;
+            border-top: 1px solid var(--gray-100);
+        }
+
+        .view-docs-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .view-docs-link:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 32px;
+            padding: 16px 0;
+        }
+
+        .pagination button {
+            padding: 8px 14px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .pagination .page-info {
+            color: var(--gray-500);
+            font-size: 14px;
+            margin: 0 12px;
+        }
+
+        /* No Results */
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-500);
+        }
+
+        .no-results h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--gray-700);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .explorer-main {
+                flex-direction: column;
+            }
+
+            .alpha-index {
+                padding: 8px 16px;
+            }
+
+            .alpha-btn {
+                padding: 4px 8px;
+                font-size: 12px;
+                min-width: 28px;
+            }
+
+            .filter-sidebar {
+                width: 100%;
+                position: static;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--gray-200);
+            }
+
+            .explorer-header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .entity-list {
+                padding: 16px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="explorer-container">
+        <!-- Header -->
+        <header class="explorer-header">
+            <div class="header-left">
+                <a href="../" class="back-link">&larr; Back to Dashboard</a>
+                <h1>Entity Explorer</h1>
+            </div>
+            <div class="header-right">
+                <span id="stats-text">Loading...</span>
+                <a href="../explorer/" class="nav-link">Documents</a>
+                <a href="../about.html" class="about-link">About</a>
+            </div>
+        </header>
+
+        <!-- Alphabetical Index -->
+        <div class="alpha-index" id="alpha-index">
+            <button class="alpha-btn active" data-letter="">All</button>
+            <!-- Letters populated by JS -->
+        </div>
+
+        <div class="explorer-main">
+            <!-- Sidebar Filters -->
+            <aside class="filter-sidebar">
+                <div class="filter-header">
+                    <h2>Filters</h2>
+                    <button id="clear-filters" class="btn-clear">Clear All</button>
+                </div>
+
+                <!-- Search -->
+                <div class="filter-section">
+                    <label for="search-input">Search</label>
+                    <input type="text" id="search-input" placeholder="Search entities...">
+                </div>
+
+                <!-- Entity Type -->
+                <div class="filter-section">
+                    <label>Entity Type</label>
+                    <div id="type-filters" class="checkbox-group">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Place Subtype (shown when Place is selected) -->
+                <div class="filter-section" id="subtype-section" style="display: none;">
+                    <label>Place Type</label>
+                    <div id="subtype-filters" class="checkbox-group">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Document Count Range -->
+                <div class="filter-section">
+                    <label>Document Count</label>
+                    <div class="count-range">
+                        <input type="number" id="count-min" placeholder="Min" min="1">
+                        <span>to</span>
+                        <input type="number" id="count-max" placeholder="Max">
+                    </div>
+                    <div class="count-presets">
+                        <button class="preset-btn" data-min="10">10+</button>
+                        <button class="preset-btn" data-min="50">50+</button>
+                        <button class="preset-btn" data-min="100">100+</button>
+                        <button class="preset-btn" data-min="500">500+</button>
+                    </div>
+                </div>
+
+                <!-- Sort -->
+                <div class="filter-section">
+                    <label for="sort-select">Sort By</label>
+                    <select id="sort-select">
+                        <option value="count-desc">Most Documents</option>
+                        <option value="count-asc">Fewest Documents</option>
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                    </select>
+                </div>
+            </aside>
+
+            <!-- Entity List -->
+            <main class="entity-list">
+                <!-- Loading State -->
+                <div id="loading-state" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading entities...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="error-state" class="error-state" style="display: none;">
+                    <p>Error loading entities. <button onclick="location.reload()">Retry</button></p>
+                </div>
+
+                <!-- Entity Cards -->
+                <div id="entity-cards" class="entity-cards">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Pagination -->
+                <div id="pagination" class="pagination">
+                    <!-- Populated by JS -->
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Fuse.js for fuzzy search -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+
+    <script>
+
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+const CONFIG = {
+    dataUrl: '../data/entities.json',
+    documentExplorerUrl: '../explorer/',
+    externalPdfViewer: 'https://declasseuucl.vercel.app',
+    pageSize: 25,
+    searchDebounceMs: 300
+};
+
+// Entity type icons
+const TYPE_ICONS = {
+    person: '👤',
+    organization: '🏛️',
+    keyword: '🏷️',
+    place: '📍'
+};
+
+// =============================================================================
+// EVENT BUS
+// =============================================================================
+const Events = (function() {
+    const listeners = {};
+
+    return {
+        on(event, callback) {
+            if (!listeners[event]) listeners[event] = [];
+            listeners[event].push(callback);
+        },
+        emit(event, data) {
+            if (listeners[event]) {
+                listeners[event].forEach(cb => cb(data));
+            }
+        }
+    };
+})();
+
+// =============================================================================
+// DATA STORE
+// =============================================================================
+const DataStore = (function() {
+    let entities = [];
+    let facets = {};
+    let isLoaded = false;
+
+    return {
+        async load() {
+            try {
+                const response = await fetch(CONFIG.dataUrl);
+                if (!response.ok) throw new Error('Failed to load data');
+                const data = await response.json();
+                entities = data.entities || [];
+                facets = data.facets || {};
+                isLoaded = true;
+                Events.emit('data:loaded', { count: entities.length, facets });
+                return true;
+            } catch (error) {
+                console.error('Error loading data:', error);
+                Events.emit('data:error', error);
+                return false;
+            }
+        },
+        getEntities() { return entities; },
+        getFacets() { return facets; },
+        isLoaded() { return isLoaded; }
+    };
+})();
+
+// =============================================================================
+// FILTER STATE
+// =============================================================================
+const FilterState = (function() {
+    const state = {
+        search: '',
+        letter: '',
+        types: new Set(),
+        subtypes: new Set(),
+        countMin: null,
+        countMax: null,
+        sort: 'count-desc'
+    };
+
+    function toURL() {
+        const params = new URLSearchParams();
+        if (state.search) params.set('q', state.search);
+        if (state.letter) params.set('letter', state.letter);
+        if (state.types.size) params.set('type', [...state.types].join(','));
+        if (state.subtypes.size) params.set('subtype', [...state.subtypes].join(','));
+        if (state.countMin) params.set('min', state.countMin);
+        if (state.countMax) params.set('max', state.countMax);
+        if (state.sort !== 'count-desc') params.set('sort', state.sort);
+        const queryString = params.toString();
+        const newUrl = queryString ? `?${queryString}` : window.location.pathname;
+        history.replaceState(null, '', newUrl);
+    }
+
+    function fromURL() {
+        const params = new URLSearchParams(window.location.search);
+        state.search = params.get('q') || '';
+        state.letter = params.get('letter') || '';
+        state.types = new Set(params.get('type')?.split(',').filter(Boolean) || []);
+        state.subtypes = new Set(params.get('subtype')?.split(',').filter(Boolean) || []);
+        state.countMin = params.get('min') ? parseInt(params.get('min')) : null;
+        state.countMax = params.get('max') ? parseInt(params.get('max')) : null;
+        state.sort = params.get('sort') || 'count-desc';
+    }
+
+    return {
+        get() { return state; },
+        set(key, value) {
+            state[key] = value;
+            toURL();
+            Events.emit('filter:changed', state);
+        },
+        toggleSet(key, value) {
+            if (state[key].has(value)) {
+                state[key].delete(value);
+            } else {
+                state[key].add(value);
+            }
+            toURL();
+            Events.emit('filter:changed', state);
+        },
+        clear() {
+            state.search = '';
+            state.letter = '';
+            state.types.clear();
+            state.subtypes.clear();
+            state.countMin = null;
+            state.countMax = null;
+            state.sort = 'count-desc';
+            toURL();
+            Events.emit('filter:changed', state);
+            Events.emit('filter:cleared');
+        },
+        fromURL,
+        toURL
+    };
+})();
+
+// =============================================================================
+// ENTITY FILTER
+// =============================================================================
+const EntityFilter = (function() {
+    let fuse = null;
+
+    function init(entities) {
+        fuse = new Fuse(entities, {
+            keys: [
+                { name: 'name', weight: 1 }
+            ],
+            threshold: 0.3,
+            ignoreLocation: true,
+            includeScore: true
+        });
+    }
+
+    function filter(entities, state) {
+        let results = entities;
+
+        // Text search with Fuse.js
+        if (state.search && state.search.trim()) {
+            const searchResults = fuse.search(state.search.trim());
+            results = searchResults.map(r => r.item);
+        }
+
+        // Letter filter
+        if (state.letter) {
+            results = results.filter(e => e.first_letter === state.letter);
+        }
+
+        // Type filter
+        if (state.types.size > 0) {
+            results = results.filter(e => state.types.has(e.type));
+        }
+
+        // Subtype filter (for places)
+        if (state.subtypes.size > 0) {
+            results = results.filter(e =>
+                e.type !== 'place' || state.subtypes.has(e.subtype)
+            );
+        }
+
+        // Document count filter
+        if (state.countMin) {
+            results = results.filter(e => e.doc_count >= state.countMin);
+        }
+        if (state.countMax) {
+            results = results.filter(e => e.doc_count <= state.countMax);
+        }
+
+        // Sorting
+        results = sortEntities(results, state.sort);
+
+        return results;
+    }
+
+    function sortEntities(entities, sortKey) {
+        const sorted = [...entities];
+        switch (sortKey) {
+            case 'count-desc':
+                sorted.sort((a, b) => b.doc_count - a.doc_count);
+                break;
+            case 'count-asc':
+                sorted.sort((a, b) => a.doc_count - b.doc_count);
+                break;
+            case 'name-asc':
+                sorted.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'name-desc':
+                sorted.sort((a, b) => b.name.localeCompare(a.name));
+                break;
+        }
+        return sorted;
+    }
+
+    return { init, filter };
+})();
+
+// =============================================================================
+// PAGINATION
+// =============================================================================
+const Pagination = (function() {
+    let currentPage = 1;
+    let totalItems = 0;
+    const pageSize = CONFIG.pageSize;
+
+    function getPageData(items) {
+        totalItems = items.length;
+        const start = (currentPage - 1) * pageSize;
+        return items.slice(start, start + pageSize);
+    }
+
+    function getTotalPages() {
+        return Math.ceil(totalItems / pageSize);
+    }
+
+    function setPage(page) {
+        const total = getTotalPages();
+        if (page >= 1 && page <= total) {
+            currentPage = page;
+            Events.emit('page:changed', currentPage);
+        }
+    }
+
+    function reset() {
+        currentPage = 1;
+    }
+
+    function render(container) {
+        const totalPages = getTotalPages();
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        html += `<button onclick="Pagination.setPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&laquo; Prev</button>`;
+
+        // Show page numbers
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        if (endPage - startPage < maxVisible - 1) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+
+        if (startPage > 1) {
+            html += `<button onclick="Pagination.setPage(1)">1</button>`;
+            if (startPage > 2) html += `<span class="page-info">...</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button onclick="Pagination.setPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<span class="page-info">...</span>`;
+            html += `<button onclick="Pagination.setPage(${totalPages})">${totalPages}</button>`;
+        }
+
+        html += `<button onclick="Pagination.setPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}">Next &raquo;</button>`;
+
+        container.innerHTML = html;
+    }
+
+    // Expose globally for onclick handlers
+    window.Pagination = { setPage, reset, render, getPageData, getTotalPages, getCurrentPage: () => currentPage };
+
+    return window.Pagination;
+})();
+
+// =============================================================================
+// ENTITY RENDERER
+// =============================================================================
+const EntityRenderer = (function() {
+    function renderCard(entity) {
+        const icon = TYPE_ICONS[entity.type] || '❓';
+        const explorerUrl = `${CONFIG.documentExplorerUrl}?q=${encodeURIComponent(entity.name)}`;
+        const subtypeText = entity.subtype ? `<span class="entity-subtype">(${entity.subtype})</span>` : '';
+
+        const sampleDocsHtml = entity.sample_docs && entity.sample_docs.length > 0
+            ? `<div class="entity-sample-docs">
+                   Sample docs: ${entity.sample_docs.map(id => `<span class="doc-id">${id}</span>`).join('')}
+               </div>`
+            : '';
+
+        return `
+            <div class="entity-card ${entity.type}" data-id="${entity.id}">
+                <div class="entity-card-header">
+                    <span class="entity-icon">${icon}</span>
+                    <span class="entity-name">${escapeHtml(entity.name)}</span>
+                    <span class="entity-type-badge ${entity.type}">${entity.type}${subtypeText}</span>
+                </div>
+                <div class="entity-doc-count">
+                    <strong>${entity.doc_count.toLocaleString()}</strong> document(s)
+                </div>
+                ${sampleDocsHtml}
+                <div class="entity-footer">
+                    <a href="${explorerUrl}" class="view-docs-link">View documents &rarr;</a>
+                </div>
+            </div>
+        `;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function renderList(entities, container) {
+        if (entities.length === 0) {
+            container.innerHTML = `
+                <div class="no-results">
+                    <h3>No entities found</h3>
+                    <p>Try adjusting your search or filters.</p>
+                </div>
+            `;
+            return;
+        }
+        container.innerHTML = entities.map(renderCard).join('');
+    }
+
+    return { renderCard, renderList };
+})();
+
+// =============================================================================
+// UI CONTROLLER
+// =============================================================================
+const UIController = (function() {
+    const elements = {};
+
+    function cacheElements() {
+        elements.loading = document.getElementById('loading-state');
+        elements.error = document.getElementById('error-state');
+        elements.cards = document.getElementById('entity-cards');
+        elements.pagination = document.getElementById('pagination');
+        elements.statsText = document.getElementById('stats-text');
+        elements.searchInput = document.getElementById('search-input');
+        elements.alphaIndex = document.getElementById('alpha-index');
+        elements.typeFilters = document.getElementById('type-filters');
+        elements.subtypeSection = document.getElementById('subtype-section');
+        elements.subtypeFilters = document.getElementById('subtype-filters');
+        elements.countMin = document.getElementById('count-min');
+        elements.countMax = document.getElementById('count-max');
+        elements.sortSelect = document.getElementById('sort-select');
+        elements.clearButton = document.getElementById('clear-filters');
+    }
+
+    function showLoading() {
+        elements.loading.style.display = 'flex';
+        elements.error.style.display = 'none';
+        elements.cards.style.display = 'none';
+    }
+
+    function showError() {
+        elements.loading.style.display = 'none';
+        elements.error.style.display = 'flex';
+        elements.cards.style.display = 'none';
+    }
+
+    function showContent() {
+        elements.loading.style.display = 'none';
+        elements.error.style.display = 'none';
+        elements.cards.style.display = 'grid';
+    }
+
+    function updateStats(filtered, total) {
+        if (filtered === total) {
+            elements.statsText.textContent = `${total.toLocaleString()} entities`;
+        } else {
+            elements.statsText.textContent = `Showing ${filtered.toLocaleString()} of ${total.toLocaleString()} entities`;
+        }
+    }
+
+    function renderAlphaIndex(letters) {
+        const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        const letterSet = new Set(letters);
+
+        let html = '<button class="alpha-btn active" data-letter="">All</button>';
+        allLetters.forEach(letter => {
+            const hasEntities = letterSet.has(letter);
+            const disabledClass = hasEntities ? '' : 'disabled';
+            html += `<button class="alpha-btn ${disabledClass}" data-letter="${letter}" ${hasEntities ? '' : 'disabled'}>${letter}</button>`;
+        });
+
+        // Add # for non-alphabetic
+        if (letterSet.has('#')) {
+            html += '<button class="alpha-btn" data-letter="#">#</button>';
+        }
+
+        elements.alphaIndex.innerHTML = html;
+    }
+
+    function renderFilters(facets) {
+        // Type checkboxes with counts
+        const types = facets.types || {};
+        elements.typeFilters.innerHTML = Object.entries(types).map(([type, count]) => `
+            <label class="checkbox-item">
+                <input type="checkbox" value="${type}" data-filter="type">
+                <span class="type-icon">${TYPE_ICONS[type] || ''}</span>
+                ${type.charAt(0).toUpperCase() + type.slice(1)}
+                <span class="count">(${count.toLocaleString()})</span>
+            </label>
+        `).join('');
+
+        // Subtype checkboxes for places
+        const subtypes = facets.subtypes?.place || {};
+        elements.subtypeFilters.innerHTML = Object.entries(subtypes).map(([subtype, count]) => `
+            <label class="checkbox-item">
+                <input type="checkbox" value="${subtype}" data-filter="subtype">
+                ${subtype.charAt(0).toUpperCase() + subtype.slice(1)}
+                <span class="count">(${count.toLocaleString()})</span>
+            </label>
+        `).join('');
+    }
+
+    function syncFiltersFromState() {
+        const state = FilterState.get();
+
+        elements.searchInput.value = state.search;
+        elements.countMin.value = state.countMin || '';
+        elements.countMax.value = state.countMax || '';
+        elements.sortSelect.value = state.sort;
+
+        // Sync alpha index
+        elements.alphaIndex.querySelectorAll('.alpha-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.letter === state.letter);
+        });
+
+        // Sync type checkboxes
+        elements.typeFilters.querySelectorAll('input').forEach(cb => {
+            cb.checked = state.types.has(cb.value);
+        });
+
+        // Show/hide subtype section
+        elements.subtypeSection.style.display = state.types.has('place') ? 'block' : 'none';
+
+        // Sync subtype checkboxes
+        elements.subtypeFilters.querySelectorAll('input').forEach(cb => {
+            cb.checked = state.subtypes.has(cb.value);
+        });
+
+        // Sync preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            const min = parseInt(btn.dataset.min);
+            btn.classList.toggle('active', state.countMin === min && !state.countMax);
+        });
+    }
+
+    function bindEvents() {
+        // Search input with debounce
+        let searchTimeout;
+        elements.searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                FilterState.set('search', e.target.value);
+            }, CONFIG.searchDebounceMs);
+        });
+
+        // Alpha index
+        elements.alphaIndex.addEventListener('click', (e) => {
+            if (e.target.classList.contains('alpha-btn') && !e.target.disabled) {
+                FilterState.set('letter', e.target.dataset.letter);
+            }
+        });
+
+        // Type checkboxes
+        elements.typeFilters.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                FilterState.toggleSet('types', e.target.value);
+                // Show/hide subtype section
+                const state = FilterState.get();
+                elements.subtypeSection.style.display = state.types.has('place') ? 'block' : 'none';
+            }
+        });
+
+        // Subtype checkboxes
+        elements.subtypeFilters.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                FilterState.toggleSet('subtypes', e.target.value);
+            }
+        });
+
+        // Count range
+        elements.countMin.addEventListener('change', (e) => {
+            FilterState.set('countMin', e.target.value ? parseInt(e.target.value) : null);
+        });
+        elements.countMax.addEventListener('change', (e) => {
+            FilterState.set('countMax', e.target.value ? parseInt(e.target.value) : null);
+        });
+
+        // Preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const min = parseInt(btn.dataset.min);
+                FilterState.set('countMin', min);
+                FilterState.set('countMax', null);
+                elements.countMin.value = min;
+                elements.countMax.value = '';
+            });
+        });
+
+        // Sort select
+        elements.sortSelect.addEventListener('change', (e) => {
+            FilterState.set('sort', e.target.value);
+        });
+
+        // Clear button
+        elements.clearButton.addEventListener('click', () => {
+            FilterState.clear();
+        });
+    }
+
+    return {
+        cacheElements,
+        showLoading,
+        showError,
+        showContent,
+        updateStats,
+        renderAlphaIndex,
+        renderFilters,
+        syncFiltersFromState,
+        bindEvents,
+        elements
+    };
+})();
+
+// =============================================================================
+// APPLICATION CONTROLLER
+// =============================================================================
+(function() {
+    let allEntities = [];
+    let filteredEntities = [];
+
+    async function init() {
+        UIController.cacheElements();
+        UIController.showLoading();
+
+        // Load filter state from URL
+        FilterState.fromURL();
+
+        // Load data
+        const success = await DataStore.load();
+        if (!success) {
+            UIController.showError();
+            return;
+        }
+
+        allEntities = DataStore.getEntities();
+        const facets = DataStore.getFacets();
+
+        // Initialize filter and search
+        EntityFilter.init(allEntities);
+
+        // Render filter UI
+        UIController.renderAlphaIndex(facets.letters || []);
+        UIController.renderFilters(facets);
+        UIController.syncFiltersFromState();
+        UIController.bindEvents();
+
+        // Initial render
+        applyFiltersAndRender();
+
+        // Listen for filter changes
+        Events.on('filter:changed', () => {
+            Pagination.reset();
+            applyFiltersAndRender();
+        });
+
+        Events.on('filter:cleared', () => {
+            UIController.syncFiltersFromState();
+        });
+
+        Events.on('page:changed', () => {
+            renderCurrentPage();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
+    function applyFiltersAndRender() {
+        const state = FilterState.get();
+        filteredEntities = EntityFilter.filter(allEntities, state);
+        UIController.updateStats(filteredEntities.length, allEntities.length);
+        renderCurrentPage();
+    }
+
+    function renderCurrentPage() {
+        const pageData = Pagination.getPageData(filteredEntities);
+        EntityRenderer.renderList(pageData, UIController.elements.cards);
+        Pagination.render(UIController.elements.pagination);
+        UIController.showContent();
+    }
+
+    // Start application
+    document.addEventListener('DOMContentLoaded', init);
+})();
+
+    </script>
+</body>
+</html>
