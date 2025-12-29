@@ -11,6 +11,7 @@ from app.visualizations.financial_dashboard import (
     generate_financial_flow_network,
     generate_financial_purposes_chart,
     generate_financial_actors_chart,
+    generate_financial_category_cards,
     FINANCIAL_COLORS,
     PURPOSE_COLORS,
 )
@@ -354,3 +355,85 @@ class TestColorConstants:
         ]
         for purpose in expected_purposes:
             assert purpose in PURPOSE_COLORS
+
+
+class TestGenerateFinancialCategoryCards:
+    """Tests for generate_financial_category_cards function."""
+
+    def test_returns_html_string(self):
+        """Should return valid HTML string."""
+        html = generate_financial_category_cards(
+            covert_ops_amounts=[{"normalized_usd": 1000000}],
+            macro_economic_amounts=[{"normalized_usd": 19000000000}],
+        )
+        assert isinstance(html, str)
+        assert "<div" in html
+        assert "COVERT" in html.upper()
+
+    def test_formats_millions_correctly(self):
+        """Should format million-dollar amounts correctly."""
+        html = generate_financial_category_cards(
+            covert_ops_amounts=[{"normalized_usd": 8200000}],
+            macro_economic_amounts=[],
+        )
+        assert "$8.2M" in html
+
+    def test_formats_billions_correctly(self):
+        """Should format billion-dollar amounts correctly."""
+        html = generate_financial_category_cards(
+            covert_ops_amounts=[],
+            macro_economic_amounts=[{"normalized_usd": 697000000000}],
+        )
+        assert "$697.0B" in html
+
+    def test_formats_thousands_correctly(self):
+        """Should format thousand-dollar amounts correctly."""
+        html = generate_financial_category_cards(
+            covert_ops_amounts=[{"normalized_usd": 50000}],
+            macro_economic_amounts=[],
+        )
+        assert "$50.0K" in html
+
+    def test_handles_empty_amounts(self):
+        """Should handle empty amounts gracefully."""
+        html = generate_financial_category_cards(
+            covert_ops_amounts=[],
+            macro_economic_amounts=[],
+        )
+        assert "$0" in html
+        assert "0 amounts" in html
+
+    def test_sums_multiple_amounts(self):
+        """Should correctly sum multiple amounts."""
+        html = generate_financial_category_cards(
+            covert_ops_amounts=[
+                {"normalized_usd": 1000000},
+                {"normalized_usd": 2000000},
+                {"normalized_usd": 500000},
+            ],
+            macro_economic_amounts=[],
+        )
+        assert "$3.5M" in html
+        assert "3 amounts" in html
+
+    def test_handles_null_normalized_usd(self):
+        """Should handle amounts with null normalized_usd."""
+        html = generate_financial_category_cards(
+            covert_ops_amounts=[
+                {"normalized_usd": None},
+                {"normalized_usd": 1000000},
+            ],
+            macro_economic_amounts=[],
+        )
+        # Should still count 2 amounts but only sum the non-null one
+        assert "2 amounts" in html
+        assert "$1.0M" in html
+
+    def test_includes_descriptive_text(self):
+        """Should include descriptive text for both categories."""
+        html = generate_financial_category_cards(
+            covert_ops_amounts=[{"normalized_usd": 1000000}],
+            macro_economic_amounts=[{"normalized_usd": 19000000000}],
+        )
+        assert "election" in html.lower() or "propaganda" in html.lower()
+        assert "world bank" in html.lower() or "imf" in html.lower()

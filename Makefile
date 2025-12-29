@@ -184,21 +184,26 @@ visualize:
 	uv run python -m app.visualize_transcripts
 
 # =============================================================================
-# DOCUMENT EXPLORER
+# EXPLORERS (Document + Entity)
 # =============================================================================
 
-# Generate explorer data and page
+# Generate all explorer data and pages (documents + entities)
 explorer:
 	uv run python -m app.explorer generate
 
-# Regenerate only the documents.json data file
+# Regenerate only JSON data files (documents.json + entities.json)
 explorer-data:
 	uv run python -m app.explorer data
 
-# Local development server for explorer (serves docs/ directory)
+# Generate only entity explorer
+entities:
+	uv run python -m app.explorer entities
+
+# Local development server for explorers (serves docs/ directory)
 explorer-serve:
 	@echo "Starting local server at http://localhost:8000"
-	@echo "Open http://localhost:8000/explorer/ to view the explorer"
+	@echo "Open http://localhost:8000/explorer/ for Document Explorer"
+	@echo "Open http://localhost:8000/entities/ for Entity Explorer"
 	cd docs && python -m http.server 8000
 
 # =============================================================================
@@ -350,10 +355,11 @@ help:
 	@echo "  serve            Start report server with PDF viewer"
 	@echo "  visualize        Create visualizations"
 	@echo ""
-	@echo "Document Explorer:"
-	@echo "  explorer         Generate explorer data and page"
-	@echo "  explorer-data    Generate only documents.json"
-	@echo "  explorer-serve   Start local server for explorer"
+	@echo "Explorers:"
+	@echo "  explorer         Generate all explorer data and pages"
+	@echo "  explorer-data    Generate only JSON data files"
+	@echo "  entities         Generate only entity explorer"
+	@echo "  explorer-serve   Start local server for explorers"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test             Run all tests"
@@ -385,7 +391,7 @@ help:
         rag-build rag-rebuild rag-stats rag-interactive rag-query \
         eval-stats eval-validate eval-sample eval-report progress \
         analyze analyze-full github-pages github-pages-external deploy serve visualize \
-        explorer explorer-data explorer-serve \
+        explorer explorer-data entities explorer-serve \
         test test-unit lint format typecheck \
         rq-list rq-add rq-show rq-update rq-generate-md rq-reports rq-report rq-reports-list \
         clean update lock run shell help

@@ -859,8 +859,9 @@ class TestGenerateGeographicMap:
         html = generate_geographic_map(Counter(), Counter(), show_condor_countries=True)
 
         assert "condorLayer" in html
-        assert "CHILE" in html
-        assert "ARGENTINA" in html
+        # Condor countries are referenced by ISO country codes (e.g., 152 for Chile)
+        assert "condorCountryCodes" in html
+        assert "Operation Condor" in html
 
     def test_layer_toggle_controls(self):
         """Test that layer toggle controls are included."""
