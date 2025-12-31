@@ -660,9 +660,20 @@ def generate_financial_purposes_chart(
     financial_purposes_count: Counter,
     container_id: str = "financial-purposes-chart",
     height: str = "300px",
+    purpose_docs: dict[str, list[tuple[str, str, str]]] | None = None,
+    create_pdf_link_fn: Any | None = None,
+    max_docs_display: int = 20,
 ) -> str:
     """
     Generate Chart.js doughnut chart of funding purposes.
+
+    Args:
+        financial_purposes_count: Counter of purposes and their document counts
+        container_id: HTML id for the chart container
+        height: CSS height for the chart
+        purpose_docs: Optional mapping of purpose -> list of (doc_id, pdf_path, basename)
+        create_pdf_link_fn: Optional function to generate PDF links
+        max_docs_display: Maximum documents to show per purpose (default 20)
 
     Returns:
         HTML string with embedded JavaScript
@@ -681,11 +692,115 @@ def generate_financial_purposes_chart(
     data_json = json.dumps(data)
     colors_json = json.dumps(colors)
 
+    # Build document data for JavaScript if provided
+    has_docs = purpose_docs is not None and len(purpose_docs) > 0
+    if has_docs and purpose_docs is not None:
+        docs_data: dict[str, Any] = {}
+        for purpose in labels:
+            doc_refs = purpose_docs.get(purpose, [])
+            docs_list = []
+            for doc_id, pdf_path, doc_basename in doc_refs[:max_docs_display]:
+                if create_pdf_link_fn:
+                    link_html = create_pdf_link_fn(
+                        pdf_path, doc_basename, doc_id=doc_id, basename=doc_basename
+                    )
+                else:
+                    link_html = doc_basename
+                docs_list.append({
+                    "id": doc_id,
+                    "basename": doc_basename,
+                    "link": link_html
+                })
+            docs_data[purpose] = {
+                "docs": docs_list,
+                "total": len(doc_refs),
+                "showing": min(len(doc_refs), max_docs_display)
+            }
+        docs_json = json.dumps(docs_data)
+    else:
+        docs_json = "{}"
+
+    # Unique function name suffix to avoid collisions
+    func_id = container_id.replace("-", "_")
+
+    # Document panel HTML (only shown if docs are available)
+    docs_panel_html = ""
+    if has_docs:
+        docs_panel_html = f'''
+<div id="{container_id}-docs" class="purpose-docs-panel" style="display: none; margin-top: 15px; padding: 15px; background: #F9FAFB; border-radius: 8px; border: 1px solid #E5E7EB;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h4 id="{container_id}-docs-title" style="margin: 0; font-size: 1rem; color: #374151;"></h4>
+        <button onclick="closePurposeDocs_{func_id}()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: #6B7280; line-height: 1;">&times;</button>
+    </div>
+    <ul id="{container_id}-docs-list" class="doc-list" style="margin: 0; padding-left: 20px; max-height: 300px; overflow-y: auto; list-style: disc;"></ul>
+    <p id="{container_id}-docs-more" style="margin: 10px 0 0; font-size: 0.85rem; color: #6B7280; display: none;"></p>
+</div>
+'''
+
+    # Click handler options (only if docs are available)
+    click_handler_js = ""
+    if has_docs:
+        click_handler_js = f'''
+            onClick: function(event, elements) {{
+                if (elements.length > 0) {{
+                    const index = elements[0].index;
+                    const label = this.data.labels[index];
+                    showPurposeDocs_{func_id}(label);
+                }}
+            }},
+            onHover: function(event, elements) {{
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            }},'''
+
+    # JavaScript functions for document display
+    docs_functions_js = ""
+    if has_docs:
+        docs_functions_js = f'''
+    const purposeDocsData_{func_id} = {docs_json};
+
+    window.showPurposeDocs_{func_id} = function(purpose) {{
+        const docsPanel = document.getElementById('{container_id}-docs');
+        const docsTitle = document.getElementById('{container_id}-docs-title');
+        const docsList = document.getElementById('{container_id}-docs-list');
+        const docsMore = document.getElementById('{container_id}-docs-more');
+
+        const data = purposeDocsData_{func_id}[purpose];
+        if (!data || data.docs.length === 0) {{
+            docsPanel.style.display = 'none';
+            return;
+        }}
+
+        docsTitle.textContent = purpose + ' - ' + data.total + ' document' + (data.total !== 1 ? 's' : '');
+
+        let listHtml = '';
+        data.docs.forEach(function(doc) {{
+            listHtml += '<li style="margin-bottom: 4px;">' + doc.link + ' <small style="color: #6B7280;">(' + doc.id + ')</small></li>';
+        }});
+        docsList.innerHTML = listHtml;
+
+        if (data.total > data.showing) {{
+            docsMore.textContent = '... and ' + (data.total - data.showing) + ' more document' + ((data.total - data.showing) !== 1 ? 's' : '');
+            docsMore.style.display = 'block';
+        }} else {{
+            docsMore.style.display = 'none';
+        }}
+
+        docsPanel.style.display = 'block';
+    }};
+
+    window.closePurposeDocs_{func_id} = function() {{
+        document.getElementById('{container_id}-docs').style.display = 'none';
+    }};
+'''
+
+    # Add click hint to title if docs are available
+    chart_title = "Funding Purposes" + (" (click for documents)" if has_docs else "")
+
     html = f'''
 <div style="position: relative; height: {height}; width: 100%; max-width: 500px; margin: 0 auto;">
     <canvas id="{container_id}"></canvas>
 </div>
-
+{docs_panel_html}
 <script>
 (function() {{
     const ctx = document.getElementById('{container_id}').getContext('2d');
@@ -702,11 +817,11 @@ def generate_financial_purposes_chart(
         }},
         options: {{
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: false,{click_handler_js}
             plugins: {{
                 title: {{
                     display: true,
-                    text: 'Funding Purposes',
+                    text: '{chart_title}',
                     font: {{ size: 14 }}
                 }},
                 legend: {{
@@ -729,6 +844,7 @@ def generate_financial_purposes_chart(
             }}
         }}
     }});
+{docs_functions_js}
 }})();
 </script>
 '''

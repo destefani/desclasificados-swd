@@ -174,6 +174,8 @@ def process_documents(
         torture_center_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
         disappearance_victim_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
         disappearance_perp_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        financial_purpose_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+        financial_actor_docs: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
         all_documents: list[dict[str, Any]] = []
 
     for file in files:
@@ -297,9 +299,13 @@ def process_documents(
             for purpose in doc_purposes:
                 if purpose:
                     financial_purposes_count[purpose] += 1
+                    if full_mode:
+                        financial_purpose_docs[purpose].append(doc_ref)
             for actor in doc_actors:
                 if actor:
                     financial_actors_count[actor] += 1
+                    if full_mode:
+                        financial_actor_docs[actor].append(doc_ref)
 
             # Get document ID for enrichment
             file_doc_id = os.path.splitext(os.path.basename(file))[0]
@@ -477,6 +483,8 @@ def process_documents(
         "torture_center_docs": dict(torture_center_docs) if full_mode else {},
         "disappearance_victim_docs": dict(disappearance_victim_docs) if full_mode else {},
         "disappearance_perp_docs": dict(disappearance_perp_docs) if full_mode else {},
+        "financial_purpose_docs": dict(financial_purpose_docs) if full_mode else {},
+        "financial_actor_docs": dict(financial_actor_docs) if full_mode else {},
     }
 
 
@@ -1549,11 +1557,7 @@ def generate_full_html_report(
         financial_purposes_count=results.get("financial_purposes_count", Counter()),
     )
 
-    financial_purposes_chart_html = generate_financial_purposes_chart(
-        financial_purposes_count=results.get("financial_purposes_count", Counter()),
-        container_id="financial-purposes-chart",
-        height="350px",
-    )
+    # financial_purposes_chart_html is generated after create_pdf_link is defined
 
     financial_actors_chart_html = generate_financial_actors_chart(
         financial_actors_count=results.get("financial_actors_count", Counter()),
@@ -1639,6 +1643,16 @@ def generate_full_html_report(
                 # Use file:// URL for direct opening
                 return f'<a href="file://{os.path.abspath(pdf_path)}" target="_blank">{label}</a>'
         return label
+
+    # Generate financial purposes chart with document links (now that create_pdf_link is available)
+    financial_purposes_chart_html = generate_financial_purposes_chart(
+        financial_purposes_count=results.get("financial_purposes_count", Counter()),
+        container_id="financial-purposes-chart",
+        height="350px",
+        purpose_docs=results.get("financial_purpose_docs"),
+        create_pdf_link_fn=create_pdf_link,
+        max_docs_display=20,
+    )
 
     def create_table(counter: dict, limit: int = 50, id_prefix: str = "", show_all: bool = True) -> str:
         """Create an HTML table from a Counter, with optional collapsible rows.
