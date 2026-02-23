@@ -128,7 +128,8 @@ class DocumentService:
         elif sort == "pages":
             sort_key, reverse = "pages", True
 
-        filtered = sorted(filtered, key=lambda d: d.get(sort_key, ""), reverse=reverse)
+        default: str | int | float = "" if sort_key == "date" else 0
+        filtered = sorted(filtered, key=lambda d: d.get(sort_key, default), reverse=reverse)
 
         # Paginate
         total = len(filtered)
