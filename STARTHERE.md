@@ -4,6 +4,44 @@
 
 ---
 
+## Frontend Redesign: FastAPI Backend (2026-02-23)
+
+**Branch:** `feat/frontend-redesign`
+
+Building a new frontend with Next.js + FastAPI backend. Tasks 1-4 of the plan are complete.
+
+**Backend API (complete):**
+- `app/api/services/` - DocumentService, EntityService, StatsService
+- `app/api/routes/` - FastAPI route modules (documents, entities, stats, pdf, reports)
+- `app/api/main.py` - App factory with CORS for localhost:3000
+
+**Quick commands:**
+```bash
+# Start the API backend (port 8001)
+make dev-backend
+
+# Start both backend and frontend
+make dev
+
+# Run all unit tests (178 tests)
+uv run pytest tests/unit/ -v
+```
+
+**API endpoints:**
+- `GET /api/documents` - List/search/filter documents (paginated)
+- `GET /api/documents/{id}` - Get single document with full text
+- `GET /api/entities` - List entities with type filtering
+- `GET /api/stats` - Aggregated statistics
+- `GET /api/pdf/{id}` - Serve PDF files
+- `GET /api/reports` - Research question reports
+- `GET /api/health` - Health check
+
+**Plan:** `docs/plans/2026-02-23-frontend-redesign.md`
+
+**Next:** Task 5 (Next.js scaffolding), Task 6 (Layout & Navigation)
+
+---
+
 ## 🆕 Research Questions on GitHub Pages (2025-12-18)
 
 **PR #35 merged** - Research questions now display on GitHub Pages with rich HTML reports.

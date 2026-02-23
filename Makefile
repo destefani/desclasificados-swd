@@ -378,11 +378,30 @@ help:
 	@echo "  rq-report        Generate HTML report (ID=RQ-001)"
 	@echo "  rq-reports-list  List existing HTML reports"
 	@echo ""
+	@echo "Frontend Development:"
+	@echo "  dev-backend      Start FastAPI backend on port 8001"
+	@echo "  dev-frontend     Start Next.js frontend on port 3000"
+	@echo "  dev              Start both backend and frontend"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  clean            Remove caches and venv"
 	@echo "  update           Update dependencies"
 	@echo "  help             Show this message"
 	@echo ""
+
+# =============================================================================
+# FRONTEND DEVELOPMENT
+# =============================================================================
+
+dev-backend:  ## Start FastAPI backend on port 8001
+	uv run uvicorn app.api.main:app --reload --port 8001
+
+dev-frontend:  ## Start Next.js frontend on port 3000
+	cd frontend && pnpm dev
+
+dev:  ## Start both backend and frontend
+	@echo "Starting backend on :8001 and frontend on :3000..."
+	@make dev-backend & make dev-frontend
 
 .DEFAULT_GOAL := help
 
@@ -394,4 +413,5 @@ help:
         explorer explorer-data entities explorer-serve \
         test test-unit lint format typecheck \
         rq-list rq-add rq-show rq-update rq-generate-md rq-reports rq-report rq-reports-list \
+        dev-backend dev-frontend dev \
         clean update lock run shell help

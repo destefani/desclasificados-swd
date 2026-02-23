@@ -30,7 +30,7 @@ class DocumentService:
                 doc = self._normalize(raw)
                 self._documents.append(doc)
                 self._by_id[doc["id"]] = doc
-            except (json.JSONDecodeError, KeyError) as e:
+            except (json.JSONDecodeError, KeyError, AttributeError, TypeError) as e:
                 logger.warning("Skipping %s: %s", f.name, e)
         logger.info("Loaded %d documents from %s", len(self._documents), transcripts_dir)
 
