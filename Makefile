@@ -393,15 +393,23 @@ help:
 # FRONTEND DEVELOPMENT
 # =============================================================================
 
-dev-backend:  ## Start FastAPI backend on port 8001
+dev-backend:  ## Start FastAPI backend on port 8001 (Docker)
+	docker compose up backend
+
+dev-frontend:  ## Start Next.js frontend on port 3000 (Docker)
+	docker compose up frontend
+
+dev:  ## Start both backend and frontend (Docker)
+	docker compose up
+
+dev-build:  ## Rebuild Docker images
+	docker compose build
+
+dev-down:  ## Stop Docker containers
+	docker compose down
+
+dev-local-backend:  ## Start FastAPI backend locally (no Docker)
 	uv run uvicorn app.api.main:app --reload --port 8001
-
-dev-frontend:  ## Start Next.js frontend on port 3000
-	cd frontend && pnpm dev
-
-dev:  ## Start both backend and frontend
-	@echo "Starting backend on :8001 and frontend on :3000..."
-	@make dev-backend & make dev-frontend
 
 .DEFAULT_GOAL := help
 
