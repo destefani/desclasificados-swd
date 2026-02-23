@@ -14,17 +14,67 @@ export interface DocumentListItem {
   countries_mentioned: string[];
 }
 
+export interface FinancialReferences {
+  has_financial_content: boolean;
+  amounts: { value: string; normalized_usd: number | null; context: string }[];
+  financial_actors: string[];
+  purposes: string[];
+}
+
+export interface ViolenceReferences {
+  has_violence_content: boolean;
+  incident_types: string[];
+  victims: string[];
+  perpetrators: string[];
+}
+
+export interface TortureReferences {
+  has_torture_content: boolean;
+  detention_centers: string[];
+  victims: string[];
+  perpetrators: string[];
+  methods_mentioned: string[];
+}
+
+export interface DisappearanceReferences {
+  has_disappearance_content: boolean;
+  victims: string[];
+  perpetrators: string[];
+  locations: string[];
+  dates_mentioned: string[];
+}
+
+export interface OrganizationDetail {
+  name: string;
+  type: string;
+  country: string;
+}
+
 export interface DocumentDetail extends DocumentListItem {
+  source_file: string;
   author: string;
   recipients: string[];
   language: string;
   original_text: string;
   reviewed_text: string;
   has_pdf: boolean;
-  financial_references: Record<string, unknown>;
-  violence_references: Record<string, unknown>;
-  torture_references: Record<string, unknown>;
-  disappearance_references: Record<string, unknown>;
+  concerns: string[];
+  cities_mentioned: string[];
+  has_financial_content: boolean;
+  has_violence_content: boolean;
+  has_torture_content: boolean;
+  has_disappearance_content: boolean;
+  financial_references: FinancialReferences;
+  violence_references: ViolenceReferences;
+  torture_references: TortureReferences;
+  disappearance_references: DisappearanceReferences;
+  date_range: { start_date: string; end_date: string; is_approximate: boolean } | null;
+  declassification_date: string;
+  document_description: string;
+  archive_location: string;
+  observations: string;
+  other_places: string[];
+  organizations_detail: OrganizationDetail[];
 }
 
 export interface PaginatedResponse<T> {

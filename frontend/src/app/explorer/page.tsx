@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DocumentCard } from "@/components/documents/document-card";
 import { FilterSidebar } from "@/components/documents/filter-sidebar";
-import { DocumentDetail } from "@/components/documents/document-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDocuments } from "@/hooks/useDocuments";
 import type { DocumentFilters } from "@/lib/api";
@@ -15,7 +15,6 @@ export default function ExplorerPage() {
     page_size: 25,
     sort: "date_desc",
   });
-  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
   const { data, isLoading } = useDocuments(filters);
 
   return (
@@ -53,11 +52,9 @@ export default function ExplorerPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {data?.items.map((doc, idx) => (
-                <DocumentCard
-                  key={doc.id || `doc-${idx}`}
-                  doc={doc}
-                  onClick={() => setSelectedDoc(doc.id)}
-                />
+                <Link key={doc.id || `doc-${idx}`} href={`/documents/${doc.id}`}>
+                  <DocumentCard doc={doc} />
+                </Link>
               ))}
             </div>
           )}
@@ -89,7 +86,6 @@ export default function ExplorerPage() {
         </div>
       </div>
 
-      <DocumentDetail docId={selectedDoc} onClose={() => setSelectedDoc(null)} />
     </div>
   );
 }

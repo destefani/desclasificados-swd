@@ -77,6 +77,6 @@ export function fetchReport(id: string) {
   return fetchJSON<Record<string, unknown>>(`${BASE}/reports/${id}`);
 }
 
-export function pdfUrl(docId: string) {
-  return `${BASE}/pdf/${docId}`;
+export function pdfUrl(sourceFile: string) {
+  return `${BASE}/pdf/${sourceFile}`;
 }

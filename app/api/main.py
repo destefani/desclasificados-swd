@@ -31,7 +31,7 @@ def create_app(
         research_reports_dir = DATA_DIR / "research_reports"
 
     # Initialize services
-    doc_svc = DocumentService(transcripts_dir)
+    doc_svc = DocumentService(transcripts_dir, pdf_dir=pdf_dir)
     ent_svc = EntityService(doc_svc)
     stats_svc = StatsService(doc_svc)
 

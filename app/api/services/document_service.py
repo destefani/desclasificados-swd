@@ -12,9 +12,10 @@ logger = logging.getLogger(__name__)
 class DocumentService:
     """Loads JSON transcripts into memory and provides search/filter/pagination."""
 
-    def __init__(self, transcripts_dir: Path) -> None:
+    def __init__(self, transcripts_dir: Path, pdf_dir: Path | None = None) -> None:
         self._documents: list[dict[str, Any]] = []
         self._by_id: dict[str, dict[str, Any]] = {}
+        self._pdf_dir = pdf_dir
         self._load(transcripts_dir)
 
     @property
@@ -27,14 +28,14 @@ class DocumentService:
         for f in files:
             try:
                 raw = json.loads(f.read_text())
-                doc = self._normalize(raw)
+                doc = self._normalize(raw, source_file=f.stem)
                 self._documents.append(doc)
                 self._by_id[doc["id"]] = doc
             except (json.JSONDecodeError, KeyError, AttributeError, TypeError) as e:
                 logger.warning("Skipping %s: %s", f.name, e)
         logger.info("Loaded %d documents from %s", len(self._documents), transcripts_dir)
 
-    def _normalize(self, raw: dict[str, Any]) -> dict[str, Any]:
+    def _normalize(self, raw: dict[str, Any], *, source_file: str = "") -> dict[str, Any]:
         """Flatten transcript JSON into a consistent document dict."""
         meta = raw.get("metadata", {})
         confidence = raw.get("confidence", {})
@@ -66,12 +67,22 @@ class DocumentService:
             "has_violence_content": meta.get("violence_references", {}).get("has_violence_content", False),
             "has_torture_content": meta.get("torture_references", {}).get("has_torture_content", False),
             "has_disappearance_content": meta.get("disappearance_references", {}).get("has_disappearance_content", False),
+            # Source filename for PDF lookup
+            "_source_file": source_file,
             # Full metadata kept for detail view
             "_raw_metadata": meta,
             "_financial_references": meta.get("financial_references", {}),
             "_violence_references": meta.get("violence_references", {}),
             "_torture_references": meta.get("torture_references", {}),
             "_disappearance_references": meta.get("disappearance_references", {}),
+            # Additional metadata exposed only in detail view
+            "_date_range": meta.get("date_range", {}),
+            "_declassification_date": meta.get("declassification_date", ""),
+            "_document_description": meta.get("document_description", ""),
+            "_archive_location": meta.get("archive_location", ""),
+            "_observations": meta.get("observations", ""),
+            "_other_places": meta.get("other_place", []),
+            "_organizations_full": orgs,
         }
 
     def list_documents(
@@ -150,12 +161,11 @@ class DocumentService:
         }
 
     def _to_list_item(self, doc: dict[str, Any]) -> dict[str, Any]:
-        """Return document without text fields (for list views)."""
+        """Return document without text fields and private keys (for list views)."""
         return {
             k: v for k, v in doc.items()
-            if k not in ("original_text", "reviewed_text", "_raw_metadata",
-                         "_financial_references", "_violence_references",
-                         "_torture_references", "_disappearance_references")
+            if not k.startswith("_")
+            and k not in ("original_text", "reviewed_text")
         }
 
     def get_document(self, doc_id: str) -> dict[str, Any] | None:
@@ -164,9 +174,25 @@ class DocumentService:
         if doc is None:
             return None
         result = {k: v for k, v in doc.items() if not k.startswith("_")}
-        result["has_pdf"] = True
+        source_file = doc.get("_source_file", "")
+        result["source_file"] = source_file
+        has_pdf = False
+        if source_file and self._pdf_dir:
+            has_pdf = (self._pdf_dir / f"{source_file}.pdf").exists()
+        result["has_pdf"] = has_pdf
         result["financial_references"] = doc.get("_financial_references", {})
         result["violence_references"] = doc.get("_violence_references", {})
         result["torture_references"] = doc.get("_torture_references", {})
         result["disappearance_references"] = doc.get("_disappearance_references", {})
+        result["date_range"] = doc.get("_date_range", {}) or None
+        result["declassification_date"] = doc.get("_declassification_date", "")
+        result["document_description"] = doc.get("_document_description", "")
+        result["archive_location"] = doc.get("_archive_location", "")
+        result["observations"] = doc.get("_observations", "")
+        result["other_places"] = doc.get("_other_places", [])
+        orgs_full = doc.get("_organizations_full", [])
+        result["organizations_detail"] = [
+            {"name": o["name"], "type": o.get("type", ""), "country": o.get("country", "")}
+            for o in orgs_full if isinstance(o, dict)
+        ]
         return result

@@ -96,6 +96,32 @@ class TestDocumentService:
         assert doc["id"] == "00001"
         assert "original_text" in doc
         assert "reviewed_text" in doc
+        assert doc["source_file"] == "00001"
+        # New metadata fields
+        assert doc["other_places"] == []
+        assert doc["declassification_date"] == ""
+        assert doc["document_description"] == ""
+        assert doc["archive_location"] == ""
+        assert doc["observations"] == ""
+        assert doc["date_range"] is None
+        assert isinstance(doc["organizations_detail"], list)
+        assert len(doc["organizations_detail"]) == 1
+        assert doc["organizations_detail"][0]["name"] == "CIA"
+        assert doc["organizations_detail"][0]["type"] == "INTELLIGENCE_AGENCY"
+        assert doc["organizations_detail"][0]["country"] == "UNITED STATES"
+
+    def test_get_document_has_pdf_with_dir(self, sample_transcripts: Path, tmp_path: Path):
+        from app.api.services.document_service import DocumentService
+        pdf_dir = tmp_path / "pdfs"
+        pdf_dir.mkdir()
+        (pdf_dir / "00001.pdf").write_bytes(b"%PDF")
+        svc = DocumentService(sample_transcripts, pdf_dir=pdf_dir)
+        doc = svc.get_document("00001")
+        assert doc is not None
+        assert doc["has_pdf"] is True
+        doc2 = svc.get_document("00002")
+        assert doc2 is not None
+        assert doc2["has_pdf"] is False
 
     def test_get_document_not_found(self, sample_transcripts: Path):
         from app.api.services.document_service import DocumentService

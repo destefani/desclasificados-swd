@@ -92,8 +92,19 @@ class TestDocumentsAPI:
     def test_get_document(self, api_client: TestClient):
         resp = api_client.get("/api/documents/00001")
         assert resp.status_code == 200
-        assert resp.json()["id"] == "00001"
-        assert "reviewed_text" in resp.json()
+        data = resp.json()
+        assert data["id"] == "00001"
+        assert "reviewed_text" in data
+        assert data["source_file"] == "00001"
+        assert data["has_pdf"] is True
+        # New metadata fields present in detail response
+        assert "organizations_detail" in data
+        assert "other_places" in data
+        assert "declassification_date" in data
+        assert "document_description" in data
+        assert "archive_location" in data
+        assert "observations" in data
+        assert "date_range" in data
 
     def test_get_document_not_found(self, api_client: TestClient):
         resp = api_client.get("/api/documents/99999")
@@ -130,6 +141,10 @@ class TestPdfAPI:
     def test_pdf_not_found(self, api_client: TestClient):
         resp = api_client.get("/api/pdf/99999")
         assert resp.status_code == 404
+
+    def test_pdf_rejects_non_numeric(self, api_client: TestClient):
+        resp = api_client.get("/api/pdf/abc123")
+        assert resp.status_code == 400
 
 
 class TestReportsAPI:

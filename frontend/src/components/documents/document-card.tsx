@@ -8,7 +8,7 @@ export function DocumentCard({
   onClick,
 }: {
   doc: DocumentListItem;
-  onClick: () => void;
+  onClick?: () => void;
 }) {
   return (
     <Card
