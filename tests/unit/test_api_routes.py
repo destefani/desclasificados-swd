@@ -1,7 +1,6 @@
 # tests/unit/test_api_routes.py
 import pytest
 import json
-import tempfile
 from pathlib import Path
 from fastapi.testclient import TestClient
 
