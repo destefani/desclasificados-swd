@@ -16,6 +16,10 @@ __pycache__/
 .pytest_cache/
 .vscode/
 
+# Package managers
+.pnpm-store/
+node_modules/
+
 # App cache
 app/__pycache__/
 

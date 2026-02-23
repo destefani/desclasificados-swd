@@ -4,6 +4,58 @@
 
 ---
 
+## Frontend Redesign: Complete (2026-02-23)
+
+**Branch:** `feat/frontend-redesign` — All 12 tasks complete, ready for PR.
+
+Full-stack application: Next.js 15 + FastAPI backend, fully Dockerized.
+
+**Quick start:**
+```bash
+# Start both backend (port 8001) and frontend (port 3000)
+make dev
+
+# Or start individually
+make dev-backend    # FastAPI only
+make dev-frontend   # Next.js only
+
+# Rebuild Docker images after changes
+make dev-build
+
+# Stop containers
+make dev-down
+
+# Run all tests (412 tests)
+uv run pytest tests/ -q
+```
+
+**Pages:**
+- **Dashboard** (`/`) — Stats cards, timeline chart, classification chart, top entities
+- **Document Explorer** (`/explorer`) — Search, filter by classification/type/date, pagination, PDF viewer
+- **Entity Explorer** (`/entities`) — Tabs for people/orgs/keywords/places, search, pagination
+- **Research Reports** (`/reports`) — Research questions index with individual report pages
+- **About** (`/about`) — Project description and methodology
+
+**Backend API:**
+- `GET /api/documents` — List/search/filter (paginated)
+- `GET /api/documents/{id}` — Full document detail with text
+- `GET /api/entities` — List entities with type filtering
+- `GET /api/stats` — Aggregated statistics
+- `GET /api/pdf/{id}` — Serve PDF files
+- `GET /api/reports` — Research question reports
+- `GET /api/health` — Health check
+
+**Key files:**
+- `app/api/` — FastAPI backend (services + routes)
+- `frontend/` — Next.js app (src/app, src/components, src/hooks, src/lib)
+- `docker-compose.yml` — Docker orchestration
+- `Dockerfile.backend` / `frontend/Dockerfile` — Container definitions
+
+**Design:** `docs/plans/2026-02-23-frontend-redesign-design.md`
+**Plan:** `docs/plans/2026-02-23-frontend-redesign.md`
+
+---
+
 ## 🆕 Research Questions on GitHub Pages (2025-12-18)
 
 **PR #35 merged** - Research questions now display on GitHub Pages with rich HTML reports.
