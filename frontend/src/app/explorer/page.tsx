@@ -52,9 +52,9 @@ export default function ExplorerPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data?.items.map((doc) => (
+              {data?.items.map((doc, idx) => (
                 <DocumentCard
-                  key={doc.id}
+                  key={doc.id || `doc-${idx}`}
                   doc={doc}
                   onClick={() => setSelectedDoc(doc.id)}
                 />
